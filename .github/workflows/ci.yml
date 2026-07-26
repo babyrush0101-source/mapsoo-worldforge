@@ -16,7 +16,7 @@ jobs:
       pack_artifact: ${{ steps.candidate-pack.outputs.artifact }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -166,7 +166,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download the exact verified candidate pack set
         uses: actions/download-artifact@v4
@@ -356,7 +356,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download the exact verified candidate pack set
         uses: actions/download-artifact@v4
