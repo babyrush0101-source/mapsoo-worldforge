@@ -4,6 +4,28 @@ All notable changes to Mapsoo Worldsmith will be documented here. The project fo
 
 ## [Unreleased]
 
+### Added
+
+- A guided four-checkpoint world-creation dialogue that binds the approved brief, art direction, layout, and style sample to a frozen asset revision.
+- Complete local source-pack, Godot importer, and playable smoke-test candidates for side-platformer Pack 0.7, original isometric-action Pack 0.8, and original layered-depth Pack 0.9.
+- Cross-profile character identity projection using decoded silhouette, palette, anchors, pivots, atlases, and previews.
+- A local-only environment art signature that reads decoded palette, value bands, horizon, edge density, detail scale, and color temperature instead of using only opaque reference-file bytes.
+- A deterministic Raspberry Pi 4B Linux ARM64 runtime bundle with four synthetic worlds; physical-device performance acceptance remains pending.
+- A generic portable-world runtime contract and idempotent prepare/bind/launch/exit/status bridge messages using synthetic fixtures only.
+
+### Changed
+
+- Clarified throughout visual QA that the current procedural images are replaceable engineering-art baselines, not finished itch.io-quality assets.
+- Kept the published Alpha9 pack and release hashes immutable while routing new browser jobs through decoded character and environment analysis.
+- Consolidated current Codex for OSS application facts and truthful form drafts without storing account email or private organization identifiers.
+
+### Not yet complete
+
+- Model- or artist-backed semantic environment understanding and production-quality art generation.
+- Independent character artifact revisions and private/public output-license policy.
+- Direct browser-to-Godot launch, per-world Raspberry Pi PCK promotion, physical Pi performance validation, and verified External Host production consumption.
+- Independent community adoption evidence.
+
 ## [0.1.0-alpha.9] - 2026-07-20
 
 ### Added
@@ -46,7 +68,7 @@ All notable changes to Mapsoo Worldsmith will be documented here. The project fo
 
 - Generalized candidate release construction and manifests from one example pack to three without changing Alpha.1–Alpha.6 history.
 - Advanced the Workbench exporter and Godot importer to Alpha.7 while keeping public download links pinned to Alpha.6 until publication completes.
-- Kept itch.io publication postponed and made no external-adoption or External Host-production claim.
+- Kept itch.io publication postponed and made no external-adoption or External-Host-production claim.
 
 ## [0.1.0-alpha.6] - 2026-07-19
 

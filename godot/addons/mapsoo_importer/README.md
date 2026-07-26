@@ -11,9 +11,30 @@ This Godot 4.3+ editor plugin turns an extracted Mapsoo portable pack into a `Ti
 5. Select the extracted pack's `mapsoo.manifest.json`.
 6. Open the generated scene in `res://mapsoo_imports/<pack-id>/`.
 
-The importer validates paths, declared byte sizes, SHA-256 hashes, map dimensions, atlas bounds, IDs, and supported schema/engine metadata before writing resources. For schema `0.3.0`, it validates the places sidecar and World Spec projection. For schemas `0.4.0` and `0.5.0`, it additionally validates the structures sidecar, its places linkage, archetype/sprite mapping, bounds, stable order, and atlas regions. PNG and JSON stay authoritative; `.tres` and `.tscn` files are derived.
+The importer validates paths, declared byte sizes, SHA-256 hashes, map dimensions, atlas bounds, IDs, and supported schema/engine metadata before writing resources. For schema `0.3.0`, it validates the places sidecar and World Spec projection. For schemas `0.4.0` and `0.5.0`, it additionally validates the structures sidecar. Pack `0.6.0` imports the complete farm contract. Pack `0.7.0` imports the complete side-platformer candidate. Pack `0.8.0` imports the original isometric-action candidate. Pack `0.9.0` imports the original layered-depth candidate with seven declared depth planes, shared foot-point Y sorting, player/NPC atlases, bounded lighting, blockers, hazards, navigation and traversal. Pack `1.0.0-draft.1` adds eight independent planes, explicit per-role/per-frame provenance, and honest `internal-review` / `private` / `public` authorization gates. PNG and JSON stay authoritative; `.tres` and `.tscn` files are derived.
+
+For Pack `0.6.0` and `0.7.0`, the generated player references the trusted addon script at `addons/mapsoo_importer/runtime/mapsoo_player_controller.gd`. Pack `0.8.0` uses the separate trusted `mapsoo_isometric_player_controller.gd`. Pack `0.9.0` uses `mapsoo_layered_depth_player_controller.gd` for shallow-depth four-direction movement and interaction. The data pack never supplies executable code. The controllers use built-in `ui_*` actions, add no InputMap entries, and are covered by real headless physics tests on Godot 4.3 and 4.7.
 
 Mapsoo data packs intentionally contain no executable addon. Never enable GDScript copied from a third-party asset pack: manifest hashes prove internal consistency, not publisher identity.
+
+Pack 1.0 public packs require every review gate plus an approved
+commercial/redistributable license. Non-public packs fail closed unless a
+trusted local caller passes an explicit grant bound to the exact pack ID and
+distribution:
+
+```gdscript
+var grant := {
+  "decision": "allow",
+  "distribution": "internal-review",
+  "pack_id": "review-pack-id",
+  "grant_id": "local-review-grant-001",
+}
+var result := MapsooPackImporter.import_pack(manifest_path, "res://mapsoo_imports", grant)
+```
+
+The pack cannot grant itself access. Scripts, shaders, executables, URLs,
+absolute/traversal paths, undeclared files and embedded source-reference or
+raw-prompt fields are rejected.
 
 ## Safe re-import contract (`alpha.7`)
 
@@ -49,11 +70,17 @@ This is a process-level transaction with rollback, not a claim of power-loss ato
 - Schema `0.2.0` collision is restricted to a centered full-cell polygon on Water tiles in the declared `world-blocking` physics layer/mask 1. Ground and Roads have no collision.
 - Schema `0.3.0` retains the schema `0.2.0` terrain/collision contract and requires World Spec `0.2.0` plus `runtime/places.json`. The generated scene adds `Places` at z-index 4. Its children are stable `Place_0000`-style `Marker2D` nodes; the external place ID, label, kind, placement, tags, and cell remain queryable metadata, while a child `Sprite2D` displays the kind-matched `atlases/places.png` region.
 - Schema `0.4.0` requires World Spec `0.3.0`, places `0.2.0`, and structures `0.1.0`; schema `0.5.0` binds the Alpha.7 versions of those projections as World Spec `0.3.0`, places `0.3.0`, and structures `0.2.0`. Both generate place-linked `Structure_0000`-style sprites before the `Places` marker layer.
+- Schema `0.6.0` creates the complete top-down farm scene, four-direction controller, bounded camera, and collision-backed movement.
+- Schema `0.7.0` creates the side-platformer scene, platform controller, bounded camera, solid/one-way surfaces, hazard respawn, exit reporting, and four `Parallax2D` containers.
+- Schema `0.8.0` creates the original isometric-action scene, diamond floor/elevation visuals, shared Y sorting, three character atlases, eight-direction player movement/dash, blockers, hazard respawn, navigation polygon, traversal markers and exit reporting.
+- Schema `0.9.0` creates the original layered-depth scene, seven `Parallax2D` planes, one shared Y-sorted gameplay domain, player/NPC atlases, four-direction movement, NPC interaction, hazard respawn, traversal markers and exit reporting.
+- Schema `1.0.0-draft.1` creates a data-only eight-plane layered-depth scene with 36 exact roles, complete multi-frame player/NPC clips, explicit distribution rights and caller-grant gating for non-public packs. Godot 4.3/4.7 headless tests cover public import, internal/private grants, and script/shader/URL/path rejection.
 - Godot 4.3 or newer.
 - Extracted packs only; direct ZIP import is intentionally excluded until zip-bomb limits can be enforced before decompression.
 - Prop sprites follow `<kind>_01` in schema `0.1.0` and `<kind>-01` in schemas `0.2.0` through `0.5.0`. Place sprites follow `place-<kind>-01`.
 - Scene currently embeds its generated TileSet while the standalone `.tres` is also provided for direct reuse. Externalizing that scene dependency is a separate UID/path migration.
 - A hard process or machine crash can leave a staging/backup directory that requires manual inspection; crash journal recovery is not yet claimed.
+- The included example is a minimal runtime shell. It accepts only canonical generated scene paths through `--mapsoo-scene=res://mapsoo_imports/<id>/<id>.world.tscn`. The web dialogue UI does not yet launch that shell or persist playtest feedback.
 
 The full state machine, ownership schema, transaction sequence, and recovery boundary are documented in [`docs/11_SAFE_GODOT_REIMPORT.md`](../../../docs/11_SAFE_GODOT_REIMPORT.md).
 

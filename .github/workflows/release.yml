@@ -229,6 +229,7 @@ jobs:
             res://addons/mapsoo_importer/mapsoo_pack_importer.gd
             res://tests/import_pack_cli.gd
             res://tests/import_alpha9_smoke.gd
+            res://tests/texture_persistence_probe.gd
           )
           for script in "${scripts[@]}"; do
             log_file="$RUNNER_TEMP/mapsoo-release-check-$(basename "$script").log"
@@ -239,6 +240,16 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Prove release texture persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-release-texture-persistence-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/texture_persistence_probe.gd 2>&1 | tee "$log_file"
+          grep -Fq 'MAPSOO_TEXTURE_PERSISTENCE_PROBE_OK' "$log_file"
+          grep -Fq 'keep_before_pixels=true' "$log_file"
 
       - name: Run Linux release transaction contract
         shell: bash
@@ -359,7 +370,8 @@ jobs:
             'res://tests/generate_fixture.gd',
             'res://tests/import_smoke.gd',
             'res://tests/import_pack_cli.gd',
-            'res://tests/import_alpha9_smoke.gd'
+            'res://tests/import_alpha9_smoke.gd',
+            'res://tests/texture_persistence_probe.gd'
           )
           foreach ($script in $scripts) {
             $output = @(& $env:GODOT_BIN --headless --path godot --check-only --script $script 2>&1)
@@ -367,6 +379,16 @@ jobs:
             if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
               throw "GDScript syntax check failed: $script"
             }
+          }
+
+      - name: Prove release texture persistence on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/texture_persistence_probe.gd 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or -not (($output -join "`n").Contains('keep_before_pixels=true'))) {
+            throw 'Portable texture persistence probe failed.'
           }
 
       - name: Run Windows release transaction contract

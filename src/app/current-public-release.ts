@@ -1,4 +1,4 @@
-const REPOSITORY_URL = 'https://github.com/babyrush0101-source/mapsoo-kids';
+const REPOSITORY_URL = 'https://github.com/babyrush0101-source/mapsoo-worldforge';
 export const CURRENT_PUBLIC_RELEASE_VERSION = '0.1.0-alpha.9' as const;
 const tag = `v${CURRENT_PUBLIC_RELEASE_VERSION}`;
 const compatibilityPackTag = 'v0.1.0-alpha.7' as const;

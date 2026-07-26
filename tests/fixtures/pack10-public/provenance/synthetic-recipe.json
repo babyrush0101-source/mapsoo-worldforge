@@ -1,0 +1,11 @@
+{
+  "schema_version": "mapsoo-public-synthetic-recipe/1.0",
+  "id": "pack10-public-fixture-recipe",
+  "seed": "pack10-public-fixture-seed-001",
+  "synthetic": true,
+  "algorithm": "fixed-palette-rgba-primitives-v1",
+  "source_images": [],
+  "generative_ai": false,
+  "raw_prompts": false,
+  "notes": "Every raster is generated from fixed integer geometry and a fixed palette."
+}

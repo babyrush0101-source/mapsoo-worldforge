@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-layered-depth-collision-0.4.schema.json",
+  "title": "Mapsoo Layered Depth Collision 0.4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile", "completeness_policy", "bounds", "spawn", "ground_segments", "blockers", "hazards"],
+  "properties": {
+    "schema_version": { "const": "0.4.0" },
+    "profile": { "const": "layered-depth-2d" },
+    "completeness_policy": { "const": "layered-depth-2d-complete-v1" },
+    "bounds": { "$ref": "#/$defs/rect" },
+    "spawn": { "$ref": "#/$defs/point" },
+    "ground_segments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "from", "to", "one_way"],
+        "properties": {
+          "id": { "type": "string" },
+          "from": { "$ref": "#/$defs/point" },
+          "to": { "$ref": "#/$defs/point" },
+          "one_way": { "type": "boolean" }
+        }
+      }
+    },
+    "blockers": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/named_rect" } },
+    "hazards": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "rect"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["contact", "fall"] },
+          "rect": { "$ref": "#/$defs/rect" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point": { "type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": { "x": { "type": "number" }, "y": { "type": "number" } } },
+    "rect": { "type": "object", "additionalProperties": false, "required": ["x", "y", "width", "height"], "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "width": { "type": "number", "exclusiveMinimum": 0 }, "height": { "type": "number", "exclusiveMinimum": 0 } } },
+    "named_rect": { "type": "object", "additionalProperties": false, "required": ["id", "rect"], "properties": { "id": { "type": "string" }, "rect": { "$ref": "#/$defs/rect" } } }
+  }
+}

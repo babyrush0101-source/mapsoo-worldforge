@@ -74,7 +74,7 @@ jobs:
           await mkdir(outputRoot, { recursive: true });
           for (const pack of examplePacksForConfig(config)) {
             const fileName = config.release.files[pack.releaseFileKey];
-            const url = `https://github.com/babyrush0101-source/mapsoo-kids/releases/download/${config.tag}/${fileName}`;
+            const url = `https://github.com/babyrush0101-source/mapsoo-worldforge/releases/download/${config.tag}/${fileName}`;
             const response = await fetch(url, { redirect: 'follow' });
             if (!response.ok) throw new Error(`Unable to download ${pack.id}: HTTP ${response.status}`);
             const bytes = Buffer.from(await response.arrayBuffer());
@@ -99,6 +99,16 @@ jobs:
         env:
           MAPSOO_ALPHA10_FIXTURE_ROOT: release/godot-pack-set/alpha10
         run: pnpm exec vitest run --config godot/tests/vitest.alpha10-fixture.config.ts
+
+      - name: Generate the Pack 0.8 Godot fixture through the public pipeline
+        env:
+          MAPSOO_ALPHA11_FIXTURE_ROOT: release/godot-pack-set/alpha11
+        run: pnpm exec vitest run --config godot/tests/vitest.alpha11-fixture.config.ts
+
+      - name: Generate the Pack 0.9 Godot fixture through the public pipeline
+        env:
+          MAPSOO_ALPHA12_FIXTURE_ROOT: release/godot-pack-set/alpha12
+        run: pnpm exec vitest run --config godot/tests/vitest.alpha12-fixture.config.ts
 
       - name: Bind the public example packs and External Host bridge pack for Godot jobs
         id: candidate-pack
@@ -230,11 +240,26 @@ jobs:
           scripts=(
             res://addons/mapsoo_importer/mapsoo_pack_importer.gd
             res://addons/mapsoo_importer/mapsoo_pack_07.gd
+            res://addons/mapsoo_importer/mapsoo_pack_08.gd
+            res://addons/mapsoo_importer/mapsoo_pack_09.gd
+            res://addons/mapsoo_importer/mapsoo_pack_10.gd
+            res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd
+            res://addons/mapsoo_importer/runtime/mapsoo_isometric_player_controller.gd
+            res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd
             res://addons/mapsoo_importer/mapsoo_importer_plugin.gd
             res://tests/import_smoke.gd
             res://tests/import_pack_cli.gd
             res://tests/import_alpha9_smoke.gd
+            res://tests/import_alpha9_playable_smoke.gd
             res://tests/import_alpha10_smoke.gd
+            res://tests/import_alpha10_playable_smoke.gd
+            res://tests/import_alpha11_smoke.gd
+            res://tests/import_alpha11_playable_smoke.gd
+            res://tests/import_alpha12_smoke.gd
+            res://tests/import_alpha12_playable_smoke.gd
+            res://tests/import_pack10_controlled_smoke.gd
+            res://tests/runtime_shell_smoke.gd
+            res://tests/texture_persistence_probe.gd
           )
           for script in "${scripts[@]}"; do
             log_file="$RUNNER_TEMP/mapsoo-check-$(basename "$script").log"
@@ -245,6 +270,18 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Prove portable texture persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-texture-persistence-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/texture_persistence_probe.gd 2>&1 | tee "$log_file"
+          grep -Fq 'MAPSOO_TEXTURE_PERSISTENCE_PROBE_OK' "$log_file"
+          grep -Fq 'default_pixels=false' "$log_file"
+          grep -Fq 'keep_before_pixels=true' "$log_file"
+          grep -Fq 'keep_after_pixels=false' "$log_file"
 
       - name: Generate deterministic fixture
         shell: bash
@@ -271,6 +308,20 @@ jobs:
           set -euo pipefail
           mkdir -p godot/tests/.generated/pack-alpha10
           cp -R "$RUNNER_TEMP/mapsoo-candidate-packs/alpha10/." godot/tests/.generated/pack-alpha10/
+
+      - name: Stage the generated Pack 0.8 fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p godot/tests/.generated/pack-alpha11
+          cp -R "$RUNNER_TEMP/mapsoo-candidate-packs/alpha11/." godot/tests/.generated/pack-alpha11/
+
+      - name: Stage the generated Pack 0.9 fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p godot/tests/.generated/pack-alpha12
+          cp -R "$RUNNER_TEMP/mapsoo-candidate-packs/alpha12/." godot/tests/.generated/pack-alpha12/
 
       - name: Import generated resources in the editor
         shell: bash
@@ -307,6 +358,18 @@ jobs:
             exit 1
           fi
 
+      - name: Run Pack 0.6 playable physics contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-alpha9-playable-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/import_alpha9_playable_smoke.gd 2>&1 | tee "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during the Pack 0.6 playable test." >&2
+            exit 1
+          fi
+
       - name: Run Pack 0.7 side-platformer importer contract
         shell: bash
         run: |
@@ -316,6 +379,91 @@ jobs:
             --script res://tests/import_alpha10_smoke.gd 2>&1 | tee "$log_file"
           if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
             echo "Godot emitted an engine error during the Pack 0.7 smoke test." >&2
+            exit 1
+          fi
+
+      - name: Run Pack 0.7 playable physics contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-alpha10-playable-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/import_alpha10_playable_smoke.gd 2>&1 | tee "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during the Pack 0.7 playable test." >&2
+            exit 1
+          fi
+
+      - name: Run Pack 0.8 isometric-action importer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-alpha11-godot-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/import_alpha11_smoke.gd 2>&1 | tee "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during the Pack 0.8 smoke test." >&2
+            exit 1
+          fi
+
+      - name: Run Pack 0.8 playable physics contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-alpha11-playable-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/import_alpha11_playable_smoke.gd 2>&1 | tee "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during the Pack 0.8 playable test." >&2
+            exit 1
+          fi
+
+      - name: Run Pack 0.9 layered-depth importer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-alpha12-godot-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/import_alpha12_smoke.gd 2>&1 | tee "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during the Pack 0.9 smoke test." >&2
+            exit 1
+          fi
+
+      - name: Run Pack 0.9 playable physics contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-alpha12-playable-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/import_alpha12_playable_smoke.gd 2>&1 | tee "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during the Pack 0.9 playable test." >&2
+            exit 1
+          fi
+
+      - name: Run Pack 1.0 licensed-production controlled importer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-pack10-controlled-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/import_pack10_controlled_smoke.gd 2>&1 | tee "$log_file"
+          grep -Fq 'MAPSOO_PACK10_CONTROLLED_OK' "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during the Pack 1.0 controlled importer test." >&2
+            exit 1
+          fi
+
+      - name: Run generated-world runtime shell contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-runtime-shell-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/runtime_shell_smoke.gd 2>&1 | tee "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during the runtime-shell test." >&2
             exit 1
           fi
 
@@ -429,12 +577,27 @@ jobs:
           $scripts = @(
             'res://addons/mapsoo_importer/mapsoo_pack_importer.gd',
             'res://addons/mapsoo_importer/mapsoo_pack_07.gd',
+            'res://addons/mapsoo_importer/mapsoo_pack_08.gd',
+            'res://addons/mapsoo_importer/mapsoo_pack_09.gd',
+            'res://addons/mapsoo_importer/mapsoo_pack_10.gd',
+            'res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd',
+            'res://addons/mapsoo_importer/runtime/mapsoo_isometric_player_controller.gd',
+            'res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd',
             'res://addons/mapsoo_importer/mapsoo_importer_plugin.gd',
             'res://tests/generate_fixture.gd',
             'res://tests/import_smoke.gd',
             'res://tests/import_pack_cli.gd',
             'res://tests/import_alpha9_smoke.gd',
-            'res://tests/import_alpha10_smoke.gd'
+            'res://tests/import_alpha9_playable_smoke.gd',
+            'res://tests/import_alpha10_smoke.gd',
+            'res://tests/import_alpha10_playable_smoke.gd',
+            'res://tests/import_alpha11_smoke.gd',
+            'res://tests/import_alpha11_playable_smoke.gd',
+            'res://tests/import_alpha12_smoke.gd',
+            'res://tests/import_alpha12_playable_smoke.gd',
+            'res://tests/import_pack10_controlled_smoke.gd',
+            'res://tests/runtime_shell_smoke.gd',
+            'res://tests/texture_persistence_probe.gd'
           )
           foreach ($script in $scripts) {
             $output = @(& $env:GODOT_BIN --headless --path godot --check-only --script $script 2>&1)
@@ -442,6 +605,23 @@ jobs:
             if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
               throw "GDScript syntax check failed: $script"
             }
+          }
+
+      - name: Prove portable texture persistence on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/texture_persistence_probe.gd 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          $text = $output -join "`n"
+          if (
+            $LASTEXITCODE -ne 0 -or
+            -not $text.Contains('MAPSOO_TEXTURE_PERSISTENCE_PROBE_OK') -or
+            -not $text.Contains('default_pixels=false') -or
+            -not $text.Contains('keep_before_pixels=true') -or
+            -not $text.Contains('keep_after_pixels=false')
+          ) {
+            throw 'Portable texture persistence probe failed.'
           }
 
       - name: Run Windows importer transaction contract
@@ -472,6 +652,16 @@ jobs:
             throw 'Pack 0.6 importer contract failed.'
           }
 
+      - name: Run Pack 0.6 playable physics contract on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/import_alpha9_playable_smoke.gd 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+            throw 'Pack 0.6 playable physics contract failed.'
+          }
+
       - name: Stage and import the generated Pack 0.7 fixture
         shell: pwsh
         run: |
@@ -493,6 +683,103 @@ jobs:
           $output | ForEach-Object { Write-Host $_.ToString() }
           if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
             throw 'Pack 0.7 importer contract failed.'
+          }
+
+      - name: Run Pack 0.7 playable physics contract on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/import_alpha10_playable_smoke.gd 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+            throw 'Pack 0.7 playable physics contract failed.'
+          }
+
+      - name: Stage and import the generated Pack 0.8 fixture
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $fixtureRoot = Join-Path (Resolve-Path godot/tests).Path '.generated/pack-alpha11'
+          New-Item -ItemType Directory -Path $fixtureRoot -Force | Out-Null
+          Copy-Item -Path (Join-Path $env:RUNNER_TEMP 'mapsoo-candidate-packs/alpha11/*') -Destination $fixtureRoot -Recurse -Force
+          $output = @(& $env:GODOT_BIN --headless --editor --path godot --import 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+            throw 'Godot failed to import Pack 0.8 fixture resources.'
+          }
+
+      - name: Run Pack 0.8 isometric-action importer contract on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/import_alpha11_smoke.gd 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+            throw 'Pack 0.8 importer contract failed.'
+          }
+
+      - name: Run Pack 0.8 playable physics contract on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/import_alpha11_playable_smoke.gd 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+            throw 'Pack 0.8 playable physics contract failed.'
+          }
+
+      - name: Stage and import the generated Pack 0.9 fixture
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $fixtureRoot = Join-Path (Resolve-Path godot/tests).Path '.generated/pack-alpha12'
+          New-Item -ItemType Directory -Path $fixtureRoot -Force | Out-Null
+          Copy-Item -Path (Join-Path $env:RUNNER_TEMP 'mapsoo-candidate-packs/alpha12/*') -Destination $fixtureRoot -Recurse -Force
+          $output = @(& $env:GODOT_BIN --headless --editor --path godot --import 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+            throw 'Godot failed to import Pack 0.9 fixture resources.'
+          }
+
+      - name: Run Pack 0.9 layered-depth importer contract on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/import_alpha12_smoke.gd 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+            throw 'Pack 0.9 importer contract failed.'
+          }
+
+      - name: Run Pack 0.9 playable physics contract on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/import_alpha12_playable_smoke.gd 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+            throw 'Pack 0.9 playable physics contract failed.'
+          }
+
+      - name: Run Pack 1.0 licensed-production controlled importer contract on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/import_pack10_controlled_smoke.gd 2>&1)
+          $lines = @($output | ForEach-Object { $_.ToString() })
+          $lines | ForEach-Object { Write-Host $_ }
+          if ($LASTEXITCODE -ne 0 -or $lines -match '^(?:SCRIPT )?ERROR:' -or -not ($lines -match 'MAPSOO_PACK10_CONTROLLED_OK')) {
+            throw 'Pack 1.0 controlled importer contract failed.'
+          }
+
+      - name: Run generated-world runtime shell contract on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/runtime_shell_smoke.gd 2>&1)
+          $output | ForEach-Object { Write-Host $_.ToString() }
+          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+            throw 'Generated-world runtime shell contract failed.'
           }
 
       - name: Import all three exact verified candidate packs

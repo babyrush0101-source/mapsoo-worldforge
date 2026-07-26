@@ -2,6 +2,10 @@
 extends RefCounted
 
 const Pack07 = preload("res://addons/mapsoo_importer/mapsoo_pack_07.gd")
+const Pack08 = preload("res://addons/mapsoo_importer/mapsoo_pack_08.gd")
+const Pack09 = preload("res://addons/mapsoo_importer/mapsoo_pack_09.gd")
+const Pack10 = preload("res://addons/mapsoo_importer/mapsoo_pack_10.gd")
+const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd")
 
 const LEGACY_SCHEMA_VERSION := "0.1.0"
 const PLAYABLE_TERRAIN_SCHEMA_VERSION := "0.2.0"
@@ -10,7 +14,10 @@ const EXTERIOR_STRUCTURES_SCHEMA_VERSION := "0.4.0"
 const MULTI_WORLD_PACK_SCHEMA_VERSION := "0.5.0"
 const COMPLETE_FARM_SCHEMA_VERSION := "0.6.0"
 const SIDE_PLATFORMER_SCHEMA_VERSION := "0.7.0"
-const SUPPORTED_SCHEMA_VERSIONS := [LEGACY_SCHEMA_VERSION, PLAYABLE_TERRAIN_SCHEMA_VERSION, SEMANTIC_PLACES_SCHEMA_VERSION, EXTERIOR_STRUCTURES_SCHEMA_VERSION, MULTI_WORLD_PACK_SCHEMA_VERSION, COMPLETE_FARM_SCHEMA_VERSION, SIDE_PLATFORMER_SCHEMA_VERSION]
+const ISOMETRIC_ACTION_SCHEMA_VERSION := "0.8.0"
+const LAYERED_DEPTH_SCHEMA_VERSION := "0.9.0"
+const CONTROLLED_SCHEMA_VERSION := "1.0.0-draft.1"
+const SUPPORTED_SCHEMA_VERSIONS := [LEGACY_SCHEMA_VERSION, PLAYABLE_TERRAIN_SCHEMA_VERSION, SEMANTIC_PLACES_SCHEMA_VERSION, EXTERIOR_STRUCTURES_SCHEMA_VERSION, MULTI_WORLD_PACK_SCHEMA_VERSION, COMPLETE_FARM_SCHEMA_VERSION, SIDE_PLATFORMER_SCHEMA_VERSION, ISOMETRIC_ACTION_SCHEMA_VERSION, LAYERED_DEPTH_SCHEMA_VERSION, CONTROLLED_SCHEMA_VERSION]
 const OUTPUT_ROOT := "res://mapsoo_imports"
 const IMPORTER_VERSION := "0.1.0-alpha.9"
 const ALPHA9_LAYERS := ["ground", "water", "paths", "soil", "props", "structures", "crops"]
@@ -38,7 +45,11 @@ const PLACE_PLACEMENTS := ["center", "near-water", "on-road", "map-edge"]
 const STRUCTURE_ARCHETYPES := ["cottage", "workshop", "tower", "shrine"]
 
 
-static func import_pack(manifest_path: String, output_root: String = OUTPUT_ROOT) -> Dictionary:
+static func import_pack(
+	manifest_path: String,
+	output_root: String = OUTPUT_ROOT,
+	authorization: Dictionary = {},
+) -> Dictionary:
 	var errors: Array[String] = []
 	var warnings: Array[String] = []
 
@@ -65,7 +76,7 @@ static func import_pack(manifest_path: String, output_root: String = OUTPUT_ROOT
 	var manifest: Dictionary = manifest_read.value
 	var pack_root := local_manifest_path.get_base_dir()
 
-	var validation := _validate_and_prepare(manifest, pack_root)
+	var validation := _validate_and_prepare(manifest, pack_root, authorization)
 	errors.assign(validation.errors)
 	warnings.assign(validation.warnings)
 	if not errors.is_empty():
@@ -402,7 +413,13 @@ static func _create_import_state(
 
 
 static func _importer_version_for_schema(schema_version: String) -> String:
-	return "0.1.0-alpha.10" if schema_version == SIDE_PLATFORMER_SCHEMA_VERSION else IMPORTER_VERSION
+	if schema_version == CONTROLLED_SCHEMA_VERSION:
+		return "1.0.0"
+	if schema_version == LAYERED_DEPTH_SCHEMA_VERSION:
+		return "0.1.0-alpha.12"
+	if schema_version == ISOMETRIC_ACTION_SCHEMA_VERSION:
+		return "0.1.0-alpha.11"
+	return "0.1.0-alpha.10" if schema_version in [COMPLETE_FARM_SCHEMA_VERSION, SIDE_PLATFORMER_SCHEMA_VERSION] else IMPORTER_VERSION
 
 
 static func _canonical_import_state_core(state: Dictionary) -> Dictionary:
@@ -446,13 +463,21 @@ static func _validate_staged_resources(
 		return {"ok": false, "error": "Staged scene could not be loaded before commit: %s" % scene_path}
 	var world := packed.instantiate()
 	if schema_version == COMPLETE_FARM_SCHEMA_VERSION:
-		var alpha9_valid := world.get_node_or_null("Ground") is TileMapLayer and world.get_node_or_null("Water") is TileMapLayer and world.get_node_or_null("Paths") is TileMapLayer and world.get_node_or_null("Soil") is TileMapLayer
+		var ground_layer := world.get_node_or_null("Ground") as TileMapLayer
+		var alpha9_valid := ground_layer != null and world.get_node_or_null("Water") is TileMapLayer and world.get_node_or_null("Paths") is TileMapLayer and world.get_node_or_null("Soil") is TileMapLayer
 		alpha9_valid = alpha9_valid and world.get_node_or_null("Props") is Node2D and world.get_node_or_null("Structures") is Node2D and world.get_node_or_null("Crops") is Node2D
+		var standalone_atlas := tile_set.get_source(0) as TileSetAtlasSource
+		var embedded_atlas := ground_layer.tile_set.get_source(0) as TileSetAtlasSource if ground_layer != null and ground_layer.tile_set != null else null
+		alpha9_valid = alpha9_valid and standalone_atlas != null and _texture_has_persisted_pixels(standalone_atlas.texture)
+		alpha9_valid = alpha9_valid and embedded_atlas != null and _texture_has_persisted_pixels(embedded_atlas.texture)
+		alpha9_valid = alpha9_valid and _sprite_textures_have_persisted_pixels(world)
 		var navigation_region := world.get_node_or_null("WorldNavigation") as NavigationRegion2D
 		var spawn := world.get_node_or_null("PlayerSpawn") as Marker2D
 		var player := world.get_node_or_null("Player") as CharacterBody2D
 		alpha9_valid = alpha9_valid and navigation_region != null and navigation_region.navigation_polygon != null and navigation_region.navigation_polygon.get_polygon_count() > 0
-		alpha9_valid = alpha9_valid and spawn != null and player != null and player.position == spawn.position and world.get_node_or_null("Player/CollisionShape2D") is CollisionShape2D
+		var used_rect := ground_layer.get_used_rect() if ground_layer != null else Rect2i()
+		var expected_bounds := Rect2(used_rect.position * 32, used_rect.size * 32)
+		alpha9_valid = alpha9_valid and spawn != null and player != null and player.position == spawn.position and player.get_script() == PlayerController and player.get("mapsoo_profile") == "topdown-farm" and player.get("world_bounds") == expected_bounds and world.get_node_or_null("Player/CollisionShape2D") is CollisionShape2D and world.get_node_or_null("Player/Camera2D") is Camera2D
 		var visual := world.get_node_or_null("Player/Visual") as AnimatedSprite2D
 		if visual == null or visual.sprite_frames == null:
 			alpha9_valid = false
@@ -460,12 +485,25 @@ static func _validate_staged_resources(
 			for clip_id: String in ALPHA9_CLIPS:
 				var animation_name := clip_id.replace(".", "_")
 				if not visual.sprite_frames.has_animation(animation_name) or visual.sprite_frames.get_frame_count(animation_name) < 1: alpha9_valid = false
+				elif not _sprite_frames_have_persisted_pixels(visual.sprite_frames, animation_name): alpha9_valid = false
 		world.free()
 		return {"ok": alpha9_valid, "error": "" if alpha9_valid else "Staged Pack 0.6 scene is incomplete."}
 	if schema_version == SIDE_PLATFORMER_SCHEMA_VERSION:
 		var alpha10_result := Pack07.validate_staged_scene(world, expected_props)
 		world.free()
 		return alpha10_result
+	if schema_version == ISOMETRIC_ACTION_SCHEMA_VERSION:
+		var alpha11_result := Pack08.validate_staged_scene(world, expected_props)
+		world.free()
+		return alpha11_result
+	if schema_version == LAYERED_DEPTH_SCHEMA_VERSION:
+		var alpha12_result := Pack09.validate_staged_scene(world, expected_props)
+		world.free()
+		return alpha12_result
+	if schema_version == CONTROLLED_SCHEMA_VERSION:
+		var pack10_result := Pack10.validate_staged_scene(world, expected_props)
+		world.free()
+		return pack10_result
 	var props := world.get_node_or_null("Props")
 	var places := world.get_node_or_null("Places")
 	var structures := world.get_node_or_null("Structures")
@@ -503,6 +541,32 @@ static func _validate_staged_resources(
 	if not valid:
 		return {"ok": false, "error": "Staged scene contents differ from the validated pack."}
 	return {"ok": true, "error": ""}
+
+
+static func _sprite_textures_have_persisted_pixels(node: Node) -> bool:
+	if node is Sprite2D and not _texture_has_persisted_pixels((node as Sprite2D).texture):
+		return false
+	for child: Node in node.get_children():
+		if not _sprite_textures_have_persisted_pixels(child):
+			return false
+	return true
+
+
+static func _sprite_frames_have_persisted_pixels(frames: SpriteFrames, animation_name: StringName) -> bool:
+	for frame_index: int in frames.get_frame_count(animation_name):
+		if not _texture_has_persisted_pixels(frames.get_frame_texture(animation_name, frame_index)):
+			return false
+	return true
+
+
+static func _texture_has_persisted_pixels(value: Texture2D) -> bool:
+	var texture := value
+	if texture is AtlasTexture:
+		texture = (texture as AtlasTexture).atlas
+	if texture == null:
+		return false
+	var image := texture.get_image()
+	return image != null and not image.is_empty() and not image.get_data().is_empty()
 
 
 static func _successful_result(
@@ -679,7 +743,11 @@ static func _remove_transaction_directory(transaction_dir: String) -> Error:
 	return DirAccess.remove_absolute(absolute_dir)
 
 
-static func _validate_and_prepare(manifest: Dictionary, pack_root: String) -> Dictionary:
+static func _validate_and_prepare(
+	manifest: Dictionary,
+	pack_root: String,
+	authorization: Dictionary = {},
+) -> Dictionary:
 	var errors: Array[String] = []
 	var warnings: Array[String] = []
 	var prepared := {
@@ -718,6 +786,27 @@ static func _validate_and_prepare(manifest: Dictionary, pack_root: String) -> Di
 		if not errors.is_empty():
 			return prepared
 		return Pack07.validate_and_prepare(manifest, pack_root, prepared, file_index)
+	if schema_version == ISOMETRIC_ACTION_SCHEMA_VERSION:
+		var alpha11_file_index := _validate_file_records(manifest.get("files"), pack_root, errors)
+		if not errors.is_empty():
+			return prepared
+		return Pack08.validate_and_prepare(manifest, pack_root, prepared, alpha11_file_index)
+	if schema_version == LAYERED_DEPTH_SCHEMA_VERSION:
+		var alpha12_file_index := _validate_file_records(manifest.get("files"), pack_root, errors)
+		if not errors.is_empty():
+			return prepared
+		return Pack09.validate_and_prepare(manifest, pack_root, prepared, alpha12_file_index)
+	if schema_version == CONTROLLED_SCHEMA_VERSION:
+		var controlled_file_index := _validate_file_records(manifest.get("files"), pack_root, errors)
+		if not errors.is_empty():
+			return prepared
+		return Pack10.validate_and_prepare(
+			manifest,
+			pack_root,
+			prepared,
+			controlled_file_index,
+			authorization,
+		)
 	var pack := _dictionary_at(manifest, "pack", errors)
 	var compatibility := _dictionary_at(manifest, "compatibility", errors)
 	var license := _dictionary_at(manifest, "license", errors)
@@ -2072,14 +2161,15 @@ static func _build_complete_farm_scene(prepared: Dictionary, tile_set: TileSet) 
 	polygon.make_polygons_from_outlines(); navigation_region.navigation_polygon = polygon
 	root.add_child(navigation_region); navigation_region.owner = root
 
-	var collisions_root := StaticBody2D.new(); collisions_root.name = "WorldCollision"; root.add_child(collisions_root); collisions_root.owner = root
+	var collisions_root := StaticBody2D.new(); collisions_root.name = "WorldCollision"; collisions_root.collision_layer = 1; collisions_root.collision_mask = 1; root.add_child(collisions_root); collisions_root.owner = root
 	for index: int in prepared.collisions.size():
 		var cell: Array = prepared.collisions[index]
 		var shape_node := CollisionShape2D.new(); shape_node.name = "Blocked_%04d" % index; shape_node.position = Vector2((int(cell[0]) + 0.5) * 32, (int(cell[1]) + 0.5) * 32)
 		var shape := RectangleShape2D.new(); shape.size = Vector2(32, 32); shape_node.shape = shape; collisions_root.add_child(shape_node); shape_node.owner = root
 
 	var spawn := Marker2D.new(); spawn.name = "PlayerSpawn"; spawn.position = Vector2((prepared.spawn.x + 0.5) * 32, (prepared.spawn.y + 0.5) * 32); root.add_child(spawn); spawn.owner = root
-	var player := CharacterBody2D.new(); player.name = "Player"; player.position = spawn.position; root.add_child(player); player.owner = root
+	var player := CharacterBody2D.new(); player.name = "Player"; player.position = spawn.position; player.collision_layer = 1; player.collision_mask = 1; root.add_child(player); player.owner = root
+	player.set_script(PlayerController); player.set("mapsoo_profile", "topdown-farm"); player.set("world_bounds", Rect2(0, 0, prepared.width * 32, prepared.height * 32)); player.set("spawn_position", spawn.position)
 	var frames := SpriteFrames.new(); frames.remove_animation("default")
 	var atlas: Texture2D = prepared.textures[prepared.atlas_paths.character]
 	for clip_value: Variant in prepared.character.clips:
@@ -2089,6 +2179,7 @@ static func _build_complete_farm_scene(prepared: Dictionary, tile_set: TileSet) 
 	var visual := AnimatedSprite2D.new(); visual.name = "Visual"; visual.sprite_frames = frames; visual.animation = "idle_south"; visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; visual.offset = Vector2(16 - float(prepared.character.pivot[0]), 16 - float(prepared.character.pivot[1]))
 	player.add_child(visual); visual.owner = root
 	var player_collision := CollisionShape2D.new(); player_collision.name = "CollisionShape2D"; var capsule := CapsuleShape2D.new(); capsule.radius = 8; capsule.height = 20; player_collision.shape = capsule; player_collision.position = Vector2(0, 6); player.add_child(player_collision); player_collision.owner = root
+	var camera := Camera2D.new(); camera.name = "Camera2D"; camera.position_smoothing_enabled = false; player.add_child(camera); camera.owner = root
 	return {"ok": prepared.errors.is_empty(), "root": root, "error": "Navigation data is invalid." if not prepared.errors.is_empty() else ""}
 
 
@@ -2097,6 +2188,12 @@ static func _build_scene(prepared: Dictionary, tile_set: TileSet) -> Dictionary:
 		return _build_complete_farm_scene(prepared, tile_set)
 	if prepared.schema_version == SIDE_PLATFORMER_SCHEMA_VERSION:
 		return Pack07.build_scene(prepared)
+	if prepared.schema_version == ISOMETRIC_ACTION_SCHEMA_VERSION:
+		return Pack08.build_scene(prepared)
+	if prepared.schema_version == LAYERED_DEPTH_SCHEMA_VERSION:
+		return Pack09.build_scene(prepared)
+	if prepared.schema_version == CONTROLLED_SCHEMA_VERSION:
+		return Pack10.build_scene(prepared)
 	var root := Node2D.new()
 	root.name = "MapsooWorld"
 	root.set_meta("mapsoo_pack_id", prepared.pack_id)

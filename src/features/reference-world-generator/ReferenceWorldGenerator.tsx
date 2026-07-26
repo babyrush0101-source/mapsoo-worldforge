@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 
 import { readBrowserReferenceImage, type BrowserReferenceImage } from '../../adapters/read-reference-image-file';
+import type { ConfirmedDialogueInput } from '../../core/confirmed-generation-binding';
+import {
+  freezeWorldAssetRevision,
+  type FrozenWorldLaunchBinding,
+  type WorldAssetRevision,
+} from '../../core/world-asset-revision';
 import {
   generateReferenceWorldPack,
   type DownloadableWorldPack,
@@ -11,6 +17,8 @@ type GeneratorState = 'idle' | 'reading' | 'generating' | 'ready' | 'error';
 
 interface ReferenceWorldGeneratorProps {
   readonly initialProfile?: ImplementedReferenceWorldProfile;
+  readonly initialDescription?: string;
+  readonly initialConfirmation?: ConfirmedDialogueInput;
 }
 
 const PROFILE_COPY = Object.freeze({
@@ -24,6 +32,29 @@ const PROFILE_COPY = Object.freeze({
     placeholder: 'Platforms, hazards, structures, layered backgrounds and the matched player will appear here.',
     support: 'Godot importer candidate', status: 'Alpha10 candidate',
   }),
+  'isometric-action': Object.freeze({
+    pack: 'Pack 0.8',
+    action: 'Generate complete isometric action pack',
+    alt: 'Generated original isometric action-world preview',
+    placeholder: 'Diamond terrain, elevation, combat effects, three character atlases and a traversable route will appear here.',
+    support: 'Godot 4.3 / 4.7 importer verified',
+    status: 'Alpha11 candidate',
+  }),
+  'layered-depth-2d': Object.freeze({
+    pack: 'Pack 0.9',
+    action: 'Generate complete layered-depth pack',
+    alt: 'Generated layered-depth 2D world preview',
+    placeholder: 'Seven depth planes, stage terrain, lighting, a matched player, NPC and traversable route will appear here.',
+    support: 'Godot 4.3 / 4.7 importer candidate',
+    status: 'Alpha12 candidate',
+  }),
+});
+
+const PROFILE_JOB_LABEL = Object.freeze({
+  'topdown-farm': 'farm',
+  'side-platformer': 'side-platformer',
+  'isometric-action': 'isometric action',
+  'layered-depth-2d': 'layered-depth 2D',
 });
 
 function downloadBytes(filename: string, bytes: Uint8Array): void {
@@ -41,7 +72,11 @@ function safeMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'World asset generation failed.';
 }
 
-export function ReferenceWorldGenerator({ initialProfile = 'topdown-farm' }: ReferenceWorldGeneratorProps) {
+export function ReferenceWorldGenerator({
+  initialProfile = 'topdown-farm',
+  initialDescription = 'A welcoming riverside world with readable paths, landmarks and a distinctive player character.',
+  initialConfirmation,
+}: ReferenceWorldGeneratorProps) {
   const abortRef = useRef<AbortController | null>(null);
   const generationRef = useRef(0);
   const previewUrlRef = useRef<string | null>(null);
@@ -49,13 +84,19 @@ export function ReferenceWorldGenerator({ initialProfile = 'topdown-farm' }: Ref
   const [character, setCharacter] = useState<BrowserReferenceImage | null>(null);
   const [profile, setProfile] = useState<ImplementedReferenceWorldProfile>(initialProfile);
   const [worldId, setWorldId] = useState('my-2d-world');
-  const [description, setDescription] = useState('A welcoming riverside world with readable paths, landmarks and a distinctive player character.');
+  const [description, setDescription] = useState(initialDescription);
   const [seed, setSeed] = useState('world-001');
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [state, setState] = useState<GeneratorState>('idle');
   const [notice, setNotice] = useState('Choose two references to begin.');
   const [pack, setPack] = useState<DownloadableWorldPack | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [confirmationBindingSha256, setConfirmationBindingSha256] = useState<string | null>(null);
+  const [confirmationEmbeddedInPack, setConfirmationEmbeddedInPack] = useState(false);
+  const [assetRevision, setAssetRevision] = useState<WorldAssetRevision | null>(null);
+  const [frozenLaunch, setFrozenLaunch] = useState<FrozenWorldLaunchBinding | null>(null);
+  const [characterIdentitySha256, setCharacterIdentitySha256] = useState<string | null>(null);
+  const [environmentArtSha256, setEnvironmentArtSha256] = useState<string | null>(null);
 
   useEffect(() => () => {
     abortRef.current?.abort();
@@ -73,6 +114,12 @@ export function ReferenceWorldGenerator({ initialProfile = 'topdown-farm' }: Ref
     abortRef.current?.abort();
     generationRef.current += 1;
     setPack(null);
+    setConfirmationBindingSha256(null);
+    setConfirmationEmbeddedInPack(false);
+    setAssetRevision(null);
+    setFrozenLaunch(null);
+    setCharacterIdentitySha256(null);
+    setEnvironmentArtSha256(null);
     replacePreviewUrl(null);
     setState('idle');
     setNotice(nextNotice);
@@ -107,21 +154,39 @@ export function ReferenceWorldGenerator({ initialProfile = 'topdown-farm' }: Ref
     generationRef.current = token;
     setState('generating');
     setPack(null);
-    setNotice(`Generating the complete ${profile === 'topdown-farm' ? 'farm' : 'side-platformer'} asset graph…`);
+    setNotice(`Generating the complete ${PROFILE_JOB_LABEL[profile]} asset graph…`);
     try {
       const generated = await generateReferenceWorldPack({
         profile, environment, character, worldId, description, seed,
-        completedAt: new Date().toISOString(), signal: controller.signal,
+        completedAt: new Date().toISOString(), confirmation: initialConfirmation, signal: controller.signal,
       });
       if (controller.signal.aborted || token !== generationRef.current) return;
       const previewBuffer = new ArrayBuffer(generated.previewBytes.byteLength);
       new Uint8Array(previewBuffer).set(generated.previewBytes);
       replacePreviewUrl(URL.createObjectURL(new Blob([previewBuffer], { type: 'image/png' })));
       setPack(generated.pack);
+      setConfirmationBindingSha256(generated.confirmationBinding?.binding_sha256 ?? null);
+      setConfirmationEmbeddedInPack(generated.confirmationEmbeddedInPack);
+      setAssetRevision(generated.assetRevision);
+      setFrozenLaunch(null);
+      setCharacterIdentitySha256(generated.characterIdentitySignatureSha256);
+      setEnvironmentArtSha256(generated.environmentArtSignatureSha256);
       setState('ready');
-      setNotice(`Complete Pack ${generated.packSchemaVersion} ready: ${generated.generatedFileCount} generated files, ${generated.requiredRoleCount} required roles, ${generated.characterClipCount} character clips.`);
+      setNotice(`Complete Pack ${generated.packSchemaVersion} ready for visual review: ${generated.generatedFileCount} generated files, ${generated.requiredRoleCount} required roles, ${generated.characterClipCount} character clips.`);
     } catch (error) {
       if (controller.signal.aborted || token !== generationRef.current) return;
+      setState('error');
+      setNotice(safeMessage(error));
+    }
+  }
+
+  async function approveAssetRevision() {
+    if (!assetRevision) return;
+    try {
+      const frozen = await freezeWorldAssetRevision(assetRevision, assetRevision.revision_sha256);
+      setFrozenLaunch(frozen);
+      setNotice(`Asset revision ${assetRevision.revision_sha256.slice(0, 12)}… frozen. The Godot world pack is ready to download.`);
+    } catch (error) {
       setState('error');
       setNotice(safeMessage(error));
     }
@@ -136,13 +201,13 @@ export function ReferenceWorldGenerator({ initialProfile = 'topdown-farm' }: Ref
   const copy = PROFILE_COPY[profile];
 
   return (
-    <section className="reference-generator" aria-labelledby="reference-generator-title">
+    <section id="reference-generator" className="reference-generator" aria-labelledby="reference-generator-title">
       <div className="reference-generator-heading">
         <div>
-          <p className="eyebrow">Alpha 10 workbench · complete 2D world job</p>
+          <p className="eyebrow">Alpha 12 workbench · complete pipeline, baseline art</p>
           <h2 id="reference-generator-title">Two references in. A world asset pack out.</h2>
         </div>
-        <p>Farm is the published Alpha9 path. Side platformer is an Alpha10 source-pack candidate; its Godot importer is still planned. Isometric action and layered-depth 2D remain planned.</p>
+        <p>Four profiles generate complete source packs and playable Godot maps using replaceable engineering art. The local analyzer reads environment color, value, horizon and edge structure; finished production artwork still requires a higher-quality provider and human review.</p>
       </div>
       <div className="reference-generator-grid">
         <div className="reference-generator-form">
@@ -164,10 +229,10 @@ export function ReferenceWorldGenerator({ initialProfile = 'topdown-farm' }: Ref
               setProfile(next);
               clearGeneratedResult('Profile changed. Generate a new pack for this world type.');
             }}>
-              <option value="topdown-farm">Top-down farm — implemented / published Alpha9</option>
-              <option value="side-platformer">Side platformer — experimental Alpha10 candidate</option>
-              <option value="isometric-action" disabled>Isometric action — planned</option>
-              <option value="layered-depth-2d" disabled>Layered-depth 2D — planned</option>
+              <option value="topdown-farm">Top-down farm — published Alpha9 pipeline / baseline art</option>
+              <option value="side-platformer">Side platformer — Alpha10 pipeline / baseline art</option>
+              <option value="isometric-action">Isometric action — Alpha11 pipeline / baseline art</option>
+              <option value="layered-depth-2d">Layered-depth 2D — Alpha12 pipeline / baseline art</option>
             </select>
           </label>
           <div className="two-column-fields">
@@ -191,10 +256,34 @@ export function ReferenceWorldGenerator({ initialProfile = 'topdown-farm' }: Ref
           )}
           <div className="reference-output-meta">
             <span>{copy.pack}</span><span>{copy.status}</span><span>{copy.support}</span><span>CC0 output</span><span>No reference images embedded</span>
+            <span>{confirmationBindingSha256
+              ? `Dialogue ${confirmationBindingSha256.slice(0, 12)}… · ${confirmationEmbeddedInPack ? 'in receipt' : 'external audit'}`
+              : 'Standalone generation'}</span>
+            <span>{assetRevision
+              ? `Asset revision ${assetRevision.revision_sha256.slice(0, 12)}…`
+              : 'No asset revision yet'}</span>
+            <span>{characterIdentitySha256
+              ? `Character identity ${characterIdentitySha256.slice(0, 12)}… · local only`
+              : 'No character identity yet'}</span>
+            <span>{environmentArtSha256
+              ? `Environment art analysis ${environmentArtSha256.slice(0, 12)}… · local only`
+              : 'No environment art analysis yet'}</span>
+            <span>{frozenLaunch
+              ? `Frozen launch ${frozenLaunch.launch_binding_sha256.slice(0, 12)}…`
+              : 'Awaiting visual approval'}</span>
           </div>
-          <button className="secondary-action is-ready" type="button" disabled={!pack} onClick={() => pack && downloadBytes(pack.filename, pack.bytes)}>
-            {pack ? `Download ${pack.filename}` : 'Generate before downloading'}
+          <button
+            className="secondary-action is-ready"
+            type="button"
+            disabled={!assetRevision || Boolean(frozenLaunch)}
+            onClick={() => void approveAssetRevision()}
+          >
+            {frozenLaunch ? 'Asset revision approved' : 'Approve this asset revision'}
           </button>
+          <button className="secondary-action is-ready" type="button" disabled={!pack || !frozenLaunch} onClick={() => pack && frozenLaunch && downloadBytes(pack.filename, pack.bytes)}>
+            {pack && frozenLaunch ? `Download frozen Godot pack · ${pack.filename}` : 'Approve the preview before downloading'}
+          </button>
+          {frozenLaunch && <p className="reference-generator-status">Godot scene after import: <code>{frozenLaunch.scene_path}</code></p>}
         </div>
       </div>
     </section>

@@ -1,6 +1,7 @@
 extends SceneTree
 
 const Importer = preload("res://addons/mapsoo_importer/mapsoo_pack_importer.gd")
+const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd")
 const OUTPUT_ROOT := "res://mapsoo_imports"
 const DEFAULT_MANIFEST := "res://tests/.generated/pack-alpha9/mapsoo.manifest.json"
 const EXPECTED_ANIMATIONS := [
@@ -33,6 +34,11 @@ func _init() -> void:
 	var state_path := str(result.get("state_path", ""))
 	if not ResourceLoader.exists(scene_path, "PackedScene") or not ResourceLoader.exists(tileset_path, "TileSet") or not FileAccess.file_exists(state_path):
 		_fail("Pack 0.6 importer did not create all three managed resources.")
+		return
+	var tile_set := ResourceLoader.load(tileset_path, "TileSet", ResourceLoader.CACHE_MODE_IGNORE) as TileSet
+	var tile_atlas := tile_set.get_source(0) as TileSetAtlasSource if tile_set != null else null
+	if tile_atlas == null or not _texture_has_persisted_pixels(tile_atlas.texture):
+		_fail("Pack 0.6 standalone TileSet lost its persisted terrain pixels.")
 		return
 	var packed := ResourceLoader.load(scene_path, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
 	if packed == null:
@@ -114,15 +120,40 @@ func _world_error(world: Node, manifest: Dictionary, scene_sidecar: Dictionary) 
 	var player := world.get_node_or_null("Player") as CharacterBody2D
 	var visual := world.get_node_or_null("Player/Visual") as AnimatedSprite2D
 	var collision := world.get_node_or_null("Player/CollisionShape2D") as CollisionShape2D
-	if player == null or player.position != expected_spawn or visual == null or visual.sprite_frames == null or collision == null or collision.shape == null:
-		return "Pack 0.6 Player hierarchy or spawn position is incomplete."
+	var camera := world.get_node_or_null("Player/Camera2D") as Camera2D
+	if player == null or player.position != expected_spawn or player.get_script() != PlayerController or player.get("mapsoo_profile") != "topdown-farm" or player.get("world_bounds") != Rect2(0, 0, 512, 384) or visual == null or visual.sprite_frames == null or collision == null or collision.shape == null or camera == null:
+		return "Pack 0.6 playable Player hierarchy or spawn position is incomplete."
 	var manifest_clips: Array = (manifest.get("character", {}) as Dictionary).get("clips", [])
 	if manifest_clips.size() != EXPECTED_ANIMATIONS.size():
 		return "Pack 0.6 manifest must contain exactly eight character clips."
 	for animation_name: String in EXPECTED_ANIMATIONS:
 		if not visual.sprite_frames.has_animation(animation_name) or visual.sprite_frames.get_frame_count(animation_name) < 1:
 			return "Pack 0.6 Player is missing animation %s." % animation_name
+		for frame_index: int in visual.sprite_frames.get_frame_count(animation_name):
+			if not _texture_has_persisted_pixels(visual.sprite_frames.get_frame_texture(animation_name, frame_index)):
+				return "Pack 0.6 reloaded Player animation %s lost its atlas pixels." % animation_name
+	if not _sprite_textures_have_persisted_pixels(world):
+		return "Pack 0.6 reloaded scene contains a Sprite2D without persisted pixels."
 	return ""
+
+
+func _sprite_textures_have_persisted_pixels(node: Node) -> bool:
+	if node is Sprite2D and not _texture_has_persisted_pixels((node as Sprite2D).texture):
+		return false
+	for child: Node in node.get_children():
+		if not _sprite_textures_have_persisted_pixels(child):
+			return false
+	return true
+
+
+func _texture_has_persisted_pixels(value: Texture2D) -> bool:
+	var texture := value
+	if texture is AtlasTexture:
+		texture = (texture as AtlasTexture).atlas
+	if texture == null:
+		return false
+	var image := texture.get_image()
+	return image != null and not image.is_empty() and not image.get_data().is_empty()
 
 
 func _child_roles(root: Node) -> Array[String]:

@@ -2,20 +2,31 @@
 
 > Open-source world asset generator for Godot creators.
 
-[![CI](https://github.com/babyrush0101-source/mapsoo-kids/actions/workflows/ci.yml/badge.svg)](https://github.com/babyrush0101-source/mapsoo-kids/actions/workflows/ci.yml)
-[![GitHub Pages](https://github.com/babyrush0101-source/mapsoo-kids/actions/workflows/pages.yml/badge.svg)](https://github.com/babyrush0101-source/mapsoo-kids/actions/workflows/pages.yml)
+[![CI](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/workflows/ci.yml/badge.svg)](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/workflows/ci.yml)
+[![GitHub Pages](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/workflows/pages.yml/badge.svg)](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/workflows/pages.yml)
 
-[Live demo](https://babyrush0101-source.github.io/mapsoo-kids/) · [v0.1.0-alpha.9 public release](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.9) · [Alpha.9 release notes](docs/releases/v0.1.0-alpha.9.md) · [First-import feedback](https://github.com/babyrush0101-source/mapsoo-kids/issues/12)
+[Live demo](https://babyrush0101-source.github.io/mapsoo-worldforge/) · [v0.1.0-alpha.9 public release](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/tag/v0.1.0-alpha.9) · [Alpha.9 release notes](docs/releases/v0.1.0-alpha.9.md) · [First-import feedback](https://github.com/babyrush0101-source/mapsoo-worldforge/issues/12)
 
 Mapsoo Worldsmith is evolving from the original `mapsoo-kids` website into a local-first tool that turns a compact world specification into previewable, versioned game-art asset packs for Godot. itch.io distribution is intentionally postponed; GitHub Releases is the audited public channel for this alpha.
 
-The **v0.1.0-alpha.9 prerelease** publishes the first complete reference-to-world vertical slice. Its one-click local workflow accepts one environment image, one character image, and a short description, then uses the offline procedural provider to build a complete `topdown-farm` Pack Schema 0.6.0 ZIP. That pack includes terrain, water, paths/fences, crops, structures, props, layered scene/collision/navigation data, a four-direction `idle`/`walk` character, and a preview. The separately installed importer supports Godot 4.3+, and the exact published pack passed Linux/Windows with Godot 4.3/4.7. The release has 24 immutable attachments; its Pack 0.6 ZIP SHA-256 is `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`. `side-platformer`, `isometric-action`, and `layered-depth-2d` remain planned and are not supported by Alpha.9.
+The **published v0.1.0-alpha.9 prerelease** is the immutable compatibility baseline. It accepts one environment image, one character image, and a short description, then builds a complete `topdown-farm` Pack Schema 0.6.0 ZIP. The exact published pack passed Linux/Windows with Godot 4.3/4.7 and remains pinned at SHA-256 `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`.
+
+The current **unpublished Alpha12 development candidate** expands that workflow into a guided four-round conversation and four complete original world grammars:
+
+| Profile | Complete pack | Godot scene | Playable runtime checks |
+| --- | --- | --- | --- |
+| `topdown-farm` | Pack 0.6 | TileMap, character, collision, navigation | four-direction movement and blocking |
+| `side-platformer` | Pack 0.7 | parallax, platforms, hazards, exit | movement, jump, one-way platform, respawn |
+| `isometric-action` | Pack 0.8 | original isometric arena and entities | eight-direction movement, dash, hazard, exit |
+| `layered-depth-2d` | Pack 0.9 | seven depth planes and shallow corridor | movement, NPC interaction, hazard, exit |
+
+The intended user path is: **world brief → art direction → map layout → style sample → complete assets → Godot map → enter the world**. The first four stages run in the browser; complete packs, trusted Godot importers, controllers, and headless playability tests exist for all four profiles. The candidate is not yet a public release and physical Raspberry Pi 4B performance validation remains pending.
 
 Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The current provider is procedural and truthfully records `contains_generative_ai: false`; that statement does not apply to future model providers. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.
 
 ## Project status
 
-The **v0.1.0-alpha.9 prerelease** is the current immutable public release. Alpha.8 and its three asset-pack compatibility fixtures remain an immutable, byte-identical compatibility baseline, preserving the account-free, backend-free, API-key-free loop:
+The **v0.1.0-alpha.9 prerelease** is the current immutable public release. Alpha12 is the current local candidate and must not be described as published until its reviewed release exists. Alpha.8 and its three asset-pack compatibility fixtures remain an immutable, byte-identical compatibility baseline, preserving the account-free, backend-free, API-key-free loop:
 
 1. Edit a compact World Spec for meadow, desert, or snowfield worlds.
 2. Generate the same 3 ground variants, 16 water masks, 16 road masks, 6 prop sprites, and map again from the same seed.
@@ -39,7 +50,7 @@ The committed Alpha.7 fixtures for [Sunny Meadow](examples/packs/sunny-meadow-v0
 
 The older published Alpha.1–Alpha.5 fixtures and hashes remain immutable. A pinned pure-JavaScript PNG encoder removes browser-native PNG compression drift, and CI runs the real browser exporter before passing the byte-identical canonical ZIP to the Godot matrix.
 
-The published [v0.1.0-alpha.7 release](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.7) is tagged at commit `c2e2ed5`. Its successful [release workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29688782893) rebuilt all three fixed packs, passed the exact 17-attachment audit, and imported every pack in the Linux/Windows × Godot 4.3/4.7 release matrix.
+The published [v0.1.0-alpha.7 release](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/tag/v0.1.0-alpha.7) is tagged at commit `c2e2ed5`. Its successful [release workflow](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/runs/29688782893) rebuilt all three fixed packs, passed the exact 17-attachment audit, and imported every pack in the Linux/Windows × Godot 4.3/4.7 release matrix.
 
 ## Reproducible External Host export CLI
 
@@ -54,7 +65,7 @@ pnpm external-host:export -- \
 
 Node.js 20+, pnpm 11+, and Chrome/Chromium are required. The explicit timestamp is part of reproducibility. Existing output is accepted only when both files are byte-identical; otherwise the command fails closed and never overwrites it. This executable bridge is not a claim that External Host has a production consumer yet; see the [Alpha.8 scope and verification contract](docs/18_ALPHA8_EXTERNAL_HOST_EXPORT_CLI.md).
 
-The [public Alpha.8 workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29691179168) rebuilt all 20 release attachments and imported the three compatibility packs plus the reproducible External Host bridge pack on Linux/Windows with Godot 4.3/4.7. Historical public attachment digests remain pinned, while the privacy-neutral current source tree has its own deterministic rebuild hashes.
+The [public Alpha.8 workflow](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/runs/29691179168) rebuilt all 20 release attachments and imported the three compatibility packs plus the reproducible External Host bridge pack on Linux/Windows with Godot 4.3/4.7. Historical public attachment digests remain pinned, while the privacy-neutral current source tree has its own deterministic rebuild hashes.
 
 The ZIP uses engine-neutral PNG and JSON as its source of truth and intentionally contains no executable addon code. Install the MIT-licensed importer only from this official repository (or the Godot Asset Library once published), then select the extracted pack's `mapsoo.manifest.json`; schema 0.2 derives Ground, Water, and Roads `TileMapLayer` nodes, Props, two TerrainSets, and basic Water collision under `res://mapsoo_imports/`. Managed-resource ownership remains in `mapsoo.import-state.json`: identical clean input is `unchanged`, a clean source update is `updated`, and manual edits or legacy output without state fail closed as `conflict`. This is a terrain asset and import contract, not a complete game, navigation system, or production-readiness claim. SHA-256 records verify pack consistency, not publisher identity, so never enable scripts copied from a third-party asset pack.
 
@@ -62,12 +73,12 @@ The ZIP uses engine-neutral PNG and JSON as its source of truth and intentionall
 
 The public first-user path is intentionally short and version-bound:
 
-1. Choose an audited Alpha.7 world pack from the [release page](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.7): Sunny Meadow (`6113b30…8012c`), Dustwind Outpost (`d6dd38a4…a502`), or Frostwatch Vale (`35a49edd…e12`).
-2. Download the separate [Godot importer ZIP](https://github.com/babyrush0101-source/mapsoo-kids/releases/download/v0.1.0-alpha.7/mapsoo-godot-importer-v0.1.0-alpha.7.zip) (`674ce0a057c1808b8d2b04e706a26031aa7ca321304ce34c0e6a2f3553bd6a26`) from the same release.
-3. Follow the version-bound steps and hashes in the [Alpha.7 release notes](docs/releases/v0.1.0-alpha.7.md).
-4. Submit either success or failure through the [structured feedback form](https://github.com/babyrush0101-source/mapsoo-kids/issues/new?template=first-import-feedback.yml).
+1. Download the audited complete farm Pack 0.6 from the [Alpha9 release](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/tag/v0.1.0-alpha.9) (`10d89c…480c`).
+2. Download the separate [Alpha9 Godot importer ZIP](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/download/v0.1.0-alpha.9/mapsoo-godot-importer-v0.1.0-alpha.9.zip) (`bfb736d0…b526`) from the same release.
+3. Follow the exact filenames, hashes, and steps in the [10-minute Alpha9 guide](docs/10_FIRST_GODOT_IMPORT.md).
+4. Submit either success or failure through the [structured feedback form](https://github.com/babyrush0101-source/mapsoo-worldforge/issues/new?template=first-import-feedback.yml).
 
-The expected generated scene is `res://mapsoo_imports/sunny-meadow/sunny-meadow.world.tscn`. The guide pins both download hashes and explains the current derived-output/re-import boundary.
+The expected generated directory is `res://mapsoo_imports/alpha9-godot-smoke-pack/`. The guide pins both download hashes and explains the current derived-output/re-import boundary.
 
 ## Why this order
 
@@ -91,6 +102,18 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 - [GitHub, itch.io, and Codex for OSS release kit](docs/08_RELEASE_ITCH_AND_OSS_KIT.md)
 - [Alpha9 community test campaign](docs/20_COMMUNITY_ALPHA9_OUTREACH.md)
 - [Alpha10 complete side-platformer contract](docs/21_ALPHA10_SIDE_PLATFORMER.md)
+- [Four-profile visual acceptance](docs/22_FOUR_PROFILE_VISUAL_ACCEPTANCE.md)
+- [Dialogue to a playable world](docs/23_DIALOGUE_TO_PLAYABLE_WORLD.md)
+- [Runtime consumer boundary](docs/24_RUNTIME_CONSUMER_BOUNDARY.md)
+- [Character identity projection](docs/25_CHARACTER_IDENTITY_PROJECTION.md)
+- [Alpha11 original isometric-action candidate](docs/26_ALPHA11_ISOMETRIC_ACTION.md)
+- [Alpha12 original layered-depth 2D candidate](docs/27_ALPHA12_LAYERED_DEPTH_2D.md)
+- [Raspberry Pi 4B ARM64 runtime bundle](docs/28_RASPBERRY_PI4_ARM64_RUNTIME.md)
+- [Codex for OSS application evidence and truthful draft](docs/29_CODEX_OSS_APPLICATION.md)
+- [Alpha12 engineering-art review and production replacement gate](docs/30_ALPHA12_ART_REVIEW.md)
+- [Production-art replacement pipeline and first side-platformer direction sample](docs/31_PRODUCTION_ART_PIPELINE.md)
+- [Production-art task/output contract for all four profiles](docs/32_PRODUCTION_ART_CONTRACT.md)
+- [Independent character profile revisions and neutral runtime binding](docs/33_CHARACTER_PROFILE_REVISION.md)
 - [Generation Provider SDK](docs/09_PROVIDER_SDK.md)
 - [10-minute first Godot import](docs/10_FIRST_GODOT_IMPORT.md)
 - [Safe Godot re-import contract](docs/11_SAFE_GODOT_REIMPORT.md)
@@ -120,9 +143,9 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 
 ## Community and contributing
 
-Bug reports, feature proposals, and reproducible Godot import feedback are welcome through the repository [issue templates](https://github.com/babyrush0101-source/mapsoo-kids/issues/new/choose). Before opening a pull request, read [CONTRIBUTING.md](CONTRIBUTING.md); project decision and response boundaries are documented in [GOVERNANCE.md](GOVERNANCE.md), sensitive reports belong in the private path described by [SECURITY.md](SECURITY.md), and independent use is recorded only when it satisfies the public [community evidence ledger](docs/14_COMMUNITY_EVIDENCE.md). This is a volunteer-maintained project and does not offer an SLA.
+Bug reports, feature proposals, and reproducible Godot import feedback are welcome through the repository [issue templates](https://github.com/babyrush0101-source/mapsoo-worldforge/issues/new/choose). Before opening a pull request, read [CONTRIBUTING.md](CONTRIBUTING.md); project decision and response boundaries are documented in [GOVERNANCE.md](GOVERNANCE.md), sensitive reports belong in the private path described by [SECURITY.md](SECURITY.md), and independent use is recorded only when it satisfies the public [community evidence ledger](docs/14_COMMUNITY_EVIDENCE.md). This is a volunteer-maintained project and does not offer an SLA.
 
-The reviewed [silent bilingual 75-second MP4](docs/media/v0.1.0-alpha.1/video/mapsoo-worldsmith-v0.1.0-alpha.1-75s.mp4) remains an immutable alpha.1 [GitHub release asset](https://github.com/babyrush0101-source/mapsoo-kids/releases/download/v0.1.0-alpha.1/mapsoo-worldsmith-v0.1.0-alpha.1-75s.mp4). Alpha.2 does not rename or reuse it as evidence.
+The reviewed [silent bilingual 75-second MP4](docs/media/v0.1.0-alpha.1/video/mapsoo-worldsmith-v0.1.0-alpha.1-75s.mp4) remains an immutable alpha.1 [GitHub release asset](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/download/v0.1.0-alpha.1/mapsoo-worldsmith-v0.1.0-alpha.1-75s.mp4). Alpha.2 does not rename or reuse it as evidence.
 
 ## Local development
 

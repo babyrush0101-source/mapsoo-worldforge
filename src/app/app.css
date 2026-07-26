@@ -95,6 +95,45 @@ main { width: min(1540px, calc(100% - 40px)); margin: 0 auto; }
 .world-gallery-card button:disabled { cursor: not-allowed; opacity: .48; }
 .world-gallery-card.is-active button { border-color: rgba(216,243,107,.4); color: var(--accent); }
 
+.creation-dialogue { margin: 0 0 28px; border: 1px solid var(--line); background: var(--panel); }
+.creation-dialogue-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding: clamp(24px, 4vw, 48px); border-bottom: 1px solid var(--line); }
+.creation-dialogue-heading > div { max-width: 820px; }
+.creation-dialogue-heading .eyebrow { margin: 0 0 10px; }
+.creation-dialogue-heading h2 { margin: 0; font-size: clamp(30px, 4vw, 58px); line-height: 1.02; letter-spacing: -.055em; }
+.creation-dialogue-heading > p { max-width: 430px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.creation-stepper { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 0; background: var(--line); list-style: none; }
+.creation-stepper li { display: grid; min-width: 0; gap: 5px; padding: 14px; background: #0d1613; }
+.creation-stepper li.is-current { background: #18251f; box-shadow: inset 0 -2px var(--accent); }
+.creation-stepper li.is-complete span { color: var(--accent); }
+.creation-stepper span { color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+.creation-stepper strong { overflow: hidden; color: var(--ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.creation-stepper small { color: #687a71; font-size: 8px; text-transform: uppercase; }
+.creation-dialogue-body { display: grid; grid-template-columns: minmax(240px, .65fr) minmax(420px, 1.35fr); gap: 1px; background: var(--line); }
+.creation-dialogue-history, .creation-dialogue-turn { min-width: 0; padding: clamp(22px, 3vw, 38px); background: #0e1714; }
+.creation-dialogue-history > strong { color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.creation-dialogue-history > p { margin: 16px 0 0; color: #697b72; font-size: 10px; line-height: 1.5; }
+.creation-dialogue-history ol { display: grid; gap: 7px; margin: 16px 0 0; padding: 0; list-style: none; }
+.creation-dialogue-history button { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 10px; background: #0a1210; color: var(--ink); text-align: left; }
+.creation-dialogue-history button:hover, .creation-dialogue-history button:focus-visible { border-color: var(--accent); }
+.creation-dialogue-history button span, .creation-dialogue-history button small { display: block; }
+.creation-dialogue-history button span { font-size: 10px; font-weight: 800; }
+.creation-dialogue-history button small { margin-top: 4px; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.creation-speaker { margin: 0 0 8px; color: var(--accent); font-size: 9px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+.creation-dialogue-turn h3 { max-width: 760px; margin: 0 0 24px; font-size: clamp(21px, 2.4vw, 34px); line-height: 1.2; letter-spacing: -.035em; }
+.creation-dialogue-turn label { display: block; margin: 0 0 17px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+.creation-style-sample { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(160px, .6fr); gap: 1px; margin: 0 0 22px; border: 1px solid var(--line); background: var(--line); }
+.creation-style-sample img { width: 100%; height: auto; image-rendering: pixelated; background: #08100e; }
+.creation-style-sample figcaption { display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; padding: 16px; background: #0a1210; }
+.creation-style-sample figcaption strong { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.creation-style-sample figcaption span { color: var(--muted); font-size: 9px; line-height: 1.55; }
+.creation-output-note { margin: -4px 0 18px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.creation-notice { min-height: 18px; margin: 12px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.creation-notice.is-blocked { color: var(--orange); }
+.creation-handoff { padding: 18px; border: 1px solid rgba(216,243,107,.28); border-radius: 8px; background: rgba(216,243,107,.045); }
+.creation-handoff strong { font-size: 14px; }
+.creation-handoff p { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.creation-handoff a { color: var(--accent); font-size: 11px; font-weight: 800; text-decoration: none; }
+
 .reference-generator { margin: 0 0 28px; border: 1px solid var(--line); background: var(--panel); }
 .reference-generator-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding: clamp(24px, 4vw, 48px); border-bottom: 1px solid var(--line); }
 .reference-generator-heading > div { max-width: 820px; }
@@ -306,6 +345,10 @@ footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1
   .world-gallery-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
   .world-gallery-grid { grid-template-columns: 1fr; }
   .world-gallery-art { height: 118px; }
+  .creation-dialogue-heading { align-items: flex-start; flex-direction: column; }
+  .creation-stepper { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .creation-dialogue-body { grid-template-columns: 1fr; }
+  .creation-style-sample { grid-template-columns: 1fr; }
   .reference-generator-heading { align-items: flex-start; flex-direction: column; }
   .reference-generator-grid { grid-template-columns: 1fr; }
   .workbench { display: block; background: transparent; border: 0; }
@@ -326,6 +369,7 @@ footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1
   .hero-copy h1 { font-size: 48px; }
   .panel { padding: 17px; }
   .biome-grid { grid-template-columns: 1fr; }
+  .creation-stepper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .reference-upload-grid, .reference-generator-form .two-column-fields { grid-template-columns: 1fr; }
   .metric-grid { grid-template-columns: 1fr 1fr; }
   .structures-heading-row { align-items: flex-start; flex-direction: column; }

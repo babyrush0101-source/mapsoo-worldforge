@@ -4,8 +4,18 @@ import {
   generateReferenceWorldPack,
   type ImplementedReferenceWorldProfile,
 } from '../../src/features/reference-world-generator/generate-reference-world-pack';
+import { freezeWorldAssetRevision } from '../../src/core/world-asset-revision';
 
 const COMPLETED_AT = '2026-07-20T12:00:00.000Z';
+const CONFIRMATION = Object.freeze({
+  sessionRevision: 4,
+  checkpoints: Object.freeze([
+    Object.freeze({ stage: 'world-brief' as const, snapshotSha256: 'a'.repeat(64) }),
+    Object.freeze({ stage: 'art-direction' as const, snapshotSha256: 'b'.repeat(64) }),
+    Object.freeze({ stage: 'map-layout' as const, snapshotSha256: 'c'.repeat(64) }),
+    Object.freeze({ stage: 'style-sample' as const, snapshotSha256: 'd'.repeat(64) }),
+  ]),
+});
 
 function base64(bytes: Uint8Array): string {
   const chunks: string[] = [];
@@ -45,17 +55,38 @@ async function run(): Promise<void> {
   try {
     const environment = await reference('environment-style', 35);
     const character = await reference('character', 175);
-    const profiles: readonly ImplementedReferenceWorldProfile[] = ['topdown-farm', 'side-platformer'];
+    const profiles: readonly ImplementedReferenceWorldProfile[] = [
+      'topdown-farm',
+      'side-platformer',
+      'isometric-action',
+      'layered-depth-2d',
+    ];
     const exports = [];
     for (const profile of profiles) {
       const generated = await generateReferenceWorldPack({
         profile, environment, character, worldId: `browser-${profile}`,
-        description: 'A public-safe browser export fixture.', seed: 'browser-route-seed', completedAt: COMPLETED_AT,
+        description: 'A public-safe browser export fixture.', seed: 'browser-route-seed',
+        completedAt: COMPLETED_AT, confirmation: CONFIRMATION,
       });
+      const launch = await freezeWorldAssetRevision(
+        generated.assetRevision,
+        generated.assetRevision.revision_sha256,
+      );
       exports.push({
         profile, filename: generated.pack.filename, packSchemaVersion: generated.packSchemaVersion,
         generatedFileCount: generated.generatedFileCount, requiredRoleCount: generated.requiredRoleCount,
-        characterClipCount: generated.characterClipCount, bytes: base64(generated.pack.bytes),
+        characterClipCount: generated.characterClipCount,
+        confirmationBindingSha256: generated.confirmationBinding?.binding_sha256,
+        confirmationEmbeddedInPack: generated.confirmationEmbeddedInPack,
+        assetRevisionSha256: generated.assetRevision.revision_sha256,
+        assetPackSha256: generated.assetRevision.pack_sha256,
+        assetDialogueBindingSha256: generated.assetRevision.dialogue_binding_sha256,
+        launchAssetRevisionSha256: launch.asset_revision_sha256,
+        launchBindingSha256: launch.launch_binding_sha256,
+        launchScenePath: launch.scene_path,
+        characterIdentitySignatureSha256: generated.characterIdentitySignatureSha256,
+        environmentArtSignatureSha256: generated.environmentArtSignatureSha256,
+        bytes: base64(generated.pack.bytes),
       });
     }
     resultNode.dataset.count = String(exports.length);

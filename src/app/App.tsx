@@ -26,6 +26,10 @@ import { validateGeneratedWorld, validateWorldSpec } from '../core/validate-worl
 import { WorldPreview } from '../features/world-preview/WorldPreview';
 import { WorldGallery } from '../features/world-gallery/WorldGallery';
 import { ReferenceWorldGenerator } from '../features/reference-world-generator/ReferenceWorldGenerator';
+import {
+  WorldCreationDialogue,
+  type WorldCreationAssetHandoff,
+} from '../features/world-creation-dialogue/WorldCreationDialogue';
 import { DEFAULT_GENERATION_PROVIDER } from '../providers/provider-registry';
 import { CURRENT_PUBLIC_RELEASE } from './current-public-release';
 import { GenerationSession, type GenerationRequest } from './generation-session';
@@ -77,6 +81,7 @@ export function App() {
   const [importState, setImportState] = useState<'idle' | 'reading' | 'generating'>('idle');
   const [importKind, setImportKind] = useState<'world' | 'external-host' | null>(null);
   const [importNotice, setImportNotice] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+  const [creationHandoff, setCreationHandoff] = useState<WorldCreationAssetHandoff | null>(null);
   const draftIssues = useMemo(() => validateWorldSpec(draft), [draft]);
   const activeExampleId = useMemo(() => findMatchingWorldExample(draft)?.id ?? '', [draft]);
   const selectedPublicPack = CURRENT_PUBLIC_RELEASE.assetPacks.find((pack) => pack.id === activeExampleId)
@@ -335,7 +340,7 @@ export function App() {
         </a>
         <div className="topbar-meta">
           <span className="status-dot" /> Local-first
-          <a href="https://github.com/babyrush0101-source/mapsoo-kids">GitHub</a>
+          <a href="https://github.com/babyrush0101-source/mapsoo-worldforge">GitHub</a>
         </div>
       </header>
 
@@ -357,7 +362,17 @@ export function App() {
           onSelect={(id) => void loadWorldExample(id)}
         />
 
-        <ReferenceWorldGenerator />
+        <WorldCreationDialogue onReadyForAssets={(handoff) => setCreationHandoff(handoff)} />
+
+        <ReferenceWorldGenerator
+          key={creationHandoff?.checkpoints.map(({ snapshotSha256 }) => snapshotSha256).join(':') ?? 'standalone-reference-generator'}
+          initialProfile={creationHandoff?.profile}
+          initialDescription={creationHandoff?.description}
+          initialConfirmation={creationHandoff ? {
+            sessionRevision: creationHandoff.sessionRevision,
+            checkpoints: creationHandoff.checkpoints,
+          } : undefined}
+        />
 
         <section className="workbench" aria-label="World generator workbench">
           <aside className="panel controls-panel">

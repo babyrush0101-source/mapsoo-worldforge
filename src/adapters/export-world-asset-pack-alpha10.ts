@@ -19,6 +19,7 @@ import {
 } from '../core/pack-manifest-alpha10';
 import { SIDE_PLATFORMER_ACTIONS, SIDE_PLATFORMER_REQUIRED_ROLES } from '../core/side-platformer-asset-bundle';
 import { fingerprintGenerationRequestV2, type GenerationRequestV2 } from '../core/generation-request-v2';
+import type { ConfirmedGenerationBinding } from '../core/confirmed-generation-binding';
 import { projectSidePlatformerWorldAssetReceipt } from '../core/world-asset-receipt-alpha10';
 import {
   assertTrustedWorldAssetGeneration,
@@ -54,6 +55,7 @@ export async function buildAlpha10WorldAssetPack(
   run: WorldAssetGenerationResult,
   request: GenerationRequestV2,
   completedAt: string,
+  confirmationBinding?: ConfirmedGenerationBinding,
 ): Promise<Alpha10PortablePack> {
   assertTrustedWorldAssetGeneration(run);
   if (run.requestId !== request.id || request.profile !== 'side-platformer' || run.bundle.profile !== 'side-platformer') {
@@ -65,7 +67,7 @@ export async function buildAlpha10WorldAssetPack(
   if (request.references.some(({ rights }) => rights.basis !== 'owned' || rights.allowOutputCc0Dedication !== true)) {
     throw new Error('Alpha10 CC0 export requires user-owned references with explicit CC0 dedication permission.');
   }
-  const receipt = await projectSidePlatformerWorldAssetReceipt(run, request, completedAt);
+  const receipt = await projectSidePlatformerWorldAssetReceipt(run, request, completedAt, confirmationBinding);
   const generatedEntries = await Promise.all(run.payloads.map(async (payload) => entry(payload.path, payload.mediaType, payload.readBytes())));
   const supportEntries = await Promise.all([
     entry('generation-receipt.json', 'application/json', json(receipt)),

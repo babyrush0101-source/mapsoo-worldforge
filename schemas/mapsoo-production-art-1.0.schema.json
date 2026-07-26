@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-production-art-1.0.0.json",
+  "title": "Mapsoo provider-neutral production art contract 1.0",
+  "oneOf": [
+    { "$ref": "#/$defs/plan" },
+    { "$ref": "#/$defs/output" }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution", "license"],
+      "properties": {
+        "distribution": { "enum": ["private", "internal-review", "public"] },
+        "license": {
+          "enum": [
+            "CC0-1.0",
+            "CC-BY-4.0",
+            "CC-BY-SA-4.0",
+            "LicenseRef-Proprietary"
+          ]
+        },
+        "attribution": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "distribution": { "const": "public" } },
+            "required": ["distribution"]
+          },
+          "then": {
+            "not": {
+              "properties": { "license": { "const": "LicenseRef-Proprietary" } },
+              "required": ["license"]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "license": { "enum": ["CC-BY-4.0", "CC-BY-SA-4.0"] }
+            },
+            "required": ["license"]
+          },
+          "then": {
+            "properties": {
+              "attribution": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+              }
+            },
+            "required": ["attribution"]
+          }
+        }
+      ]
+    },
+    "pivot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "unit"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0, "maximum": 8192 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 8192 },
+        "unit": { "const": "pixels" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "cell_width", "cell_height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "cell_width": { "type": "integer", "minimum": 1, "maximum": 2048 },
+        "cell_height": { "type": "integer", "minimum": 1, "maximum": 2048 }
+      }
+    },
+    "gridRect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["column", "row", "column_span", "row_span"],
+      "properties": {
+        "column": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "row": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "column_span": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "row_span": { "type": "integer", "minimum": 1, "maximum": 256 }
+      }
+    },
+    "roleMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "grid_rect"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+          "maxLength": 100
+        },
+        "grid_rect": { "$ref": "#/$defs/gridRect" }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "kind",
+        "expected_output_path",
+        "target",
+        "alpha_policy",
+        "seam_policy",
+        "pivot",
+        "reference_roles",
+        "role_mappings",
+        "prompt",
+        "negative_constraints"
+      ],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/id" },
+        "kind": {
+          "enum": [
+            "scene-direction",
+            "opaque-tile-sheet",
+            "transparent-prop-sheet",
+            "character-animation-sheet",
+            "background-layer",
+            "effect-sheet"
+          ]
+        },
+        "expected_output_path": { "$ref": "#/$defs/safePath" },
+        "target": { "$ref": "#/$defs/target" },
+        "alpha_policy": { "enum": ["opaque", "straight-alpha"] },
+        "seam_policy": {
+          "enum": [
+            "none",
+            "tileable-cells",
+            "transparent-cell-padding",
+            "horizontal-parallax"
+          ]
+        },
+        "pivot": { "$ref": "#/$defs/pivot" },
+        "reference_roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "enum": ["environment-style", "character"] }
+        },
+        "role_mappings": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": { "$ref": "#/$defs/roleMapping" }
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 40,
+          "maxLength": 4000,
+          "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+        },
+        "negative_constraints": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+          }
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "document_type",
+        "plan_id",
+        "profile",
+        "rights",
+        "tasks"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.0.0" },
+        "document_type": { "const": "production-art-plan" },
+        "plan_id": { "$ref": "#/$defs/id" },
+        "profile": { "$ref": "#/$defs/profile" },
+        "rights": { "$ref": "#/$defs/rights" },
+        "tasks": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/task" }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "document_type",
+        "plan_id",
+        "profile",
+        "task_id",
+        "asset_id",
+        "path",
+        "media_type",
+        "bytes",
+        "sha256",
+        "width",
+        "height",
+        "alpha_policy",
+        "pivot",
+        "roles",
+        "source_reference_ids",
+        "rights"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.0.0" },
+        "document_type": { "const": "production-art-output" },
+        "plan_id": { "$ref": "#/$defs/id" },
+        "profile": { "$ref": "#/$defs/profile" },
+        "task_id": { "$ref": "#/$defs/id" },
+        "asset_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "#/$defs/safePath" },
+        "media_type": { "const": "image/png" },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "alpha_policy": { "enum": ["opaque", "straight-alpha"] },
+        "pivot": { "$ref": "#/$defs/pivot" },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+            "maxLength": 100
+          }
+        },
+        "source_reference_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "maxLength": 80
+          }
+        },
+        "rights": { "$ref": "#/$defs/rights" }
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://babyrush0101-source.github.io/mapsoo-kids/schemas/mapsoo-world-asset-receipt-0.3.schema.json",
+  "title": "Mapsoo Isometric Action World Asset Receipt 0.3",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "completed_at", "request", "provider", "output", "disclosures"],
+  "properties": {
+    "schema_version": { "const": "0.3.0" }, "completed_at": { "type": "string", "format": "date-time" },
+    "request": { "type": "object", "required": ["fingerprint_sha256", "profile", "seed", "reference_rights"], "properties": { "fingerprint_sha256": { "$ref": "#/$defs/sha256" }, "profile": { "const": "isometric-action" }, "seed": { "type": "string" }, "reference_rights": { "type": "array", "minItems": 2, "maxItems": 2 }, "dialogue_binding": { "type": "object" } } },
+    "provider": { "type": "object", "required": ["id", "version", "execution", "determinism", "output_provenance"] },
+    "output": { "type": "object", "required": ["bundle_schema_version", "completeness_policy", "license", "files"], "properties": { "bundle_schema_version": { "const": "0.3.0" }, "completeness_policy": { "const": "isometric-action-complete-v1" }, "license": { "const": "CC0-1.0" }, "files": { "type": "array", "minItems": 1 } } },
+    "disclosures": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "string" } }
+  },
+  "$defs": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }
+}

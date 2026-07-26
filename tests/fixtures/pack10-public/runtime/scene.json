@@ -1,0 +1,49 @@
+{
+  "schema_version": "mapsoo-public-fixture-scene/1.0",
+  "fixture_id": "pack10-public-fixture",
+  "synthetic": true,
+  "canvas": {
+    "width": 320,
+    "height": 180
+  },
+  "spawn": {
+    "x": 32,
+    "y": 132
+  },
+  "exit": {
+    "x": 288,
+    "y": 132
+  },
+  "placements": [
+    {
+      "id": "entry",
+      "role": "structure.entrance",
+      "x": 32,
+      "y": 132
+    },
+    {
+      "id": "marker",
+      "role": "structure.checkpoint",
+      "x": 160,
+      "y": 132
+    },
+    {
+      "id": "goal",
+      "role": "structure.exit",
+      "x": 288,
+      "y": 132
+    },
+    {
+      "id": "player",
+      "role": "character.player.atlas",
+      "x": 48,
+      "y": 132
+    },
+    {
+      "id": "guide",
+      "role": "character.npc.atlas",
+      "x": 208,
+      "y": 132
+    }
+  ]
+}

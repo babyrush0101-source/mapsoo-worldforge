@@ -1,0 +1,1185 @@
+{
+  "schema_version": "1.0.0-draft.1",
+  "pack": {
+    "id": "pack10-public-fixture",
+    "title": "Pack 1.0 Public Synthetic Fixture",
+    "version": "1.0.0-fixture.1",
+    "generator": {
+      "name": "Mapsoo Worldsmith",
+      "version": "1.0.0-fixture.1"
+    },
+    "created_at": "2026-07-26T00:00:00.000Z"
+  },
+  "profile": "layered-depth-2d",
+  "distribution": "public",
+  "review": {
+    "human_art": "pass",
+    "rights": "pass",
+    "runtime": "pass",
+    "raspberry_pi": "pass"
+  },
+  "compatibility": {
+    "godot_min": "4.3",
+    "projection": "layered-depth-stage",
+    "art_style": "pixel_art",
+    "importer": {
+      "id": "mapsoo_importer",
+      "min_version": "1.0.0-fixture.1"
+    }
+  },
+  "planes": [
+    {
+      "id": "sky",
+      "role": "background.sky",
+      "path": "layers/background-sky.png",
+      "layer": "sky",
+      "blend": "mix"
+    },
+    {
+      "id": "far",
+      "role": "background.far",
+      "path": "layers/background-far.png",
+      "layer": "far",
+      "blend": "mix"
+    },
+    {
+      "id": "mid",
+      "role": "background.mid",
+      "path": "layers/background-mid.png",
+      "layer": "mid",
+      "blend": "mix"
+    },
+    {
+      "id": "depth-fog",
+      "role": "background.depth-fog",
+      "path": "layers/background-depth-fog.png",
+      "layer": "depth-fog",
+      "blend": "mix"
+    },
+    {
+      "id": "near",
+      "role": "near.overlay",
+      "path": "layers/near-overlay.png",
+      "layer": "near",
+      "blend": "mix"
+    },
+    {
+      "id": "ambient-light",
+      "role": "lighting.ambient",
+      "path": "layers/lighting-ambient.png",
+      "layer": "ambient-light",
+      "blend": "multiply"
+    },
+    {
+      "id": "local-light",
+      "role": "lighting.local",
+      "path": "layers/lighting-local.png",
+      "layer": "local-light",
+      "blend": "add"
+    },
+    {
+      "id": "foreground",
+      "role": "foreground.overlay",
+      "path": "layers/foreground-overlay.png",
+      "layer": "foreground",
+      "blend": "mix"
+    }
+  ],
+  "atlases": [
+    {
+      "id": "terrain",
+      "path": "atlases/terrain.png",
+      "cell_size": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "props",
+      "path": "atlases/props.png",
+      "cell_size": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "structures",
+      "path": "atlases/structures.png",
+      "cell_size": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "collectibles",
+      "path": "atlases/collectibles.png",
+      "cell_size": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "effects",
+      "path": "atlases/effects.png",
+      "cell_size": [
+        32,
+        32
+      ]
+    },
+    {
+      "id": "player",
+      "path": "atlases/player.png",
+      "cell_size": [
+        48,
+        72
+      ]
+    },
+    {
+      "id": "npc",
+      "path": "atlases/npc.png",
+      "cell_size": [
+        48,
+        72
+      ]
+    }
+  ],
+  "roles": [
+    {
+      "role": "background.sky",
+      "binding": {
+        "kind": "file",
+        "path": "layers/background-sky.png"
+      }
+    },
+    {
+      "role": "background.far",
+      "binding": {
+        "kind": "file",
+        "path": "layers/background-far.png"
+      }
+    },
+    {
+      "role": "background.mid",
+      "binding": {
+        "kind": "file",
+        "path": "layers/background-mid.png"
+      }
+    },
+    {
+      "role": "background.depth-fog",
+      "binding": {
+        "kind": "file",
+        "path": "layers/background-depth-fog.png"
+      }
+    },
+    {
+      "role": "near.overlay",
+      "binding": {
+        "kind": "file",
+        "path": "layers/near-overlay.png"
+      }
+    },
+    {
+      "role": "lighting.ambient",
+      "binding": {
+        "kind": "file",
+        "path": "layers/lighting-ambient.png"
+      }
+    },
+    {
+      "role": "lighting.local",
+      "binding": {
+        "kind": "file",
+        "path": "layers/lighting-local.png"
+      }
+    },
+    {
+      "role": "foreground.overlay",
+      "binding": {
+        "kind": "file",
+        "path": "layers/foreground-overlay.png"
+      }
+    },
+    {
+      "role": "terrain.ground",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "terrain",
+        "region": {
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "terrain.path",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "terrain",
+        "region": {
+          "x": 32,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "terrain.edge",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "terrain",
+        "region": {
+          "x": 64,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "terrain.bridge",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "terrain",
+        "region": {
+          "x": 96,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "terrain.stairs",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "terrain",
+        "region": {
+          "x": 128,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "terrain.water",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "terrain",
+        "region": {
+          "x": 160,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "prop.tree",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "props",
+        "region": {
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "prop.rock",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "props",
+        "region": {
+          "x": 32,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "prop.crate",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "props",
+        "region": {
+          "x": 64,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "prop.sign",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "props",
+        "region": {
+          "x": 96,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "prop.lamp",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "props",
+        "region": {
+          "x": 128,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "prop.occluder",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "props",
+        "region": {
+          "x": 160,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "structure.entrance",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "structures",
+        "region": {
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "structure.exit",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "structures",
+        "region": {
+          "x": 32,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "structure.checkpoint",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "structures",
+        "region": {
+          "x": 64,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "structure.landmark",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "structures",
+        "region": {
+          "x": 96,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "collectible.primary",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "collectibles",
+        "region": {
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "collectible.health",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "collectibles",
+        "region": {
+          "x": 32,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "effect.footstep",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "effects",
+        "region": {
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "effect.interact",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "effects",
+        "region": {
+          "x": 32,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "effect.portal",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "effects",
+        "region": {
+          "x": 64,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "effect.ambient",
+      "binding": {
+        "kind": "atlas-region",
+        "atlas": "effects",
+        "region": {
+          "x": 96,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        }
+      }
+    },
+    {
+      "role": "character.player.atlas",
+      "binding": {
+        "kind": "file",
+        "path": "atlases/player.png"
+      }
+    },
+    {
+      "role": "character.npc.atlas",
+      "binding": {
+        "kind": "file",
+        "path": "atlases/npc.png"
+      }
+    },
+    {
+      "role": "world.scene",
+      "binding": {
+        "kind": "file",
+        "path": "runtime/scene.json"
+      }
+    },
+    {
+      "role": "world.collision",
+      "binding": {
+        "kind": "file",
+        "path": "runtime/collision.json"
+      }
+    },
+    {
+      "role": "world.navigation",
+      "binding": {
+        "kind": "file",
+        "path": "runtime/navigation.json"
+      }
+    },
+    {
+      "role": "world.preview",
+      "binding": {
+        "kind": "file",
+        "path": "previews/world.png"
+      }
+    }
+  ],
+  "characters": [
+    {
+      "id": "player",
+      "atlas": "atlases/player.png",
+      "frame_size": [
+        48,
+        72
+      ],
+      "pivot": [
+        24,
+        67
+      ],
+      "clips": [
+        {
+          "id": "idle.left",
+          "action": "idle",
+          "direction": "left",
+          "frames": [
+            {
+              "x": 0,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 48,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "idle.right",
+          "action": "idle",
+          "direction": "right",
+          "frames": [
+            {
+              "x": 96,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 144,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "idle.near",
+          "action": "idle",
+          "direction": "near",
+          "frames": [
+            {
+              "x": 192,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 240,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "idle.far",
+          "action": "idle",
+          "direction": "far",
+          "frames": [
+            {
+              "x": 288,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 336,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "walk.left",
+          "action": "walk",
+          "direction": "left",
+          "frames": [
+            {
+              "x": 384,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 432,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "walk.right",
+          "action": "walk",
+          "direction": "right",
+          "frames": [
+            {
+              "x": 480,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 528,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "walk.near",
+          "action": "walk",
+          "direction": "near",
+          "frames": [
+            {
+              "x": 576,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 624,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "walk.far",
+          "action": "walk",
+          "direction": "far",
+          "frames": [
+            {
+              "x": 672,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 720,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "run.left",
+          "action": "run",
+          "direction": "left",
+          "frames": [
+            {
+              "x": 768,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 816,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "run.right",
+          "action": "run",
+          "direction": "right",
+          "frames": [
+            {
+              "x": 864,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 912,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "run.near",
+          "action": "run",
+          "direction": "near",
+          "frames": [
+            {
+              "x": 960,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 1008,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "run.far",
+          "action": "run",
+          "direction": "far",
+          "frames": [
+            {
+              "x": 1056,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 1104,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "interact.left",
+          "action": "interact",
+          "direction": "left",
+          "frames": [
+            {
+              "x": 1152,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 1200,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "interact.right",
+          "action": "interact",
+          "direction": "right",
+          "frames": [
+            {
+              "x": 1248,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 1296,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "interact.near",
+          "action": "interact",
+          "direction": "near",
+          "frames": [
+            {
+              "x": 1344,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 1392,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "interact.far",
+          "action": "interact",
+          "direction": "far",
+          "frames": [
+            {
+              "x": 1440,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 1488,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "npc",
+      "atlas": "atlases/npc.png",
+      "frame_size": [
+        48,
+        72
+      ],
+      "pivot": [
+        24,
+        67
+      ],
+      "clips": [
+        {
+          "id": "idle.left",
+          "action": "idle",
+          "direction": "left",
+          "frames": [
+            {
+              "x": 0,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 48,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "idle.right",
+          "action": "idle",
+          "direction": "right",
+          "frames": [
+            {
+              "x": 96,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 144,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "idle.near",
+          "action": "idle",
+          "direction": "near",
+          "frames": [
+            {
+              "x": 192,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 240,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "idle.far",
+          "action": "idle",
+          "direction": "far",
+          "frames": [
+            {
+              "x": 288,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 336,
+              "y": 0,
+              "duration_ms": 240,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "talk.left",
+          "action": "talk",
+          "direction": "left",
+          "frames": [
+            {
+              "x": 384,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 432,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "talk.right",
+          "action": "talk",
+          "direction": "right",
+          "frames": [
+            {
+              "x": 480,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 528,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "talk.near",
+          "action": "talk",
+          "direction": "near",
+          "frames": [
+            {
+              "x": 576,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 624,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        },
+        {
+          "id": "talk.far",
+          "action": "talk",
+          "direction": "far",
+          "frames": [
+            {
+              "x": 672,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            },
+            {
+              "x": 720,
+              "y": 0,
+              "duration_ms": 140,
+              "provenance": "declared-synthetic-variant"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "runtime": {
+    "scene": {
+      "path": "runtime/scene.json"
+    },
+    "collision": {
+      "path": "runtime/collision.json"
+    },
+    "navigation": {
+      "path": "runtime/navigation.json"
+    },
+    "spawn": {
+      "x": 32,
+      "y": 132
+    }
+  },
+  "files": [
+    {
+      "path": "atlases/collectibles.png",
+      "media_type": "image/png",
+      "bytes": 152,
+      "sha256": "6694009f4f143f16c4fed48165b5ed4e6826798e5bee7c31c73af0f657f3e556"
+    },
+    {
+      "path": "atlases/effects.png",
+      "media_type": "image/png",
+      "bytes": 229,
+      "sha256": "f00b1dc469c6fae24b712ba4220735421b15127d5baca61e42d0392690d6ca19"
+    },
+    {
+      "path": "atlases/npc.png",
+      "media_type": "image/png",
+      "bytes": 1470,
+      "sha256": "1e0b1a07e9b9db68e6c70a3b9fa9bc22da8814bfbcabd195fa2e08a856ba2669"
+    },
+    {
+      "path": "atlases/player.png",
+      "media_type": "image/png",
+      "bytes": 2997,
+      "sha256": "07d015021d21e2213fbb2154e5cff576c159469670c0ff4b09cab6b87d03280e"
+    },
+    {
+      "path": "atlases/props.png",
+      "media_type": "image/png",
+      "bytes": 295,
+      "sha256": "afea68e869d44e2dad92cfa9d9a4ae7b9d46a49355fb725f7daea4eecae89359"
+    },
+    {
+      "path": "atlases/structures.png",
+      "media_type": "image/png",
+      "bytes": 230,
+      "sha256": "f8329d3d3b07b2e3d678d6452abb8e8f49114bc81a9190960136e84e5d082cc0"
+    },
+    {
+      "path": "atlases/terrain.png",
+      "media_type": "image/png",
+      "bytes": 298,
+      "sha256": "a5ffca27f897140643ef57f893b6d62afdb1c7676c9e00559d00d95e601c019f"
+    },
+    {
+      "path": "layers/background-depth-fog.png",
+      "media_type": "image/png",
+      "bytes": 403,
+      "sha256": "ded12601de50255ef3343f2c283d01847c2269091e888ba2d3d02fe8d4f5d998"
+    },
+    {
+      "path": "layers/background-far.png",
+      "media_type": "image/png",
+      "bytes": 451,
+      "sha256": "87169d88673c5f3e669a16fa0f555bbe662e6ce201e59038ead1f718a91c2d6a"
+    },
+    {
+      "path": "layers/background-mid.png",
+      "media_type": "image/png",
+      "bytes": 434,
+      "sha256": "95c6546919f0d7121647c6da9b4e37e7fe36ee59a80f7b47f85bd7155d8fd86d"
+    },
+    {
+      "path": "layers/background-sky.png",
+      "media_type": "image/png",
+      "bytes": 468,
+      "sha256": "9c648a76f10cf9287cfb1579ae94adc508cfe413bbaaf63a8ba613cc6ad8856d"
+    },
+    {
+      "path": "layers/foreground-overlay.png",
+      "media_type": "image/png",
+      "bytes": 427,
+      "sha256": "af0b9c93f58fe4f0d566406241ed15b62ba1d49c01619c3b1969ef9c1b3b9b82"
+    },
+    {
+      "path": "layers/lighting-ambient.png",
+      "media_type": "image/png",
+      "bytes": 249,
+      "sha256": "6e93f3711dd8e69a9e221a3b010a1c4088ceb81ab56183871a417861c362295f"
+    },
+    {
+      "path": "layers/lighting-local.png",
+      "media_type": "image/png",
+      "bytes": 577,
+      "sha256": "6159ea0b3c730d330ce206271e78a55a43d102b9b0251b76b5ad96f2afbd2628"
+    },
+    {
+      "path": "layers/near-overlay.png",
+      "media_type": "image/png",
+      "bytes": 449,
+      "sha256": "e7b2789bc6a14f02700a418b153bb6eb1c1e828fdbcf9c2fb64138f23dbe1bf3"
+    },
+    {
+      "path": "license-assets.md",
+      "media_type": "text/markdown",
+      "bytes": 153,
+      "sha256": "13bce2580957f6cd18cb1affadc7d738debd6b7b02e294e2678282aa71ecd44e"
+    },
+    {
+      "path": "previews/world.png",
+      "media_type": "image/png",
+      "bytes": 880,
+      "sha256": "4c7670619f22a1c443f1a2ddafeccaff0d48f2c6b708c002aacdc954d5eae583"
+    },
+    {
+      "path": "provenance/synthetic-recipe.json",
+      "media_type": "application/json",
+      "bytes": 379,
+      "sha256": "bf29a55c286b6b5af6e22aca9920e53b08d8d0d1e3237c6c0440a8edf4b95ead"
+    },
+    {
+      "path": "runtime/collision.json",
+      "media_type": "application/json",
+      "bytes": 436,
+      "sha256": "16dc2f3e15b264b8540f509cbe4fcf715f51f13c026ad9496aab3ef20b272c7f"
+    },
+    {
+      "path": "runtime/navigation.json",
+      "media_type": "application/json",
+      "bytes": 478,
+      "sha256": "a3abd826a616a8ae735cf4f2ad94050161d392d62a33edef46049ffdeb371da2"
+    },
+    {
+      "path": "runtime/scene.json",
+      "media_type": "application/json",
+      "bytes": 792,
+      "sha256": "1de7318341f45d06c2594b3f926ef6ece53886eea07f6f85a22fa153ae2f7c85"
+    }
+  ],
+  "license": {
+    "output": {
+      "id": "CC0-1.0",
+      "notice_path": "license-assets.md",
+      "permits_redistribution": true,
+      "permits_commercial_use": true
+    }
+  },
+  "provenance": {
+    "output_provenance": "procedural",
+    "contains_generative_ai": false,
+    "model_provider": null,
+    "model": null,
+    "human_curated": true,
+    "source_manifest_hashes": [
+      "bf29a55c286b6b5af6e22aca9920e53b08d8d0d1e3237c6c0440a8edf4b95ead"
+    ]
+  },
+  "reference_policy": {
+    "embedded": false,
+    "original_references_excluded": true,
+    "raw_prompts_excluded": true,
+    "only_one_way_audit_hashes_retained": true
+  }
+}

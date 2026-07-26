@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-layered-depth-scene-0.4.schema.json",
+  "title": "Mapsoo Layered Depth Scene 0.4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile", "completeness_policy", "bounds", "spawn", "baseline_y", "layers", "planes", "placements"],
+  "properties": {
+    "schema_version": { "const": "0.4.0" },
+    "profile": { "const": "layered-depth-2d" },
+    "completeness_policy": { "const": "layered-depth-2d-complete-v1" },
+    "bounds": { "$ref": "#/$defs/rect" },
+    "spawn": { "$ref": "#/$defs/point" },
+    "baseline_y": { "type": "number" },
+    "layers": {
+      "const": ["sky", "far", "mid", "gameplay", "near", "lighting", "foreground"]
+    },
+    "planes": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "role", "layer", "scroll_ratio", "z_index", "blend", "native_size", "repeat_size", "repeat_enabled"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "role": { "type": "string" },
+          "layer": { "enum": ["sky", "far", "mid", "gameplay", "near", "lighting", "foreground"] },
+          "scroll_ratio": { "type": "array", "prefixItems": [{ "type": "number", "minimum": 0, "maximum": 1.5 }, { "type": "number", "minimum": 0, "maximum": 1.5 }], "items": false },
+          "z_index": { "type": "integer", "minimum": -100, "maximum": 100 },
+          "blend": { "enum": ["mix", "add", "multiply"] },
+          "native_size": { "const": [320, 180] },
+          "repeat_size": { "const": [320, 180] },
+          "repeat_enabled": { "type": "boolean" }
+        }
+      }
+    },
+    "placements": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "role", "layer", "x", "y"],
+        "properties": {
+          "id": { "type": "string" },
+          "role": { "type": "string" },
+          "layer": { "enum": ["sky", "far", "mid", "gameplay", "near", "lighting", "foreground"] },
+          "x": { "type": "number" },
+          "y": { "type": "number" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+    },
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}

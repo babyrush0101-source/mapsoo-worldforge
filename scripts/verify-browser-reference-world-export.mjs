@@ -62,7 +62,7 @@ function decodeDom(dom) {
   assert(state === 'ready', `Reference-world browser harness failed (state=${String(state)}${error ? `, error=${error}` : ''}).`);
   const result = dom.match(/<pre\s+id="result"([^>]*)>([\s\S]*?)<\/pre>/i);
   assert(result, 'Reference-world browser harness returned no result.');
-  assert(Number(result[1].match(/\bdata-count="([^"]+)"/i)?.[1]) === 2, 'Browser harness must export two implemented profiles.');
+  assert(Number(result[1].match(/\bdata-count="([^"]+)"/i)?.[1]) === 4, 'Browser harness must export four implemented profiles.');
   return JSON.parse(decodeHtml(result[2]));
 }
 
@@ -71,6 +71,18 @@ async function verifyPack(exported, expected) {
   assert(exported.packSchemaVersion === expected.schema, `${expected.profile} Pack schema mismatch.`);
   assert(exported.requiredRoleCount === expected.roles, `${expected.profile} role count mismatch.`);
   assert(exported.characterClipCount === expected.clips, `${expected.profile} clip count mismatch.`);
+  assert(/^[a-f0-9]{64}$/.test(exported.confirmationBindingSha256), `${expected.profile} has no confirmed dialogue binding.`);
+  assert(exported.confirmationEmbeddedInPack === expected.embedded, `${expected.profile} dialogue embedding status mismatch.`);
+  assert(/^[a-f0-9]{64}$/.test(exported.assetRevisionSha256), `${expected.profile} has no asset revision.`);
+  assert(/^[a-f0-9]{64}$/.test(exported.assetPackSha256), `${expected.profile} has no asset pack digest.`);
+  assert(exported.assetDialogueBindingSha256 === exported.confirmationBindingSha256, `${expected.profile} asset revision lost its dialogue binding.`);
+  assert(exported.launchAssetRevisionSha256 === exported.assetRevisionSha256, `${expected.profile} launch is not bound to the approved asset revision.`);
+  assert(/^[a-f0-9]{64}$/.test(exported.launchBindingSha256), `${expected.profile} has no frozen launch binding.`);
+  assert(/^[a-f0-9]{64}$/.test(exported.characterIdentitySignatureSha256), `${expected.profile} has no decoded character identity.`);
+  assert(
+    exported.launchScenePath === `res://mapsoo_imports/browser-${expected.profile}/browser-${expected.profile}.world.tscn`,
+    `${expected.profile} launch scene path mismatch.`,
+  );
   const bytes = Buffer.from(exported.bytes, 'base64');
   assert(bytes.length > 1000 && bytes[0] === 0x50 && bytes[1] === 0x4b, `${expected.profile} did not return ZIP bytes.`);
   const zip = await JSZip.loadAsync(bytes);
@@ -83,6 +95,18 @@ async function verifyPack(exported, expected) {
   assert(names.length === manifest.files.length + 1, `${expected.profile} archive inventory differs from its manifest.`);
   const exposed = await Promise.all(names.filter((name) => /\.(?:json|md|txt)$/i.test(name)).map((name) => zip.file(name).async('string')));
   assert(!exposed.join('\n').includes('references/'), `${expected.profile} leaked reference paths.`);
+  const receiptName = names.find((name) => name.endsWith('/generation-receipt.json'));
+  assert(receiptName, `${expected.profile} pack has no generation receipt.`);
+  const receipt = JSON.parse(await zip.file(receiptName).async('string'));
+  if (expected.embedded) {
+    assert(
+      receipt.request?.dialogue_binding?.binding_sha256 === exported.confirmationBindingSha256,
+      `${expected.profile} receipt does not bind the confirmed dialogue.`,
+    );
+    assert(receipt.request.dialogue_binding.checkpoints.length === 4, `${expected.profile} receipt requires four dialogue checkpoints.`);
+  } else {
+    assert(receipt.request?.dialogue_binding === undefined, `${expected.profile} changed its frozen receipt schema.`);
+  }
   return `${expected.profile}:bytes=${bytes.length}:files=${names.length}`;
 }
 
@@ -102,10 +126,16 @@ async function verify() {
       '--disable-component-update', '--no-first-run', `--user-data-dir=${profile}`, '--virtual-time-budget=120000', '--dump-dom', url,
     ], { maxBuffer: 64 * 1024 * 1024, timeout: 90_000, windowsHide: true });
     const exports = decodeDom(stdout);
-    assert(Array.isArray(exports) && exports.length === 2, 'Browser result must contain two profile exports.');
+    assert(Array.isArray(exports) && exports.length === 4, 'Browser result must contain four profile exports.');
+    assert(
+      exports.every((entry) => entry.characterIdentitySignatureSha256 === exports[0].characterIdentitySignatureSha256),
+      'The same character reference produced different cross-profile identity signatures.',
+    );
     const summaries = await Promise.all([
-      verifyPack(exports[0], { profile: 'topdown-farm', schema: '0.6.0', roles: 21, clips: 8 }),
-      verifyPack(exports[1], { profile: 'side-platformer', schema: '0.7.0', roles: 30, clips: 12 }),
+      verifyPack(exports[0], { profile: 'topdown-farm', schema: '0.6.0', roles: 21, clips: 8, embedded: false }),
+      verifyPack(exports[1], { profile: 'side-platformer', schema: '0.7.0', roles: 30, clips: 12, embedded: true }),
+      verifyPack(exports[2], { profile: 'isometric-action', schema: '0.8.0', roles: 36, clips: 128, embedded: true }),
+      verifyPack(exports[3], { profile: 'layered-depth-2d', schema: '0.9.0', roles: 36, clips: 24, embedded: true }),
     ]);
     console.log(`MAPSOO_BROWSER_REFERENCE_WORLD_OK ${summaries.join(' ')}`);
   } finally {

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://babyrush0101-source.github.io/mapsoo-kids/schemas/mapsoo-isometric-action-navigation-0.3.schema.json",
+  "title": "Mapsoo Isometric Action Navigation 0.3",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "profile", "completeness_policy", "bounds", "spawn", "nodes", "edges", "exit_node_id"],
+  "properties": {
+    "schema_version": { "const": "0.3.0" }, "profile": { "const": "isometric-action" },
+    "completeness_policy": { "const": "isometric-action-complete-v1" },
+    "bounds": { "$ref": "#/$defs/rect" }, "spawn": { "$ref": "#/$defs/point" },
+    "nodes": { "type": "array", "minItems": 2, "maxItems": 512, "items": { "$ref": "#/$defs/node" } },
+    "edges": { "type": "array", "minItems": 1, "maxItems": 2048, "items": { "$ref": "#/$defs/edge" } },
+    "exit_node_id": { "type": "string", "minLength": 1, "maxLength": 80 }
+  },
+  "$defs": {
+    "point": { "type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": { "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 } } },
+    "rect": { "type": "object", "additionalProperties": false, "required": ["x", "y", "width", "height"], "properties": { "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 }, "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 } } },
+    "node": { "type": "object", "additionalProperties": false, "required": ["id", "x", "y", "elevation", "kind"], "properties": { "id": { "type": "string" }, "x": { "type": "integer" }, "y": { "type": "integer" }, "elevation": { "type": "integer" }, "kind": { "enum": ["spawn", "route", "checkpoint", "exit"] } } },
+    "edge": { "type": "object", "additionalProperties": false, "required": ["from", "to", "kind"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "kind": { "enum": ["walk", "stairs", "dash"] } } }
+  }
+}

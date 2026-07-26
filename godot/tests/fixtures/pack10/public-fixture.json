@@ -1,0 +1,22 @@
+{
+  "schema_version": "mapsoo-godot-pack10-fixture-recipe/1.0",
+  "id": "neutral-pack10-public-smoke",
+  "title": "Neutral Pack 1.0 public smoke fixture",
+  "created_at": "2026-07-26T18:00:00.000Z",
+  "canvas": {
+    "width": 320,
+    "height": 180
+  },
+  "palette": [
+    "#2f4668",
+    "#52786e",
+    "#9b7449",
+    "#caa75c",
+    "#5c4573",
+    "#7197b5"
+  ],
+  "synthetic": true,
+  "contains_generative_ai": false,
+  "contains_source_references": false,
+  "contains_raw_prompts": false
+}

@@ -2,6 +2,13 @@
 
 `run-smoke.ps1` generates and tests schemas `0.1.0` through `0.5.0` in isolated Godot processes, covering historical import, playable terrain, semantic places, exterior structures, and the Alpha.7 multi-world release binding:
 
+`import_pack10_controlled_smoke.gd` independently exercises the Pack
+`1.0.0-draft.1` routed importer. It materializes neutral procedural public,
+internal-review, and private fixtures; proves explicit caller grants for both
+non-public modes; reloads the generated scene; and rejects scripts, shaders,
+URLs, absolute paths, and traversal paths. CI runs it with Godot 4.3 and 4.7
+on Linux and Windows.
+
 1. generate a deterministic PNG/JSON/manifest fixture;
 2. let the editor import the new PNG resources;
 3. call `MapsooPackImporter.import_pack()` and validate the resulting resources.
@@ -36,6 +43,19 @@ The re-import transaction contract additionally proves:
 The exact-pack CLI imports a fixed candidate or published release pack twice and requires `created → unchanged`. For schemas `0.2.0` through `0.5.0`, it also requires Water/Roads layers, two TerrainSets, one physics layer, and the documented z-order. Schemas `0.3.0` through `0.5.0` check every stable marker against the validated places sidecar; schemas `0.4.0`/`0.5.0` additionally check every structure sprite, atlas region, metadata field, and place linkage. Trusted `--expected-*` arguments bind ID/schema/cell/prop/place/structure counts, and `--check-conflict=true` proves an edited managed scene is rejected without changing its bytes. PR and tag CI are configured to run the synthetic and exact-pack contracts on Linux and Windows with Godot 4.3 and 4.7. Windows archive SHA-512 values are pinned from the official Godot release checksum files.
 
 Alpha.7 CI can pass a trusted three-pack descriptor to `scripts/run-exact-pack-set.ps1`. The descriptor has `schemaVersion: 1` and exactly the IDs `sunny-meadow`, `dustwind-outpost`, and `frostwatch-vale`; each pack record supplies `archiveRoot`, `schemaVersion`, `cellCount`, `propCount`, `placeCount`, and `structureCount`. The runner locates each extracted manifest below the trusted root, invokes the exact CLI with all expectations, and requires `created → unchanged → conflict/preserved` for every pack while reusing one OS/Godot job.
+
+## Playable physics contracts
+
+Pack `0.6.0` and `0.7.0` jobs instantiate the imported world inside a real `SceneTree` and advance physics frames:
+
+- `import_alpha9_playable_smoke.gd` checks four-direction movement, blocked-cell collision, animation, bounds, and camera limits.
+- `import_alpha10_playable_smoke.gd` checks solid landing, movement, jump, one-way pass-through and landing, hazard respawn, exit reporting, and camera limits.
+
+These run on Linux and Windows with Godot 4.3 and 4.7. They complement structural importer checks; a node hierarchy by itself is not accepted as playability evidence.
+
+`runtime_shell_smoke.gd` then proves that the reusable main scene rejects unsafe paths, loads a generated farm world, replaces it with a generated side world, and exposes the active scene/profile identity.
+
+`texture_persistence_probe.gd` proves on Godot 4.3 and 4.7 that `keep_compressed_buffer` must be set before `PortableCompressedTexture2D.create_from_image()`. `capture_alpha10_runtime_visual.gd` renders the reloaded Pack 0.7 scene and rejects blank or collapsed frames using conservative color, dominant-color, luminance, edge-density, regional-color, and alpha thresholds.
 
 Run when `godot4` or `godot` is on `PATH` (or `GODOT_BIN` points to the console executable):
 

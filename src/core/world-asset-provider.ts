@@ -4,11 +4,15 @@ import {
   type GeneratedAssetBundle,
 } from './generated-asset-bundle';
 import { assertCompleteSidePlatformerAssetBundle } from './side-platformer-asset-bundle';
+import { assertCompleteIsometricActionAssetBundle } from './isometric-action-asset-bundle';
+import { assertCompleteLayeredDepthAssetBundle } from './layered-depth-asset-bundle';
 import {
   bindGenerationRequestV2,
   fingerprintGenerationRequestV2,
   type GenerationRequestJobV2,
 } from './generation-request-v2';
+import { materializeCharacterIdentitySignature } from './character-identity-signature';
+import { materializeEnvironmentArtSignature } from './environment-art-signature';
 
 const PROVIDER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
@@ -266,6 +270,8 @@ async function validateAndSnapshotOutput(
   try {
     if (profile === 'topdown-farm') assertCompleteTopdownFarmAssetBundle(bundle);
     else if (profile === 'side-platformer') assertCompleteSidePlatformerAssetBundle(bundle);
+    else if (profile === 'isometric-action') assertCompleteIsometricActionAssetBundle(bundle);
+    else if (profile === 'layered-depth-2d') assertCompleteLayeredDepthAssetBundle(bundle);
     else fail('world-provider.unsupported-profile', `No complete asset contract is implemented for ${profile}.`);
   } catch (error) {
     if (error instanceof WorldAssetProviderError) throw error;
@@ -314,13 +320,24 @@ export async function runWorldAssetProvider(
 ): Promise<WorldAssetGenerationResult> {
   const contract = snapshotProvider(provider);
   abortIfNeeded(options.signal, contract.id);
-  const job = await bindGenerationRequestV2(
+  const reboundJob = await bindGenerationRequestV2(
     suppliedJob.request,
     suppliedJob.references.map((reference) => ({
       path: reference.descriptor.path,
       bytes: reference.readBytes(),
     })),
   );
+  const characterIdentity = suppliedJob.characterIdentity
+    ? await materializeCharacterIdentitySignature(suppliedJob.characterIdentity)
+    : undefined;
+  const environmentArt = suppliedJob.environmentArt
+    ? await materializeEnvironmentArtSignature(suppliedJob.environmentArt)
+    : undefined;
+  const job: GenerationRequestJobV2 = Object.freeze({
+    ...reboundJob,
+    ...(characterIdentity ? { characterIdentity } : {}),
+    ...(environmentArt ? { environmentArt } : {}),
+  });
   if (!contract.capabilities.supportedProfiles.includes(job.request.profile)) {
     fail('world-provider.unsupported-profile', `${contract.id} does not support ${job.request.profile}.`);
   }

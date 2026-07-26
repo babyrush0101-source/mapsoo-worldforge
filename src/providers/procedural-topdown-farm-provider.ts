@@ -1,5 +1,9 @@
 import { encodeRgbaPng } from '../adapters/canvas/encode-png';
 import {
+  blitCharacterIdentityFrame,
+  renderCharacterIdentityFrame,
+} from '../adapters/canvas/render-character-identity-frame';
+import {
   GENERATED_ASSET_BUNDLE_SCHEMA_VERSION,
   TOPDOWN_FARM_COMPLETENESS_POLICY,
   type AssetRoleBinding,
@@ -8,6 +12,8 @@ import {
   type GeneratedAssetKind,
 } from '../core/generated-asset-bundle';
 import type { GenerationRequestJobV2 } from '../core/generation-request-v2';
+import type { CharacterIdentitySignature } from '../core/character-identity-signature';
+import { environmentArtSeed } from '../core/environment-art-signature';
 import type {
   GeneratedAssetFile,
   WorldAssetProvider,
@@ -82,12 +88,25 @@ function textFingerprint(value: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
+function hexColor(value: string): Color {
+  return [
+    Number.parseInt(value.slice(1, 3), 16),
+    Number.parseInt(value.slice(3, 5), 16),
+    Number.parseInt(value.slice(5, 7), 16),
+  ];
+}
+
 function paletteFor(job: GenerationRequestJobV2): Palette {
   const environment = job.request.references.find((reference) => reference.role === 'environment-style');
   const character = job.request.references.find((reference) => reference.role === 'character');
   const requestFingerprint = textFingerprint(`${job.request.seed}\n${job.request.description}`);
-  const worldHash = `${requestFingerprint}${environment?.sha256 ?? '123456'.repeat(11)}`;
-  const characterHash = `${requestFingerprint.split('').reverse().join('')}${character?.sha256 ?? 'abcdef'.repeat(11)}`;
+  const worldHash = `${requestFingerprint}${environmentArtSeed(job.environmentArt) ?? environment?.sha256 ?? '123456'.repeat(11)}`;
+  const identityPalette = job.characterIdentity?.palette;
+  // Preserve the published Alpha9 fallback exactly; new browser jobs carry the
+  // decoded identity and therefore use only its palette and silhouette.
+  const characterHash = job.characterIdentity
+    ? character?.sha256 ?? 'abcdef'.repeat(11)
+    : `${requestFingerprint.split('').reverse().join('')}${character?.sha256 ?? 'abcdef'.repeat(11)}`;
   const hueA = channel(worldHash, 0, 70, 70);
   const hueB = channel(worldHash, 2, 120, 90);
   return {
@@ -101,10 +120,10 @@ function paletteFor(job: GenerationRequestJobV2): Palette {
     leafLight: [72, 164, 75],
     wood: [116, 71, 43],
     roof: [channel(worldHash, 4, 130, 90), 65, 55],
-    accent: [channel(characterHash, 0, 150, 95), channel(characterHash, 2, 70, 130), channel(characterHash, 4, 80, 150)],
-    skin: [channel(characterHash, 6, 185, 55), channel(characterHash, 8, 135, 65), channel(characterHash, 10, 105, 60)],
-    outfit: [channel(characterHash, 12, 45, 155), channel(characterHash, 14, 55, 150), channel(characterHash, 16, 70, 145)],
-    outline: [35, 31, 38],
+    accent: identityPalette ? hexColor(identityPalette.accent) : [channel(characterHash, 0, 150, 95), channel(characterHash, 2, 70, 130), channel(characterHash, 4, 80, 150)],
+    skin: identityPalette ? hexColor(identityPalette.secondary) : [channel(characterHash, 6, 185, 55), channel(characterHash, 8, 135, 65), channel(characterHash, 10, 105, 60)],
+    outfit: identityPalette ? hexColor(identityPalette.primary) : [channel(characterHash, 12, 45, 155), channel(characterHash, 14, 55, 150), channel(characterHash, 16, 70, 145)],
+    outline: identityPalette ? hexColor(identityPalette.outline) : [35, 31, 38],
   };
 }
 
@@ -186,8 +205,32 @@ function drawCharacterFrame(image: Surface, x: number, y: number, direction: num
   }
 }
 
-function characterAtlas(palette: Palette): Uint8Array {
+function characterAtlas(palette: Palette, identity?: CharacterIdentitySignature): Uint8Array {
   const image = new Surface(128, 128);
+  if (identity) {
+    const directions = ['north', 'east', 'south', 'west'] as const;
+    const actions = ['idle', 'walk'] as const;
+    for (let direction = 0; direction < directions.length; direction += 1) {
+      for (let action = 0; action < actions.length; action += 1) {
+        for (let frame = 0; frame < 2; frame += 1) {
+          const rendered = renderCharacterIdentityFrame(identity, 'topdown-farm', {
+            action: actions[action],
+            direction: directions[direction],
+            frame,
+          });
+          blitCharacterIdentityFrame(
+            image.pixels,
+            image.width,
+            image.height,
+            rendered,
+            (action * 2 + frame) * 32,
+            direction * 32,
+          );
+        }
+      }
+    }
+    return encodeRgbaPng(image.width, image.height, image.pixels);
+  }
   for (let direction = 0; direction < 4; direction += 1) {
     for (let action = 0; action < 2; action += 1) {
       for (let frame = 0; frame < 2; frame += 1) {
@@ -198,7 +241,7 @@ function characterAtlas(palette: Palette): Uint8Array {
   return encodeRgbaPng(image.width, image.height, image.pixels);
 }
 
-function previewImage(palette: Palette): Uint8Array {
+function previewImage(palette: Palette, identity?: CharacterIdentitySignature): Uint8Array {
   const image = new Surface(320, 180, palette.grass);
   image.rect(0, 118, 320, 62, palette.soil);
   image.rect(0, 82, 320, 18, palette.water);
@@ -209,7 +252,14 @@ function previewImage(palette: Palette): Uint8Array {
   for (let row = 0; row < 3; row += 1) {
     for (let column = 0; column < 5; column += 1) image.circle(35 + column * 18, 132 + row * 14, 4, palette.leafLight);
   }
-  image.circle(175, 116, 9, palette.accent);
+  if (identity) {
+    const player = renderCharacterIdentityFrame(identity, 'topdown-farm', {
+      action: 'idle', direction: 'south', frame: 0,
+    });
+    blitCharacterIdentityFrame(image.pixels, image.width, image.height, player, 160, 103);
+  } else {
+    image.circle(175, 116, 9, palette.accent);
+  }
   return encodeRgbaPng(image.width, image.height, image.pixels);
 }
 
@@ -245,7 +295,8 @@ export async function generateProceduralTopdownFarm(job: GenerationRequestJobV2)
   const environmentId = job.request.references.find((reference) => reference.role === 'environment-style')?.id ?? '';
   const characterId = job.request.references.find((reference) => reference.role === 'character')?.id ?? '';
   const environmentSource = [environmentId];
-  const characterSource = [environmentId, characterId];
+  const characterSource = job.characterIdentity ? [characterId] : [environmentId, characterId];
+  const previewSource = [environmentId, characterId];
   const mapWidth = 16;
   const mapHeight = 12;
   const scene = {
@@ -275,11 +326,11 @@ export async function generateProceduralTopdownFarm(job: GenerationRequestJobV2)
     asset('props-atlas', 'prop-atlas', 'atlases/props.png', 'image/png', propsAtlas(palette), environmentSource, [192, 32]),
     asset('structures-atlas', 'structure-sprite', 'atlases/structures.png', 'image/png', structuresAtlas(palette), environmentSource, [128, 64]),
     asset('crops-atlas', 'crop-sprite', 'atlases/crops.png', 'image/png', cropsAtlas(palette), environmentSource, [128, 32]),
-    asset('character-atlas', 'character-atlas', 'atlases/character.png', 'image/png', characterAtlas(palette), characterSource, [128, 128]),
+    asset('character-atlas', 'character-atlas', 'atlases/character.png', 'image/png', characterAtlas(palette, job.characterIdentity), characterSource, [128, 128]),
     asset('collision-map', 'collision-map', 'runtime/collision.json', 'application/json', jsonBytes(collision), environmentSource),
     asset('navigation-map', 'navigation-map', 'runtime/navigation.json', 'application/json', jsonBytes(navigation), environmentSource),
     asset('scene-data', 'scene-data', 'runtime/scene.json', 'application/json', jsonBytes(scene), environmentSource),
-    asset('world-preview', 'preview', 'previews/world.png', 'image/png', previewImage(palette), characterSource, [320, 180]),
+    asset('world-preview', 'preview', 'previews/world.png', 'image/png', previewImage(palette, job.characterIdentity), previewSource, [320, 180]),
   ]);
   const roleAsset: Record<string, string> = {
     'terrain.ground': 'terrain-atlas', 'terrain.water': 'terrain-atlas', 'terrain.path': 'terrain-atlas', 'terrain.soil': 'terrain-atlas',

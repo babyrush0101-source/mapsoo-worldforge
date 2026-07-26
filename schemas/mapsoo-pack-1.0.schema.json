@@ -1,0 +1,503 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-pack-1.0.schema.json",
+  "title": "Mapsoo Pack 1.0 licensed production draft",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "pack",
+    "profile",
+    "distribution",
+    "review",
+    "compatibility",
+    "planes",
+    "atlases",
+    "roles",
+    "characters",
+    "runtime",
+    "files",
+    "license",
+    "provenance",
+    "reference_policy"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0-draft.1" },
+    "pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "version", "generator", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$" },
+        "generator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "const": "Mapsoo Worldsmith" },
+            "version": { "type": "string", "minLength": 1 }
+          }
+        },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "profile": { "const": "layered-depth-2d" },
+    "distribution": { "enum": ["internal-review", "private", "public"] },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["human_art", "rights", "runtime", "raspberry_pi"],
+      "properties": {
+        "human_art": { "$ref": "#/$defs/gate" },
+        "rights": { "$ref": "#/$defs/gate" },
+        "runtime": { "$ref": "#/$defs/gate" },
+        "raspberry_pi": { "$ref": "#/$defs/gate" }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["godot_min", "projection", "art_style", "importer"],
+      "properties": {
+        "godot_min": { "type": "string", "pattern": "^4\\.[3-9](?:\\.\\d+)?$" },
+        "projection": { "const": "layered-depth-stage" },
+        "art_style": { "const": "pixel_art" },
+        "importer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "min_version"],
+          "properties": {
+            "id": { "const": "mapsoo_importer" },
+            "min_version": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "planes": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/sky_plane" },
+        { "$ref": "#/$defs/far_plane" },
+        { "$ref": "#/$defs/mid_plane" },
+        { "$ref": "#/$defs/depth_fog_plane" },
+        { "$ref": "#/$defs/near_plane" },
+        { "$ref": "#/$defs/ambient_plane" },
+        { "$ref": "#/$defs/local_light_plane" },
+        { "$ref": "#/$defs/foreground_plane" }
+      ],
+      "items": false,
+      "minItems": 8,
+      "maxItems": 8
+    },
+    "atlases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "cell_size"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "path": { "$ref": "#/$defs/safe_path" },
+          "cell_size": { "$ref": "#/$defs/positive_size" }
+        }
+      }
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 36,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "binding"],
+        "properties": {
+          "role": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$" },
+          "binding": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "path"],
+                "properties": {
+                  "kind": { "const": "file" },
+                  "path": { "$ref": "#/$defs/safe_path" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "atlas", "region"],
+                "properties": {
+                  "kind": { "const": "atlas-region" },
+                  "atlas": { "$ref": "#/$defs/id" },
+                  "region": { "$ref": "#/$defs/rect" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "characters": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "atlas", "frame_size", "pivot", "clips"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "atlas": { "$ref": "#/$defs/safe_path" },
+          "frame_size": { "$ref": "#/$defs/positive_size" },
+          "pivot": { "$ref": "#/$defs/point_pair" },
+          "clips": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 256,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "action", "direction", "frames"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "action": { "$ref": "#/$defs/id" },
+                "direction": { "$ref": "#/$defs/id" },
+                "frames": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 64,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["x", "y", "duration_ms", "provenance"],
+                    "properties": {
+                      "x": { "type": "integer", "minimum": 0 },
+                      "y": { "type": "integer", "minimum": 0 },
+                      "duration_ms": { "type": "integer", "minimum": 16, "maximum": 10000 },
+                      "provenance": {
+                        "enum": [
+                          "independent-generated-pose",
+                          "declared-synthetic-variant",
+                          "artist-authored"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scene", "collision", "navigation", "spawn"],
+      "properties": {
+        "scene": { "$ref": "#/$defs/file_ref" },
+        "collision": { "$ref": "#/$defs/file_ref" },
+        "navigation": { "$ref": "#/$defs/file_ref" },
+        "spawn": { "$ref": "#/$defs/point" }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "media_type", "bytes", "sha256"],
+        "properties": {
+          "path": {
+            "allOf": [
+              { "$ref": "#/$defs/safe_path" },
+              { "not": { "type": "string", "pattern": "^(?:references?|prompts?)/" } }
+            ]
+          },
+          "media_type": {
+            "enum": [
+              "image/png",
+              "application/json",
+              "application/schema+json",
+              "text/markdown"
+            ]
+          },
+          "bytes": { "type": "integer", "minimum": 1 },
+          "sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output"],
+      "properties": {
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "notice_path",
+            "permits_redistribution",
+            "permits_commercial_use"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^(?:[A-Za-z0-9.+-]+|LicenseRef-[A-Za-z0-9.+-]+)$"
+            },
+            "notice_path": { "$ref": "#/$defs/safe_path" },
+            "permits_redistribution": { "type": "boolean" },
+            "permits_commercial_use": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "output_provenance",
+        "contains_generative_ai",
+        "model_provider",
+        "model",
+        "human_curated",
+        "source_manifest_hashes"
+      ],
+      "properties": {
+        "output_provenance": { "enum": ["procedural", "generative-ai", "hybrid", "artist-authored"] },
+        "contains_generative_ai": { "type": "boolean" },
+        "model_provider": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "human_curated": { "type": "boolean" },
+        "source_manifest_hashes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "reference_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "embedded",
+        "original_references_excluded",
+        "raw_prompts_excluded",
+        "only_one_way_audit_hashes_retained"
+      ],
+      "properties": {
+        "embedded": { "const": false },
+        "original_references_excluded": { "const": true },
+        "raw_prompts_excluded": { "const": true },
+        "only_one_way_audit_hashes_retained": { "const": true }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "type": "object", "properties": { "distribution": { "const": "public" } }, "required": ["distribution"] },
+      "then": {
+        "type": "object",
+        "properties": {
+          "review": {
+            "type": "object",
+            "properties": {
+              "human_art": { "const": "pass" },
+              "rights": { "const": "pass" },
+              "runtime": { "const": "pass" },
+              "raspberry_pi": { "const": "pass" }
+            }
+          },
+          "license": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "enum": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "MIT"]
+                  },
+                  "permits_redistribution": { "const": true },
+                  "permits_commercial_use": { "const": true }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "type": "object", "properties": { "distribution": { "const": "internal-review" } }, "required": ["distribution"] },
+      "then": {
+        "type": "object",
+        "properties": {
+          "license": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "type": "object",
+                "properties": {
+                  "id": { "const": "LicenseRef-UNRELEASED" },
+                  "permits_redistribution": { "const": false },
+                  "permits_commercial_use": { "const": false }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "type": "object", "properties": { "distribution": { "const": "private" } }, "required": ["distribution"] },
+      "then": {
+        "type": "object",
+        "properties": {
+          "review": {
+            "type": "object",
+            "properties": {
+              "human_art": { "const": "pass" },
+              "rights": { "const": "pass" },
+              "runtime": { "const": "pass" }
+            }
+          },
+          "license": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "type": "object",
+                "properties": {
+                  "id": { "not": { "const": "LicenseRef-UNRELEASED" } },
+                  "permits_redistribution": { "const": false }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "gate": { "enum": ["pending", "pass", "rejected"] },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "safe_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*(?:/[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*)*$"
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "point_pair": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "type": "integer" },
+        { "type": "integer" }
+      ],
+      "items": false
+    },
+    "positive_size": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "integer", "minimum": 1 }
+      ],
+      "items": false
+    },
+    "file_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": { "path": { "$ref": "#/$defs/safe_path" } }
+    },
+    "plane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "role", "path", "layer", "blend"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "role": { "type": "string" },
+        "path": { "$ref": "#/$defs/safe_path" },
+        "layer": { "$ref": "#/$defs/id" },
+        "blend": { "enum": ["mix", "add", "multiply"] }
+      }
+    },
+    "sky_plane": {
+      "allOf": [
+        { "$ref": "#/$defs/plane" },
+        { "type": "object", "properties": { "id": { "const": "sky" }, "role": { "const": "background.sky" } } }
+      ]
+    },
+    "far_plane": {
+      "allOf": [
+        { "$ref": "#/$defs/plane" },
+        { "type": "object", "properties": { "id": { "const": "far" }, "role": { "const": "background.far" } } }
+      ]
+    },
+    "mid_plane": {
+      "allOf": [
+        { "$ref": "#/$defs/plane" },
+        { "type": "object", "properties": { "id": { "const": "mid" }, "role": { "const": "background.mid" } } }
+      ]
+    },
+    "depth_fog_plane": {
+      "allOf": [
+        { "$ref": "#/$defs/plane" },
+        { "type": "object", "properties": { "id": { "const": "depth-fog" }, "role": { "const": "background.depth-fog" } } }
+      ]
+    },
+    "near_plane": {
+      "allOf": [
+        { "$ref": "#/$defs/plane" },
+        { "type": "object", "properties": { "id": { "const": "near" }, "role": { "const": "near.overlay" } } }
+      ]
+    },
+    "ambient_plane": {
+      "allOf": [
+        { "$ref": "#/$defs/plane" },
+        { "type": "object", "properties": { "id": { "const": "ambient-light" }, "role": { "const": "lighting.ambient" } } }
+      ]
+    },
+    "local_light_plane": {
+      "allOf": [
+        { "$ref": "#/$defs/plane" },
+        { "type": "object", "properties": { "id": { "const": "local-light" }, "role": { "const": "lighting.local" } } }
+      ]
+    },
+    "foreground_plane": {
+      "allOf": [
+        { "$ref": "#/$defs/plane" },
+        { "type": "object", "properties": { "id": { "const": "foreground" }, "role": { "const": "foreground.overlay" } } }
+      ]
+    }
+  }
+}

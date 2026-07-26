@@ -6,15 +6,15 @@
 
 Mapsoo 应以一个核心仓库申请，不需要用两个刚公开的网站凑数量。申请叙事应围绕 Godot 世界资产管线、开放格式、计划中的 External Host 首个消费场景和对独立开发者的价值；在真正接入前不得把 External Host 写成已采用。
 
-公开 `main` 已达到 Godot-importable alpha。当前公开版本是 [`v0.1.0-alpha.9`](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.9)：一键本地双参考图输入、离线程序化 `topdown-farm` 完整资产、Pack Schema 0.6.0、隐私最小化 receipt，以及 Godot 4.3+ 派生和 Linux/Windows × Godot 4.3/4.7 exact-pack 验收。另外三个 profile 仍为计划。GitHub Pages Demo、公开 CI 与九个不可变 prerelease 可匿名访问；itch.io 页面延期，真实外部使用反馈仍未完成。第九个 release 不能写成成熟通用图像生成器、External Host 采用或外部采用。
+公开 `main` 已达到 Godot-importable alpha。当前公开版本是 [`v0.1.0-alpha.9`](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/tag/v0.1.0-alpha.9)：一键本地双参考图输入、离线程序化 `topdown-farm` 完整资产、Pack Schema 0.6.0、隐私最小化 receipt，以及 Godot 4.3+ 派生和 Linux/Windows × Godot 4.3/4.7 exact-pack 验收。另外三个 profile 仍为计划。GitHub Pages Demo、公开 CI 与九个不可变 prerelease 可匿名访问；itch.io 页面延期，真实外部使用反馈仍未完成。第九个 release 不能写成成熟通用图像生成器、External Host 采用或外部采用。
 
-当前已发布证据：[仓库](https://github.com/babyrush0101-source/mapsoo-kids)、[Demo](https://babyrush0101-source.github.io/mapsoo-kids/)、[`v0.1.0-alpha.9` GitHub prerelease](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.9)、[Alpha.9 tag workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29727475555) 与[反馈入口](https://github.com/babyrush0101-source/mapsoo-kids/issues/12)。Alpha.9 tag commit 为 `7e0a254e59e5d49fda87fb52b91aecc46f32e3ae`；24 个附件摘要已固定，Pack 0.6 ZIP SHA-256 为 `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`。
+当前已发布证据：[仓库](https://github.com/babyrush0101-source/mapsoo-worldforge)、[Demo](https://babyrush0101-source.github.io/mapsoo-worldforge/)、[`v0.1.0-alpha.9` GitHub prerelease](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/tag/v0.1.0-alpha.9)、[Alpha.9 tag workflow](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/runs/29727475555) 与[反馈入口](https://github.com/babyrush0101-source/mapsoo-worldforge/issues/12)。Alpha.9 tag commit 为 `7e0a254e59e5d49fda87fb52b91aecc46f32e3ae`；24 个附件摘要已固定，Pack 0.6 ZIP SHA-256 为 `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`。
 
 独立使用与维护响应只记录在 [`14_COMMUNITY_EVIDENCE.md`](14_COMMUNITY_EVIDENCE.md)。当前台账明确为空，不把维护者测试、机器人下载、star/fork 或 External Host 计划计作采用。
 
-首次用户漏斗已准备为公开、版本绑定的工程入口：Pages 直接提供 Alpha.6 素材包与 importer addon 下载，[Alpha.6 首次 Godot 导入指南](16_ALPHA6_FIRST_GODOT_IMPORT.md) 固定文件名、SHA-256、安装/启用步骤、成功场景路径和安全重导入边界，[结构化反馈表单](https://github.com/babyrush0101-source/mapsoo-kids/issues/new?template=first-import-feedback.yml) 同时接受成功与失败。它只能证明项目已为外部验证做好准备；在独立用户提交结果前仍不能宣称 meaningful usage。
+首次用户漏斗已准备为公开、版本绑定的工程入口：Pages 直接提供 Alpha.6 素材包与 importer addon 下载，[Alpha.6 首次 Godot 导入指南](16_ALPHA6_FIRST_GODOT_IMPORT.md) 固定文件名、SHA-256、安装/启用步骤、成功场景路径和安全重导入边界，[结构化反馈表单](https://github.com/babyrush0101-source/mapsoo-worldforge/issues/new?template=first-import-feedback.yml) 同时接受成功与失败。它只能证明项目已为外部验证做好准备；在独立用户提交结果前仍不能宣称 meaningful usage。
 
-`v0.1.0-alpha.2` 已于 2026-07-19 从 `main` commit `072a7b8` 公开发布：包含 100 个测试、真实浏览器 12 文件 fixture、固定资产 ZIP SHA-256 `8c7720a8578cdc276ff69677ed0d64d8a1524d32fd00da0ffb8035b5a52bfcb6`、纯 JavaScript PNG 编码、receipt 0.2、31 个 receipt 篡改拒绝案例、24 个 itch 套件篡改拒绝案例、11 个可重复 GitHub Release 附件，以及全新的 1260×1000 封面和五张 1600×900 说明图。tag workflow 的 [构建与附件复核](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29674040991/job/88157935603)、[Godot 4.3](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29674040991/job/88158028238) 与 [Godot 4.7](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29674040991/job/88158028241) 全绿；发布后又逐项核对 11 个远端 digest、大小和 `SHA256SUMS`。itch.io 页面继续延期，不影响 GitHub 发布事实；宣传图的“CI-gated”仍以这些真实 job URL 为执行证据。
+`v0.1.0-alpha.2` 已于 2026-07-19 从 `main` commit `072a7b8` 公开发布：包含 100 个测试、真实浏览器 12 文件 fixture、固定资产 ZIP SHA-256 `8c7720a8578cdc276ff69677ed0d64d8a1524d32fd00da0ffb8035b5a52bfcb6`、纯 JavaScript PNG 编码、receipt 0.2、31 个 receipt 篡改拒绝案例、24 个 itch 套件篡改拒绝案例、11 个可重复 GitHub Release 附件，以及全新的 1260×1000 封面和五张 1600×900 说明图。tag workflow 的 [构建与附件复核](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/runs/29674040991/job/88157935603)、[Godot 4.3](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/runs/29674040991/job/88158028238) 与 [Godot 4.7](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/runs/29674040991/job/88158028241) 全绿；发布后又逐项核对 11 个远端 digest、大小和 `SHA256SUMS`。itch.io 页面继续延期，不影响 GitHub 发布事实；宣传图的“CI-gated”仍以这些真实 job URL 为执行证据。
 
 `v0.1.0-alpha.3` 已于 2026-07-19 从 `main` commit `65db8e3` 公开发布：真实浏览器 12 文件 fixture 固定为 SHA-256 `af95a4e57187fb85d06e34ccb0e1a1b1dba9b91e8989debf4c30a93108589696`，Godot importer 增加所有权状态、no-op、干净更新、冲突拒绝与进程内事务回滚。发布前 115 个测试、57 个跨版本 receipt 负向案例、24 个 itch 套件篡改案例和 11 个可重复附件均通过；tag workflow 在 Linux/Windows Godot 4.3/4.7 上对同一公开包完成 exact-pack 导入，发布后 11 个远端 digest 全部登记。itch.io 仍延期。
 
@@ -93,7 +93,7 @@ itch.io 是未来可选的额外分发面，当前已延期。当前查阅的官
 截至 2026-07-19，官方表单需要：ChatGPT 账号邮箱、公开 GitHub username、公开 repository URL、Primary/Core maintainer 角色，以及不超过 500 字符的资格说明；API credits 意向需要 OpenAI Organization ID 和不超过 500 字符的用途说明，另有不超过 500 字符的补充信息。申请按 rolling basis 处理，字段和条款在真正提交当天仍需重新核对。
 
 - GitHub username：`babyrush0101-source`
-- Repository URL：`https://github.com/babyrush0101-source/mapsoo-kids`
+- Repository URL：`https://github.com/babyrush0101-source/mapsoo-worldforge`
 - Role：`Primary maintainer`
 - ChatGPT email：由维护者在提交时填写，不写入仓库
 - OpenAI Organization ID：仅在确实申请 API credits 且维护者确认 ID 后填写
