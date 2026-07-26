@@ -38,7 +38,7 @@
     "security:history": "node scripts/scan-git-history-secrets.mjs",
     "third-party:write": "node scripts/verify-third-party-notices.mjs --write",
     "third-party:verify": "node scripts/verify-third-party-notices.mjs",
-    "check": "pnpm release:version:verify && pnpm workflow:verify && pnpm pack10:fixture:verify && pnpm typecheck && pnpm test && pnpm release:history:verify && pnpm release:receipt:negative && pnpm release:visuals:verify && pnpm third-party:verify && pnpm build",
+    "check": "pnpm release:version:verify && pnpm workflow:verify && pnpm security:history && pnpm pack10:fixture:verify && pnpm typecheck && pnpm test && pnpm release:history:verify && pnpm release:receipt:negative && pnpm release:visuals:verify && pnpm third-party:verify && pnpm build",
     "check:production-art": "pnpm check && pnpm production-art:verify",
     "release:version:verify": "node scripts/verify-release-version.mjs",
     "release:build": "node scripts/verify-release-version.mjs build && pnpm typecheck && pnpm third-party:verify && vite build --base / && node scripts/build-release.mjs",

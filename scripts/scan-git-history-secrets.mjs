@@ -15,6 +15,12 @@ const RULES = Object.freeze([
   ['password-assignment', /\b(?:admin[_-]?password|password|passwd)\s*[:=]\s*["']([^"'\r\n]{8,})["']/gi],
   ['secret-assignment', /\b(?:api[_-]?secret|client[_-]?secret|service[_-]?key)\s*[:=]\s*["']([^"'\r\n]{12,})["']/gi],
 ]);
+const REVIEWED_FINDINGS = new Map([
+  [
+    'password-assignment\u0000src/components/auth/AuthCard.tsx\u00001234f683712dc0ed7f6c7bde871065c09996117a',
+    'Multilingual UI labels named "password"; the three matched values are translations, not credentials.',
+  ],
+]);
 
 function git(args, input) {
   const result = spawnSync('git', args, {
@@ -43,6 +49,7 @@ const checks = git(['cat-file', '--batch-check=%(objectname) %(objecttype) %(obj
   .split(/\r?\n/)
   .filter(Boolean);
 const findings = [];
+const reviewedFindings = [];
 let scannedBlobs = 0;
 
 for (const check of checks) {
@@ -70,7 +77,13 @@ for (const check of checks) {
     while ((match = expression.exec(text)) !== null) {
       const candidate = match[1] ?? match[0];
       if (!PLACEHOLDER.test(candidate)) {
-        findings.push({ rule, path: path || '(unknown path)', object: objectId.slice(0, 12) });
+        const finding = { rule, path: path || '(unknown path)', object: objectId };
+        const reviewedReason = REVIEWED_FINDINGS.get(`${rule}\0${finding.path}\0${objectId}`);
+        if (reviewedReason) {
+          reviewedFindings.push({ ...finding, reason: reviewedReason });
+        } else {
+          findings.push(finding);
+        }
       }
       if (match[0].length === 0) expression.lastIndex += 1;
     }
@@ -84,10 +97,29 @@ const unique = [...new Map(
   || left.path.localeCompare(right.path)
   || left.object.localeCompare(right.object)
 ));
+const reviewedUnique = [...new Map(
+  reviewedFindings.map((finding) => [`${finding.rule}\0${finding.path}\0${finding.object}`, finding]),
+).values()].sort((left, right) => (
+  left.rule.localeCompare(right.rule)
+  || left.path.localeCompare(right.path)
+  || left.object.localeCompare(right.object)
+));
 
-console.log(`MAPSOO_HISTORY_SECRET_SCAN blobs=${scannedBlobs} findings=${unique.length}`);
+console.log(
+  `MAPSOO_HISTORY_SECRET_SCAN blobs=${scannedBlobs}`
+    + ` findings=${unique.length} reviewed=${reviewedUnique.length}`,
+);
+for (const finding of reviewedUnique) {
+  console.log(
+    `reviewed rule=${finding.rule} path=${JSON.stringify(finding.path)}`
+      + ` object=${finding.object.slice(0, 12)} reason=${JSON.stringify(finding.reason)}`,
+  );
+}
 for (const finding of unique) {
-  console.log(`finding rule=${finding.rule} path=${JSON.stringify(finding.path)} object=${finding.object}`);
+  console.log(
+    `finding rule=${finding.rule} path=${JSON.stringify(finding.path)}`
+      + ` object=${finding.object.slice(0, 12)}`,
+  );
 }
 if (unique.length > 0) {
   console.error('Historical candidates require maintainer rotation/remediation confirmation; secret values were intentionally not printed.');

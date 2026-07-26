@@ -64,8 +64,8 @@ Supabase anon key 本来会暴露在客户端，但公开仓库不应把特定�
 - 不使用 `eval`、动态脚本或对象 merge 解释导入数据；失败和被新请求取代的异步读取不会覆盖当前世界；
 - 导出 README 对用户标题执行 Markdown/HTML 转义，原始 World Spec 本身不被静默修改。
 
-- [x] 2026-07-26 使用 `pnpm security:history` 扫描 122 个提交可达的 1,262 个文本 blob；扫描器不打印秘密值，发现 1 个旧认证组件中的历史 `password-assignment` 候选。当前 Worldsmith 工作树未重新引入该组件，但历史候选在完成轮换确认前仍保持阻断状态；
-- [ ] 确认所有已公开凭证是否需要轮换；
+- [x] 2026-07-26 使用 `pnpm security:history` 扫描所有可达 Git 文本 blob；扫描器不打印候选值。旧认证组件的唯一 `password-assignment` 命中已脱敏复核为英、法、德三种界面中的“密码”字段翻译，而非凭证；扫描器只按完整 blob SHA、路径和规则精确登记这一条历史误报，其他命中仍会阻断；
+- [x] 当前可达历史未发现需要轮换的已提交凭证；这不替代对仓库外服务凭证和 GitHub secret 的独立盘点；
 - [x] 当前 Worldsmith 不包含客户端管理员功能，也不控制远端真实数据；
 - [ ] 检查 Supabase RLS 和 OAuth redirect；
 - [x] `.env*` 默认忽略，仅提交不含秘密的 `.env.example`；
