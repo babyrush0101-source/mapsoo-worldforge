@@ -26,6 +26,9 @@ import {
   type ProductionArtTask,
 } from '../src/core/production-art-contract';
 import {
+  serializeCharacterProfileRevisionCanonical,
+} from '../src/core/character-profile-revision';
+import {
   runProductionArtProvider,
   type RemoteProcessingAuthorization,
 } from '../src/core/production-art-provider';
@@ -412,9 +415,10 @@ async function main(): Promise<void> {
         characterProfileProjection.png.readBytes(),
         { flag: 'wx' },
       ),
-      writeJson(
+      writeFile(
         resolve(directory, 'character-profile-revision.json'),
-        characterProfileProjection.revision,
+        serializeCharacterProfileRevisionCanonical(characterProfileProjection.revision),
+        { flag: 'wx' },
       ),
       writeJson(
         resolve(directory, 'character-profile-projection.json'),

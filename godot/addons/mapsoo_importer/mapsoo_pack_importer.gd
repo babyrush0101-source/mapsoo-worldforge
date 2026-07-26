@@ -482,6 +482,7 @@ static func _validate_staged_resources(
 		if visual == null or visual.sprite_frames == null:
 			alpha9_valid = false
 		else:
+			alpha9_valid = alpha9_valid and str(visual.get_meta("mapsoo_runtime_slot_id", "")) == "player"
 			for clip_id: String in ALPHA9_CLIPS:
 				var animation_name := clip_id.replace(".", "_")
 				if not visual.sprite_frames.has_animation(animation_name) or visual.sprite_frames.get_frame_count(animation_name) < 1: alpha9_valid = false
@@ -2176,7 +2177,7 @@ static func _build_complete_farm_scene(prepared: Dictionary, tile_set: TileSet) 
 		var clip: Dictionary = clip_value; var animation_name := str(clip.id).replace(".", "_"); frames.add_animation(animation_name); frames.set_animation_speed(animation_name, float(clip.fps)); frames.set_animation_loop(animation_name, true)
 		for frame_value: Variant in clip.frames:
 			var frame: Dictionary = frame_value; var texture := AtlasTexture.new(); texture.atlas = atlas; texture.region = Rect2(int(frame.x), int(frame.y), 32, 32); texture.filter_clip = true; frames.add_frame(animation_name, texture)
-	var visual := AnimatedSprite2D.new(); visual.name = "Visual"; visual.sprite_frames = frames; visual.animation = "idle_south"; visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; visual.offset = Vector2(16 - float(prepared.character.pivot[0]), 16 - float(prepared.character.pivot[1]))
+	var visual := AnimatedSprite2D.new(); visual.name = "Visual"; visual.sprite_frames = frames; visual.animation = "idle_south"; visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; visual.offset = Vector2(16 - float(prepared.character.pivot[0]), 16 - float(prepared.character.pivot[1])); visual.set_meta("mapsoo_runtime_slot_id", "player")
 	player.add_child(visual); visual.owner = root
 	var player_collision := CollisionShape2D.new(); player_collision.name = "CollisionShape2D"; var capsule := CapsuleShape2D.new(); capsule.radius = 8; capsule.height = 20; player_collision.shape = capsule; player_collision.position = Vector2(0, 6); player.add_child(player_collision); player_collision.owner = root
 	var camera := Camera2D.new(); camera.name = "Camera2D"; camera.position_smoothing_enabled = false; player.add_child(camera); camera.owner = root

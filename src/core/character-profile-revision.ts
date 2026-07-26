@@ -481,8 +481,14 @@ async function fingerprintCanonical(value: unknown): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+export function serializeCharacterProfileRevisionCanonical(value: unknown): Uint8Array<ArrayBuffer> {
+  return new TextEncoder().encode(canonicalJson(materializeCharacterProfileRevision(value)));
+}
+
 export async function fingerprintCharacterProfileRevision(value: unknown): Promise<string> {
-  return fingerprintCanonical(materializeCharacterProfileRevision(value));
+  const bytes = serializeCharacterProfileRevisionCanonical(value);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 export async function fingerprintCharacterProfileBindPayload(value: unknown): Promise<string> {

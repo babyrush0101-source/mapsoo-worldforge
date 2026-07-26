@@ -159,7 +159,8 @@ the deterministic portable character projector. A passing candidate adds:
 - `character-profile-atlas.png`: the exact normalized PNG bytes, without
   resampling;
 - `character-profile-revision.json`: a schema-valid
-  `CharacterProfileRevision` with the full canonical clip inventory;
+  `CharacterProfileRevision` with the full canonical clip inventory, written
+  as canonical UTF-8 bytes whose raw SHA-256 is the revision digest;
 - `character-profile-projection.json`: task, source, atlas, identity-binding
   and integrity evidence validated by
   `mapsoo-production-character-profile-projection-1.0.schema.json`.
@@ -187,6 +188,14 @@ A rejected projection does not discard a paid response. Source, normalized
 candidate and scrubbed evidence are retained, a bounded
 `character-profile-projection-rejection.json` is written, and the command exits
 non-zero.
+
+The passing revision and atlas can be bound to the neutral player visual of an
+already loaded world without rebuilding the world pack. The Godot adapter
+validates the exact revision bytes, atlas bytes, profile, geometry, clips and
+one unambiguous player slot before replacing `SpriteFrames`. The four-profile
+Godot 4.3/4.7 technical contract is documented in
+[`50_CHARACTER_PROFILE_RUNTIME_BINDING.md`](50_CHARACTER_PROFILE_RUNTIME_BINDING.md).
+It does not turn an internal-review candidate into public art.
 
 ## Additional layered-depth Pack 1.0 projection
 

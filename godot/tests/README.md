@@ -55,6 +55,17 @@ These run on Linux and Windows with Godot 4.3 and 4.7. They complement structura
 
 `runtime_shell_smoke.gd` then proves that the reusable main scene rejects unsafe paths, loads a generated farm world, replaces it with a generated side world, and exposes the active scene/profile identity.
 
+`character_profile_runtime_smoke.gd` binds canonical synthetic
+`CharacterProfileRevision` bytes and exact PNG atlas bytes to the neutral
+player visual in all four world profiles. It proves clip inventory, frame
+regions, pivot offset, nearest filtering, display scale, metadata and
+idempotent replay, then rejects digest changes, profile/clip mismatch, missing
+clips, unsafe paths, corrupted atlas bytes, missing slots and ambiguous slots.
+CI runs the contract with Godot 4.3 and 4.7 on Linux and Windows. Use
+`pnpm character:runtime:godot` for the local Windows compatibility matrix.
+The result is a technical runtime gate, not human-art approval or physical
+Raspberry Pi evidence.
+
 `texture_persistence_probe.gd` proves on Godot 4.3 and 4.7 that `keep_compressed_buffer` must be set before `PortableCompressedTexture2D.create_from_image()`. `capture_alpha10_runtime_visual.gd` renders the reloaded Pack 0.7 scene and rejects blank or collapsed frames using conservative color, dominant-color, luminance, edge-density, regional-color, and alpha thresholds.
 
 Run when `godot4` or `godot` is on `PATH` (or `GODOT_BIN` points to the console executable):

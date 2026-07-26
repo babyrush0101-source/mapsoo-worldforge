@@ -619,6 +619,8 @@ static func _add_characters(root: Node2D, actors: Node2D, prepared: Dictionary) 
 		visual.animation = "idle_south"
 		visual.offset = Vector2(0, -26)
 		visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		if character.id == "player":
+			visual.set_meta("mapsoo_runtime_slot_id", "player")
 		body.add_child(visual)
 		visual.owner = root
 		var collision := CollisionShape2D.new()
@@ -676,6 +678,8 @@ static func validate_staged_scene(world: Node, expected_placements: int) -> Dict
 		for actor: Node in actor_root.get_children():
 			var visual := actor.get_node_or_null("Visual") as AnimatedSprite2D
 			valid = valid and visual != null and visual.sprite_frames != null
+			if actor.name == "Player" and visual != null:
+				valid = valid and str(visual.get_meta("mapsoo_runtime_slot_id", "")) == "player"
 			var actions := PLAYER_ACTIONS if actor.name == "Player" else ENEMY_ACTIONS
 			if visual != null and visual.sprite_frames != null:
 				for action: String in actions:

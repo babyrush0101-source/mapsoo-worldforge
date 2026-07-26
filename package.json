@@ -110,6 +110,7 @@
     "pack10:production-review:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-pack10-production-candidate-godot.ps1",
     "character:fixture:build": "vite-node scripts/build-character-reference-conformance-fixture.ts --write",
     "character:fixture:verify": "vite-node scripts/build-character-reference-conformance-fixture.ts",
+    "character:runtime:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-character-profile-runtime-godot.ps1",
     "production-art:model": "vite-node scripts/run-openai-production-art-source.ts",
     "pi4:runtime:build": "node scripts/build-pi4-runtime.mjs",
     "pi4:runtime:verify": "node scripts/verify-pi4-runtime.mjs",

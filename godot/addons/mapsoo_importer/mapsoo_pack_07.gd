@@ -399,7 +399,7 @@ static func _add_player(root: Node2D, prepared: Dictionary) -> void:
 		var animation_name := str(clip.id).replace(".", "_"); frames.add_animation(animation_name); frames.set_animation_speed(animation_name, float(clip.fps)); frames.set_animation_loop(animation_name, true)
 		for frame: Dictionary in clip.frames:
 			var atlas := AtlasTexture.new(); atlas.atlas = texture; atlas.region = Rect2(frame.x, frame.y, 32, 64); atlas.filter_clip = true; frames.add_frame(animation_name, atlas)
-	var visual := AnimatedSprite2D.new(); visual.name = "Visual"; visual.sprite_frames = frames; visual.animation = "idle_right"; visual.offset = Vector2(0, -28); visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; player.add_child(visual); visual.owner = root
+	var visual := AnimatedSprite2D.new(); visual.name = "Visual"; visual.sprite_frames = frames; visual.animation = "idle_right"; visual.offset = Vector2(0, -28); visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; visual.set_meta("mapsoo_runtime_slot_id", "player"); player.add_child(visual); visual.owner = root
 	var collision := CollisionShape2D.new(); collision.name = "CollisionShape2D"; collision.position = Vector2(0, -20); var capsule := CapsuleShape2D.new(); capsule.radius = 8; capsule.height = 40; collision.shape = capsule; player.add_child(collision); collision.owner = root
 	var camera := Camera2D.new(); camera.name = "Camera2D"; camera.position_smoothing_enabled = false; player.add_child(camera); camera.owner = root
 
@@ -422,7 +422,7 @@ static func validate_staged_scene(world: Node, expected_placements: int) -> Dict
 	var terrain_visuals := world.get_node_or_null("World/TerrainVisuals") as Node2D
 	valid = valid and terrain_visuals != null and terrain_visuals.get_child_count() == collision.get_child_count()
 	var spawn := world.get_node_or_null("PlayerSpawn") as Marker2D; var player := world.get_node_or_null("Player") as CharacterBody2D; var visual := world.get_node_or_null("Player/Visual") as AnimatedSprite2D; var shape := world.get_node_or_null("Player/CollisionShape2D") as CollisionShape2D; var camera := world.get_node_or_null("Player/Camera2D") as Camera2D
-	valid = valid and spawn != null and player != null and player.position == spawn.position and player.get_script() == PlayerController and player.get("mapsoo_profile") == "side-platformer" and visual != null and visual.sprite_frames != null and shape != null and shape.shape is CapsuleShape2D and camera != null
+	valid = valid and spawn != null and player != null and player.position == spawn.position and player.get_script() == PlayerController and player.get("mapsoo_profile") == "side-platformer" and visual != null and visual.sprite_frames != null and str(visual.get_meta("mapsoo_runtime_slot_id", "")) == "player" and shape != null and shape.shape is CapsuleShape2D and camera != null
 	valid = valid and _sprite_textures_have_persisted_pixels(world)
 	if visual != null and visual.sprite_frames != null:
 		for clip: String in CLIPS:

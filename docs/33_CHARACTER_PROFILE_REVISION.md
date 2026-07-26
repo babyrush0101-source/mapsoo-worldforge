@@ -8,7 +8,9 @@ The executable public slice lives in:
 
 - `src/core/character-profile-revision.ts`;
 - `schemas/mapsoo-character-profile-revision-1.0.schema.json`;
-- `src/core/character-profile-revision.test.ts`.
+- `src/core/character-profile-revision.test.ts`;
+- `godot/addons/mapsoo_importer/runtime/mapsoo_character_profile_runtime.gd`;
+- `godot/tests/character_profile_runtime_smoke.gd`.
 
 It contains no product user record, NPC memory, private daemon field, source image bytes, absolute source path, hostname, device identifier, or private service address.
 
@@ -117,6 +119,12 @@ review deliberately changes its distribution and license.
 
 The message itself carries an idempotency key and canonical payload SHA-256. Reusing the same key and payload is safe for a consumer; a mutated payload, substituted revision, mismatched world profile, unknown slot, non-character slot, or slot that does not accept `character-atlas` fails before projection.
 
+`serializeCharacterProfileRevisionCanonical()` writes the revision as canonical
+UTF-8 JSON bytes. The SHA-256 carried by the bind payload identifies those
+exact bytes, not merely an equivalent parsed object. The Godot binder hashes
+the received bytes before parsing and fails before scene mutation on any
+reformatting, truncation or substitution.
+
 After validation, `projectCharacterProfileBindToPortableRuntime` produces the existing neutral `PortableRuntimeBindPayload`:
 
 ```ts
@@ -131,6 +139,13 @@ After validation, `projectCharacterProfileBindToPortableRuntime` produces the ex
   }]
 }
 ```
+
+The Godot runtime adapter locates one neutral
+`mapsoo_runtime_slot_id = "player"` visual, validates the revision and PNG,
+then replaces only its `SpriteFrames`. Existing map, collision, navigation,
+controller and event nodes remain unchanged. See
+[`50_CHARACTER_PROFILE_RUNTIME_BINDING.md`](50_CHARACTER_PROFILE_RUNTIME_BINDING.md)
+for the executable four-profile path.
 
 The open-source repository defines and tests this portable projection. A consuming product remains responsible for idempotency storage, authorization, transport, deployment, runtime process state and private identity resolution.
 

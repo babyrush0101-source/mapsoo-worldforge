@@ -17,6 +17,7 @@ import {
   materializeCharacterProfileRevision,
   projectCharacterProfileBindToPortableRuntime,
   requiredCharacterProfileClips,
+  serializeCharacterProfileRevisionCanonical,
   type CharacterProfileRevision,
 } from './character-profile-revision';
 import {
@@ -221,6 +222,20 @@ describe('CharacterProfileRevision 1.0', () => {
     expect(json).not.toMatch(/[A-Za-z]:[\\/]/);
     expect(json).not.toContain('source_path');
     expect(json).not.toContain('reference_path');
+  });
+
+  it('serializes canonical bytes whose raw digest is the revision fingerprint', async () => {
+    const value = revision();
+    const bytes = serializeCharacterProfileRevisionCanonical(value);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const hex = [...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
+    const text = new TextDecoder().decode(bytes);
+    expect(JSON.parse(text)).toEqual(materializeCharacterProfileRevision(value));
+    expect(text.startsWith('{"atlas":')).toBe(true);
+    expect(text).not.toContain('\n');
+    expect(hex).toBe(await fingerprintCharacterProfileRevision(value));
   });
 });
 
