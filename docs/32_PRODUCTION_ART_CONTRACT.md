@@ -145,3 +145,24 @@ runtime cell center. Terrain cells may touch their source boundary because they
 require a separate tile-seam review. Both `seam_review` and `human_review`
 remain `required`; technical projection does not prove tileability, role
 meaning, composition or aesthetic quality.
+
+## Complete Pack 1.0 internal-review assembly
+
+`src/adapters/build-pack10-production-review-candidate.ts` is the final
+source-free merge boundary for this first profile. It starts from one complete,
+validated data-only Pack 1.0 base world and replaces:
+
+- all eight background, overlay and lighting planes;
+- all five gameplay environment atlases and 22 role regions;
+- both character atlases and their complete clip records.
+
+The builder rechecks decoded PNG dimensions, alpha, transparent RGB, metadata
+chunks, pivot padding, role regions, duplicate environment cells, character
+frames, every file digest, projection schema and all 14 generation-evidence
+bindings. Original model responses, normalized working sheets, evidence JSON,
+raw prompts, reference images and local paths stay outside the ZIP.
+
+The result is always `internal-review`, `LicenseRef-UNRELEASED`,
+non-redistributable and non-commercial. Human-art, rights, Godot runtime and
+Raspberry Pi gates are reset to `pending`; assembling a complete visible asset
+inventory does not approve or publish it.

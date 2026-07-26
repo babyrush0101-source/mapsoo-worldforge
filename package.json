@@ -105,6 +105,7 @@
     "pack10:fixture:build": "node scripts/build-pack10-public-fixture.mjs",
     "pack10:fixture:verify": "node scripts/verify-pack10-public-fixture.mjs",
     "pack10:character-review:build": "vite-node scripts/build-pack10-character-review-candidate.ts",
+    "pack10:production-review:build": "vite-node scripts/build-pack10-production-review-candidate.ts",
     "character:fixture:build": "vite-node scripts/build-character-reference-conformance-fixture.ts --write",
     "character:fixture:verify": "vite-node scripts/build-character-reference-conformance-fixture.ts",
     "production-art:model": "vite-node scripts/run-openai-production-art-source.ts",

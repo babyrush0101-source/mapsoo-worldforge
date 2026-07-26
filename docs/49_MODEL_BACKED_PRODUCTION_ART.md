@@ -253,6 +253,66 @@ marks `seam_review: required` and `human_review: required`. The complete
 environment still needs the multi-run disk assembler and real Godot review
 before it can replace the synthetic base environment.
 
+## Assemble the complete visible Pack 1.0 candidate
+
+Once every canonical task has one frozen passing local run, create a local
+run-set JSON. It is an operator input and is never embedded in the output:
+
+```json
+{
+  "schema_version": "1.0.0",
+  "document_type": "production-art-run-set",
+  "profile": "layered-depth-2d",
+  "runs": {
+    "scene-direction": "./runs/scene-direction",
+    "terrain-sheet": "./runs/terrain-sheet",
+    "prop-sheet": "./runs/prop-sheet",
+    "effect-sheet": "./runs/effect-sheet",
+    "character-character-player-atlas": "./runs/player",
+    "character-character-npc-atlas": "./runs/npc",
+    "background-background-sky": "./runs/background-sky",
+    "background-background-far": "./runs/background-far",
+    "background-background-mid": "./runs/background-mid",
+    "background-background-depth-fog": "./runs/background-depth-fog",
+    "background-near-overlay": "./runs/near-overlay",
+    "background-lighting-ambient": "./runs/lighting-ambient",
+    "background-lighting-local": "./runs/lighting-local",
+    "background-foreground-overlay": "./runs/foreground-overlay"
+  }
+}
+```
+
+Each directory must contain the immutable `source.png`, `normalized.png`,
+`output.json` and `evidence.json` written by the model adapter. Paths are
+resolved relative to the run-set file. Build the complete internal-review ZIP:
+
+```bash
+pnpm pack10:fixture:build
+
+pnpm pack10:production-review:build -- \
+  --base-pack tests/fixtures/pack10-public/mapsoo-pack10-public-fixture.zip \
+  --runs-manifest review-input/layered-depth-run-set.json \
+  --out review-output/neutral-production-review.zip \
+  --pack-id neutral-production-review-world \
+  --title "Neutral Production Review World" \
+  --version 1.0.0-review.2 \
+  --created-at 2026-07-27T20:00:00.000Z
+```
+
+The command makes no network request. It reruns the layer, environment-atlas
+and character projectors, then independently reopens and verifies every
+runtime PNG and record before assembling the ZIP. The resulting archive
+contains all eight planes, five gameplay atlases, two character atlases, the
+data-only base scene/collision/navigation files and four source-free projection
+records. It excludes model source images, normalized working sheets,
+generation-evidence JSON, raw prompts, original references and local paths.
+
+The result remains a technical review candidate: distribution is
+`internal-review`, the license is `LicenseRef-UNRELEASED`, and human-art,
+rights, runtime and Raspberry Pi gates are all `pending`. The base preview and
+data-only world layout are not treated as proof that a real Godot render or
+physical Pi run has passed.
+
 ## Alpha policy
 
 GPT Image 2 currently does not support transparent output. For every task that
