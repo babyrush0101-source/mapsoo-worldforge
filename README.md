@@ -11,7 +11,7 @@ Mapsoo Worldsmith is evolving from the original `mapsoo-kids` website into a loc
 
 The **v0.1.0-alpha.9 prerelease** publishes the first complete reference-to-world vertical slice. Its one-click local workflow accepts one environment image, one character image, and a short description, then uses the offline procedural provider to build a complete `topdown-farm` Pack Schema 0.6.0 ZIP. That pack includes terrain, water, paths/fences, crops, structures, props, layered scene/collision/navigation data, a four-direction `idle`/`walk` character, and a preview. The separately installed importer supports Godot 4.3+, and the exact published pack passed Linux/Windows with Godot 4.3/4.7. The release has 24 immutable attachments; its Pack 0.6 ZIP SHA-256 is `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`. `side-platformer`, `isometric-action`, and `layered-depth-2d` remain planned and are not supported by Alpha.9.
 
-Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The current provider is procedural and truthfully records `contains_generative_ai: false`; that statement does not apply to future model providers. No external adoption, STOYO production use, Godot Asset Library listing, or itch.io publication is claimed.
+Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The current provider is procedural and truthfully records `contains_generative_ai: false`; that statement does not apply to future model providers. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.
 
 ## Project status
 
@@ -20,18 +20,18 @@ The **v0.1.0-alpha.9 prerelease** is the current immutable public release. Alpha
 1. Edit a compact World Spec for meadow, desert, or snowfield worlds.
 2. Generate the same 3 ground variants, 16 water masks, 16 road masks, 6 prop sprites, and map again from the same seed.
 3. Preview the layered pixel-art result in the browser and review validation issues.
-4. Download/load a World Spec JSON, or load the strict synthetic STOYO Asset Request example and project it locally.
+4. Download/load a World Spec JSON, or load the strict synthetic External Host Asset Request example and project it locally.
 5. Export an executable-free 18-file ZIP containing PNG atlases, Ground/Water/Roads/Props data, semantic-place and structure metadata, a map preview, five schemas, manifest, receipt 0.2, and asset license.
 
 Alpha.5 adds World Spec 0.2 semantic places, a canonical `runtime/places.json` sidecar, six reusable place markers, a browser overlay/list, and Godot `Marker2D` anchors. Its real-browser ZIP has 15 files, four schemas, and SHA-256 `8d86124a4a37fa4a78487c4e91cb7f5024561f140814a5fd139c5b93fde54f36`; the exact published pack imports as `created → unchanged` in the Linux/Windows Godot 4.3/4.7 release matrix. All 12 public attachment digests are pinned in the immutable release registry.
 
-Alpha.6 adds optional place-linked exterior structures, four deterministic archetypes, `runtime/structures.json`, a transparent structures atlas, browser structure controls, and managed Godot `Sprite2D` derivation. Its published 18-file real-browser fixture has SHA-256 `4563552187977b38cdba86c7d3cbf5429a67b7a0a6049e978c2ef2992ef3a054`. The separate importer ZIP has SHA-256 `bbfacd2b5c8503214b7647d59e9911a34fa1b4e073f86bd1310686812c9142c0`. itch.io upload remains postponed; no STOYO production adoption, independent user report, or external adoption is claimed.
+Alpha.6 adds optional place-linked exterior structures, four deterministic archetypes, `runtime/structures.json`, a transparent structures atlas, browser structure controls, and managed Godot `Sprite2D` derivation. Its published 18-file real-browser fixture has SHA-256 `4563552187977b38cdba86c7d3cbf5429a67b7a0a6049e978c2ef2992ef3a054`. The separate importer ZIP has SHA-256 `bbfacd2b5c8503214b7647d59e9911a34fa1b4e073f86bd1310686812c9142c0`. itch.io upload remains postponed; no External Host production adoption, independent user report, or external adoption is claimed.
 
 Alpha.7 publishes Sunny Meadow, Dustwind Outpost, and Frostwatch Vale as three independent Pack Schema 0.5 ZIPs. Their real-browser bytes are pinned in the public registry, and all three exact packs passed `created → unchanged → conflict preserved` on Linux/Windows with Godot 4.3/4.7. All 17 public attachment digests are now pinned in the immutable release ledger.
 
-The current public starter input is [`examples/sunny-meadow-v0.3.world.json`](examples/sunny-meadow-v0.3.world.json); earlier Alpha.4/Alpha.5 inputs remain available for historical verification. The privacy-minimized STOYO integration fixture is [`examples/integrations/stoyo/river-valley-asset-request.json`](examples/integrations/stoyo/river-valley-asset-request.json).
+The current public starter input is [`examples/sunny-meadow-v0.3.world.json`](examples/sunny-meadow-v0.3.world.json); earlier Alpha.4/Alpha.5 inputs remain available for historical verification. The privacy-minimized External Host integration fixture is [`examples/integrations/external-host/river-valley-asset-request.json`](examples/integrations/external-host/river-valley-asset-request.json).
 
-Local World Spec and STOYO Asset Request imports share the same 128 KiB cap, strict UTF-8 decoding, duplicate-key detection, bounded JSON depth/complexity, safe-number checks, forbidden prototype-key checks, and strict schema/runtime validation. A STOYO request is first projected to a World Spec with a canonical SHA-256 binding; initial generation, editor generation, and both import paths then run through the same validated provider runner. A newer user action aborts and supersedes older work, so a failed or stale request never replaces the last successful world.
+Local World Spec and External Host Asset Request imports share the same 128 KiB cap, strict UTF-8 decoding, duplicate-key detection, bounded JSON depth/complexity, safe-number checks, forbidden prototype-key checks, and strict schema/runtime validation. An External Host request is first projected to a World Spec with a canonical SHA-256 binding; initial generation, editor generation, and both import paths then run through the same validated provider runner. A newer user action aborts and supersedes older work, so a failed or stale request never replaces the last successful world.
 
 ![Actual Sunny Meadow alpha.7 preview](examples/packs/sunny-meadow-v0.1.0-alpha.7/previews/map-preview.png)
 
@@ -41,20 +41,20 @@ The older published Alpha.1–Alpha.5 fixtures and hashes remain immutable. A pi
 
 The published [v0.1.0-alpha.7 release](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.7) is tagged at commit `c2e2ed5`. Its successful [release workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29688782893) rebuilt all three fixed packs, passed the exact 17-attachment audit, and imported every pack in the Linux/Windows × Godot 4.3/4.7 release matrix.
 
-## Reproducible STOYO export CLI
+## Reproducible External Host export CLI
 
-The published Alpha.8 release adds a no-UI bridge for a public-safe `StoyoAssetRequest`. It validates and hashes the request, migrates its projection to World Spec 0.3 without inventing places or structures, reuses the audited local procedural exporter, and writes an Alpha.7-compatible Godot pack plus a separate request-to-pack receipt:
+The published Alpha.8 release adds a no-UI bridge for a public-safe `ExternalHostAssetRequest`. It validates and hashes the request, migrates its projection to World Spec 0.3 without inventing places or structures, reuses the audited local procedural exporter, and writes an Alpha.7-compatible Godot pack plus a separate request-to-pack receipt:
 
 ```bash
-pnpm stoyo:export -- \
-  --input examples/integrations/stoyo/river-valley-asset-request.json \
-  --out-dir ./stoyo-output \
+pnpm external-host:export -- \
+  --input examples/integrations/external-host/river-valley-asset-request.json \
+  --out-dir ./external-host-output \
   --completed-at 2026-07-19T12:00:00.000Z
 ```
 
-Node.js 20+, pnpm 11+, and Chrome/Chromium are required. The explicit timestamp is part of reproducibility. Existing output is accepted only when both files are byte-identical; otherwise the command fails closed and never overwrites it. This executable bridge is not a claim that STOYO has a production consumer yet; see the [Alpha.8 scope and verification contract](docs/18_ALPHA8_STOYO_EXPORT_CLI.md).
+Node.js 20+, pnpm 11+, and Chrome/Chromium are required. The explicit timestamp is part of reproducibility. Existing output is accepted only when both files are byte-identical; otherwise the command fails closed and never overwrites it. This executable bridge is not a claim that External Host has a production consumer yet; see the [Alpha.8 scope and verification contract](docs/18_ALPHA8_EXTERNAL_HOST_EXPORT_CLI.md).
 
-The [public Alpha.8 workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29691179168) rebuilt all 20 release attachments and imported the three compatibility packs plus the reproducible STOYO bridge pack on Linux/Windows with Godot 4.3/4.7. Every remote attachment digest is pinned in the immutable release registry.
+The [public Alpha.8 workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29691179168) rebuilt all 20 release attachments and imported the three compatibility packs plus the reproducible External Host bridge pack on Linux/Windows with Godot 4.3/4.7. Historical public attachment digests remain pinned, while the privacy-neutral current source tree has its own deterministic rebuild hashes.
 
 The ZIP uses engine-neutral PNG and JSON as its source of truth and intentionally contains no executable addon code. Install the MIT-licensed importer only from this official repository (or the Godot Asset Library once published), then select the extracted pack's `mapsoo.manifest.json`; schema 0.2 derives Ground, Water, and Roads `TileMapLayer` nodes, Props, two TerrainSets, and basic Water collision under `res://mapsoo_imports/`. Managed-resource ownership remains in `mapsoo.import-state.json`: identical clean input is `unchanged`, a clean source update is `updated`, and manual edits or legacy output without state fail closed as `conflict`. This is a terrain asset and import contract, not a complete game, navigation system, or production-readiness claim. SHA-256 records verify pack consistency, not publisher identity, so never enable scripts copied from a third-party asset pack.
 
@@ -71,7 +71,7 @@ The expected generated scene is `res://mapsoo_imports/sunny-meadow/sunny-meadow.
 
 ## Why this order
 
-Image generation alone does not make a usable game-asset pipeline. Mapsoo first makes the asset contract, validation, reproducibility, preview, and export reliable. The Workbench now routes its initial, edited, imported World Specs, and projected STOYO requests through the provider SDK, atomically stores a deeply frozen runner-owned world/evidence result, exposes the Provider snapshot that produced it, and keeps only the latest request eligible to update the preview. The legacy exporter rejects bare worlds and optional AI providers; full receipt/manifest projection enters a new versioned pack rather than rewriting the published alpha.
+Image generation alone does not make a usable game-asset pipeline. Mapsoo first makes the asset contract, validation, reproducibility, preview, and export reliable. The Workbench now routes its initial, edited, imported World Specs, and projected External Host requests through the provider SDK, atomically stores a deeply frozen runner-owned world/evidence result, exposes the Provider snapshot that produced it, and keeps only the latest request eligible to update the preview. The legacy exporter rejects bare worlds and optional AI providers; full receipt/manifest projection enters a new versioned pack rather than rewriting the published alpha.
 
 The registered alpha.2 release introduced runner-owned evidence and actual World Spec byte binding in receipt `0.2.0`; alpha.3 added safe Godot re-import; alpha.4 uses a separately version-bound `procedural-terrain-v2@0.2.0` policy and pack schema 0.2 without changing any older published fixture or hash. AI-provider publication remains fail-closed: the current export policy authorizes only the exact source-free CC0 built-in procedural terrain profile.
 
@@ -86,8 +86,8 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 - [Roadmap](docs/04_ROADMAP.md)
 - [Open-source and Codex OSS readiness](docs/05_OPEN_SOURCE_READINESS.md)
 - [Security and migration audit](docs/06_SECURITY_AND_MIGRATION.md)
-- [STOYO integration](docs/07_STOYO_INTEGRATION.md)
-- [Executable STOYO Asset Request contract](integrations/stoyo/README.md)
+- [External Host integration](docs/07_EXTERNAL_HOST_INTEGRATION.md)
+- [Executable External Host Asset Request contract](integrations/external-host/README.md)
 - [GitHub, itch.io, and Codex for OSS release kit](docs/08_RELEASE_ITCH_AND_OSS_KIT.md)
 - [Alpha9 community test campaign](docs/20_COMMUNITY_ALPHA9_OUTREACH.md)
 - [Alpha10 complete side-platformer contract](docs/21_ALPHA10_SIDE_PLATFORMER.md)
@@ -115,7 +115,7 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 - [v0.1.0-alpha.6 first-import guide](docs/16_ALPHA6_FIRST_GODOT_IMPORT.md)
 - [Alpha.7 multi-world gallery scope and acceptance](docs/17_ALPHA7_MULTI_WORLD_GALLERY.md)
 - [v0.1.0-alpha.7 release notes](docs/releases/v0.1.0-alpha.7.md)
-- [Alpha.8 reproducible STOYO export CLI scope and acceptance](docs/18_ALPHA8_STOYO_EXPORT_CLI.md)
+- [Alpha.8 reproducible External Host export CLI scope and acceptance](docs/18_ALPHA8_EXTERNAL_HOST_EXPORT_CLI.md)
 - [Community evidence ledger](docs/14_COMMUNITY_EVIDENCE.md)
 
 ## Community and contributing
@@ -142,7 +142,7 @@ pnpm release:history:remote
 pnpm release:browser:verify
 ```
 
-`pnpm check` is the deterministic offline project gate and includes the production-license notice verifier. The audit checks both the current app and historical alpha.1 video lockfiles against the package registry. The final commands confirm all nine immutable public GitHub releases, reproduce the registered browser exporters and verify the Alpha.8 STOYO bridge CLI and Alpha.9 Pack 0.6 release evidence.
+`pnpm check` is the deterministic offline project gate and includes the production-license notice verifier. The audit checks both the current app and historical alpha.1 video lockfiles against the package registry. The final commands confirm all nine immutable public GitHub releases, reproduce the registered browser exporters and verify the Alpha.8 External Host bridge CLI and Alpha.9 Pack 0.6 release evidence.
 
 After registering and selecting a future unpublished version, build, validate, and reproduce its complete candidate release bundle:
 

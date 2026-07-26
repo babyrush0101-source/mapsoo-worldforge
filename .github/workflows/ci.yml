@@ -100,7 +100,7 @@ jobs:
           MAPSOO_ALPHA10_FIXTURE_ROOT: release/godot-pack-set/alpha10
         run: pnpm exec vitest run --config godot/tests/vitest.alpha10-fixture.config.ts
 
-      - name: Bind the public example packs and STOYO bridge pack for Godot jobs
+      - name: Bind the public example packs and External Host bridge pack for Godot jobs
         id: candidate-pack
         shell: bash
         run: |
@@ -131,9 +131,9 @@ jobs:
           await writeFile(join(stage, 'pack-set.json'), `${JSON.stringify({ schemaVersion: 1, packs: descriptors }, null, 2)}\n`);
           appendFileSync(process.env.GITHUB_OUTPUT, `artifact=mapsoo-example-packs-${config.tag}\npath=${stage}\n`);
           NODE
-          pnpm stoyo:export -- \
-            --input examples/integrations/stoyo/river-valley-asset-request.json \
-            --out-dir release/godot-pack-set/stoyo \
+          pnpm external-host:export -- \
+            --input examples/integrations/external-host/river-valley-asset-request.json \
+            --out-dir release/godot-pack-set/external-host \
             --completed-at 2026-07-19T12:00:00.000Z
 
       - name: Upload the verified candidate pack set
@@ -327,11 +327,11 @@ jobs:
             -ExtractedRoot $env:MAPSOO_PACK_SET_EXTRACTED `
             -GodotConsole $env:GODOT_BIN
 
-      - name: Import the reproducible STOYO bridge pack
+      - name: Import the reproducible External Host bridge pack
         shell: pwsh
         run: |
-          & scripts/run-stoyo-pack-godot.ps1 `
-            -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'mapsoo-candidate-packs/stoyo') `
+          & scripts/run-external-host-pack-godot.ps1 `
+            -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'mapsoo-candidate-packs/external-host') `
             -GodotConsole $env:GODOT_BIN
 
   godot-windows-smoke:
@@ -503,9 +503,9 @@ jobs:
             -ExtractedRoot $env:MAPSOO_PACK_SET_EXTRACTED `
             -GodotConsole $env:GODOT_BIN
 
-      - name: Import the reproducible STOYO bridge pack
+      - name: Import the reproducible External Host bridge pack
         shell: pwsh
         run: |
-          & scripts/run-stoyo-pack-godot.ps1 `
-            -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'mapsoo-candidate-packs/stoyo') `
+          & scripts/run-external-host-pack-godot.ps1 `
+            -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'mapsoo-candidate-packs/external-host') `
             -GodotConsole $env:GODOT_BIN

@@ -87,7 +87,7 @@ jobs:
       - name: Build and verify reproducible release assets
         run: pnpm release:local
 
-      - name: Bind the exact compatibility and STOYO bridge packs for Godot jobs
+      - name: Bind the exact compatibility and External Host bridge packs for Godot jobs
         id: candidate-pack
         shell: bash
         run: |
@@ -119,9 +119,9 @@ jobs:
           await writeFile(join(stage, 'pack-set.json'), `${JSON.stringify({ schemaVersion: 1, packs: descriptors }, null, 2)}\n`);
           appendFileSync(process.env.GITHUB_OUTPUT, `artifact=mapsoo-example-packs-${config.tag}\npath=${stage}\n`);
           NODE
-          pnpm stoyo:export -- \
-            --input examples/integrations/stoyo/river-valley-asset-request.json \
-            --out-dir release/godot-pack-set/stoyo \
+          pnpm external-host:export -- \
+            --input examples/integrations/external-host/river-valley-asset-request.json \
+            --out-dir release/godot-pack-set/external-host \
             --completed-at 2026-07-19T12:00:00.000Z
           alpha9_zip="$(node --input-type=module --eval "import { CURRENT_RELEASE_CONFIG as c } from './scripts/release-config.mjs'; process.stdout.write(c.release.files.completeFarmPack)")"
           alpha9_root="$(node --input-type=module --eval "import { CURRENT_RELEASE_CONFIG as c } from './scripts/release-config.mjs'; process.stdout.write(c.release.directoryArchives[0].archiveRoot)")"
@@ -254,11 +254,11 @@ jobs:
             -ExtractedRoot $env:MAPSOO_PACK_SET_EXTRACTED `
             -GodotConsole $env:GODOT_BIN
 
-      - name: Import the exact STOYO bridge pack
+      - name: Import the exact External Host bridge pack
         shell: pwsh
         run: |
-          & scripts/run-stoyo-pack-godot.ps1 `
-            -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'mapsoo-release-packs/stoyo') `
+          & scripts/run-external-host-pack-godot.ps1 `
+            -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'mapsoo-release-packs/external-host') `
             -GodotConsole $env:GODOT_BIN
 
       - name: Import the exact Alpha.9 complete farm pack
@@ -382,11 +382,11 @@ jobs:
             -ExtractedRoot $env:MAPSOO_PACK_SET_EXTRACTED `
             -GodotConsole $env:GODOT_BIN
 
-      - name: Import the exact STOYO bridge pack
+      - name: Import the exact External Host bridge pack
         shell: pwsh
         run: |
-          & scripts/run-stoyo-pack-godot.ps1 `
-            -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'mapsoo-release-packs/stoyo') `
+          & scripts/run-external-host-pack-godot.ps1 `
+            -ArtifactRoot (Join-Path $env:RUNNER_TEMP 'mapsoo-release-packs/external-host') `
             -GodotConsole $env:GODOT_BIN
 
       - name: Import the exact Alpha.9 complete farm pack

@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import exampleRequest from '../../../examples/integrations/stoyo/river-valley-asset-request.json';
-import requestSchema from '../../../integrations/stoyo/stoyo-asset-request.schema.json';
+import exampleRequest from '../../../examples/integrations/external-host/river-valley-asset-request.json';
+import requestSchema from '../../../integrations/external-host/external-host-asset-request.schema.json';
 import {
-  STOYO_ASSET_REQUEST_EXTENSION,
-  StoyoAssetRequestError,
-  canonicalizeStoyoAssetRequest,
-  projectStoyoAssetRequest,
+  EXTERNAL_HOST_ASSET_REQUEST_EXTENSION,
+  ExternalHostAssetRequestError,
+  canonicalizeExternalHostAssetRequest,
+  projectExternalHostAssetRequest,
 } from './asset-request';
 
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
-describe('STOYO Asset Request projection', () => {
+describe('External Host Asset Request projection', () => {
   it('keeps the published schema identity, closed objects, and target tuple aligned with runtime validation', () => {
     expect(requestSchema).toMatchObject({
       $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -39,9 +39,9 @@ describe('STOYO Asset Request projection', () => {
   });
 
   it('projects the synthetic allowlisted request into a strict Mapsoo World Spec', async () => {
-    const projection = await projectStoyoAssetRequest(exampleRequest);
+    const projection = await projectExternalHostAssetRequest(exampleRequest);
     expect(projection.assetRequestSha256).toBe(
-      'ea279ebbfd3c12693469472fbca6bbc1286e07515632bd5e34b7bf698602a144',
+      '3ecb182ee9cb2c8c61f2b9857ee6f3e42db01df5266a8a31595796799019aa51',
     );
     expect(projection.worldSpec).toMatchObject({
       schemaVersion: '0.2.0',
@@ -49,11 +49,11 @@ describe('STOYO Asset Request projection', () => {
       map: { width: 24, height: 16, biome: 'meadow' },
       output: { targets: ['common', 'godot', 'itch'], assetLicense: 'CC0-1.0' },
     });
-    expect(projection.worldSpec.extensions?.[STOYO_ASSET_REQUEST_EXTENSION]).toEqual({
-      schemaVersion: 'dev.stoyo.asset-request/1.0.0',
+    expect(projection.worldSpec.extensions?.[EXTERNAL_HOST_ASSET_REQUEST_EXTENSION]).toEqual({
+      schemaVersion: 'org.mapsoo.externalhost.asset-request/1.0.0',
       assetRequestSha256: projection.assetRequestSha256,
-      stoyoWorldId: 'river-valley',
-      stoyoWorldVersion: '1.0.0',
+      externalHostWorldId: 'river-valley',
+      externalHostWorldVersion: '1.0.0',
       sceneId: 'riverbank-observation',
       requiredSceneTags: ['riverbank', 'old-bridge', 'observation-point'],
       contentRating: 'ages-7-plus',
@@ -81,11 +81,11 @@ describe('STOYO Asset Request projection', () => {
       schemaVersion: exampleRequest.schemaVersion,
     };
     const [first, second] = await Promise.all([
-      projectStoyoAssetRequest(exampleRequest),
-      projectStoyoAssetRequest(reordered),
+      projectExternalHostAssetRequest(exampleRequest),
+      projectExternalHostAssetRequest(reordered),
     ]);
     expect(second.assetRequestSha256).toBe(first.assetRequestSha256);
-    expect(canonicalizeStoyoAssetRequest(reordered)).toBe(canonicalizeStoyoAssetRequest(exampleRequest));
+    expect(canonicalizeExternalHostAssetRequest(reordered)).toBe(canonicalizeExternalHostAssetRequest(exampleRequest));
   });
 
   it.each(['childId', 'parentEmail', 'learningProgress', 'privateServiceUrl', 'apiKey'])(
@@ -93,7 +93,7 @@ describe('STOYO Asset Request projection', () => {
     async (field) => {
       const request = clone(exampleRequest) as typeof exampleRequest & Record<string, unknown>;
       request[field] = 'must-not-cross-the-boundary';
-      await expect(projectStoyoAssetRequest(request)).rejects.toMatchObject({
+      await expect(projectExternalHostAssetRequest(request)).rejects.toMatchObject({
         code: 'request.invalid-shape',
       });
     },
@@ -103,7 +103,7 @@ describe('STOYO Asset Request projection', () => {
     const request = clone(exampleRequest);
     const privateWorld = request.world as typeof request.world & { childId: string };
     privateWorld.childId = 'private-child';
-    await expect(projectStoyoAssetRequest(request)).rejects.toMatchObject({
+    await expect(projectExternalHostAssetRequest(request)).rejects.toMatchObject({
       code: 'request.invalid-shape',
     });
   });
@@ -111,52 +111,52 @@ describe('STOYO Asset Request projection', () => {
   it('rejects duplicate or malformed semantic scene tags', async () => {
     const duplicate = clone(exampleRequest);
     duplicate.scene.requiredSceneTags = ['riverbank', 'riverbank'];
-    await expect(projectStoyoAssetRequest(duplicate)).rejects.toMatchObject({
+    await expect(projectExternalHostAssetRequest(duplicate)).rejects.toMatchObject({
       code: 'request.invalid-value',
     });
 
     const malformed = clone(exampleRequest);
     malformed.scene.requiredSceneTags = ['Child Name'];
-    await expect(projectStoyoAssetRequest(malformed)).rejects.toMatchObject({
+    await expect(projectExternalHostAssetRequest(malformed)).rejects.toMatchObject({
       code: 'request.invalid-value',
     });
   });
 
   it('rejects unsupported versions, styles, dimensions, and licenses', async () => {
     const wrongVersion = clone(exampleRequest);
-    wrongVersion.schemaVersion = 'dev.stoyo.asset-request/2.0.0';
-    await expect(projectStoyoAssetRequest(wrongVersion)).rejects.toBeInstanceOf(StoyoAssetRequestError);
+    wrongVersion.schemaVersion = 'org.mapsoo.externalhost.asset-request/2.0.0';
+    await expect(projectExternalHostAssetRequest(wrongVersion)).rejects.toBeInstanceOf(ExternalHostAssetRequestError);
 
     const wrongStyle = clone(exampleRequest);
     wrongStyle.visual.style = 'photorealistic';
-    await expect(projectStoyoAssetRequest(wrongStyle)).rejects.toBeInstanceOf(StoyoAssetRequestError);
+    await expect(projectExternalHostAssetRequest(wrongStyle)).rejects.toBeInstanceOf(ExternalHostAssetRequestError);
 
     const oversized = clone(exampleRequest);
     oversized.map.width = 49;
-    await expect(projectStoyoAssetRequest(oversized)).rejects.toBeInstanceOf(StoyoAssetRequestError);
+    await expect(projectExternalHostAssetRequest(oversized)).rejects.toBeInstanceOf(ExternalHostAssetRequestError);
 
     const wrongLicense = clone(exampleRequest);
     wrongLicense.output.assetLicense = 'Proprietary';
-    await expect(projectStoyoAssetRequest(wrongLicense)).rejects.toBeInstanceOf(StoyoAssetRequestError);
+    await expect(projectExternalHostAssetRequest(wrongLicense)).rejects.toBeInstanceOf(ExternalHostAssetRequestError);
   });
 
   it('rejects control characters in every public text field', async () => {
     const request = clone(exampleRequest);
     request.world.description = 'public description\u0000hidden suffix';
-    await expect(projectStoyoAssetRequest(request)).rejects.toMatchObject({
+    await expect(projectExternalHostAssetRequest(request)).rejects.toMatchObject({
       code: 'request.invalid-value',
     });
   });
 
   it('returns detached arrays so callers cannot mutate the request or projection across boundaries', async () => {
     const request = clone(exampleRequest);
-    const projection = await projectStoyoAssetRequest(request);
+    const projection = await projectExternalHostAssetRequest(request);
     request.visual.palette[0] = '#000000';
     request.scene.requiredSceneTags[0] = 'changed';
 
     expect(projection.worldSpec.visual.palette[0]).toBe('#2F5D3A');
     expect(
-      (projection.worldSpec.extensions?.[STOYO_ASSET_REQUEST_EXTENSION] as { requiredSceneTags: string[] })
+      (projection.worldSpec.extensions?.[EXTERNAL_HOST_ASSET_REQUEST_EXTENSION] as { requiredSceneTags: string[] })
         .requiredSceneTags[0],
     ).toBe('riverbank');
   });

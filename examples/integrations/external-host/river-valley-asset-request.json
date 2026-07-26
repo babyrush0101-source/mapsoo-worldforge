@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "dev.stoyo.asset-request/1.0.0",
+  "schemaVersion": "org.mapsoo.externalhost.asset-request/1.0.0",
   "packId": "river-valley-observation",
   "world": {
     "id": "river-valley",
@@ -12,7 +12,7 @@
     "requiredSceneTags": ["riverbank", "old-bridge", "observation-point"],
     "contentRating": "ages-7-plus"
   },
-  "seed": "stoyo-river-valley-public-001",
+  "seed": "external-host-river-valley-public-001",
   "visual": {
     "style": "pixel-art",
     "tileSize": 32,

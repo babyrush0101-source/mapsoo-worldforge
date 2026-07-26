@@ -17,22 +17,22 @@ All notable changes to Mapsoo Worldsmith will be documented here. The project fo
 
 - Alpha.9 output is limited to user-owned references that explicitly permit adaptation, redistribution, and CC0 dedication; licensed references are rejected instead of being silently relicensed. Generated PNG/runtime JSON assets are CC0-1.0, source and documentation remain MIT, and references keep their original rights.
 - Clarified that current local validation is structural and rights-based, not face/OCR/trademark detection or content-level sanitization.
-- Kept `side-platformer`, `isometric-action`, and `layered-depth-2d` planned. Alpha.9 is published, with no external adoption or STOYO production-use claim; itch.io remains postponed.
+- Kept `side-platformer`, `isometric-action`, and `layered-depth-2d` planned. Alpha.9 is published, with no external adoption or External Host production-use claim; itch.io remains postponed.
 
 ## [0.1.0-alpha.8] - 2026-07-19
 
 ### Added
 
-- A no-UI `StoyoAssetRequest 1.0` export CLI that produces a reproducible Alpha.7-compatible Godot pack and a strict external request-to-pack receipt.
+- A no-UI `ExternalHostAssetRequest 1.0` export CLI that produces a reproducible Alpha.7-compatible Godot pack and a strict external request-to-pack receipt.
 - Canonical request hashing, lossless World Spec 0.2 → 0.3 migration, full extension/receipt cross-checks, CRC and per-file digest verification, and JSON Schema positive/negative gates.
 - Conflict-safe exclusive output publication with byte-identical `unchanged`, partial-output rejection, concurrent-writer coverage, and no overwrite option.
-- Exact STOYO bridge-pack import gates on Linux/Windows with Godot 4.3/4.7.
+- Exact External Host bridge-pack import gates on Linux/Windows with Godot 4.3/4.7.
 
 ### Changed
 
 - Decoupled the Alpha.8 toolchain version from the immutable Alpha.7 Pack Schema 0.5 contract; Alpha.8 intentionally reuses and re-verifies the three published Alpha.7 compatibility packs.
-- Added a required example-world field to first-import feedback and refreshed STOYO, roadmap, and Codex for OSS evidence documentation.
-- Kept itch.io publication postponed and made no STOYO production-adoption or independent-user claim.
+- Added a required example-world field to first-import feedback and refreshed External Host, roadmap, and Codex for OSS evidence documentation.
+- Kept itch.io publication postponed and made no External Host production-adoption or independent-user claim.
 
 ## [0.1.0-alpha.7] - 2026-07-19
 
@@ -46,7 +46,7 @@ All notable changes to Mapsoo Worldsmith will be documented here. The project fo
 
 - Generalized candidate release construction and manifests from one example pack to three without changing Alpha.1–Alpha.6 history.
 - Advanced the Workbench exporter and Godot importer to Alpha.7 while keeping public download links pinned to Alpha.6 until publication completes.
-- Kept itch.io publication postponed and made no external-adoption or STOYO-production claim.
+- Kept itch.io publication postponed and made no external-adoption or External Host-production claim.
 
 ## [0.1.0-alpha.6] - 2026-07-19
 
@@ -62,7 +62,7 @@ All notable changes to Mapsoo Worldsmith will be documented here. The project fo
 
 - Advanced the Workbench/export contract and official importer to the published Alpha.6 without changing the immutable Alpha.1–Alpha.5 release bytes.
 - Published the audited Alpha.6 prerelease with 13 attachments after the Linux/Windows × Godot 4.3/4.7 release matrix passed.
-- Kept itch.io upload postponed; STOYO remains a planned consumer, and no external adoption or independent user feedback is claimed.
+- Kept itch.io upload postponed; External Host remains a planned consumer, and no external adoption or independent user feedback is claimed.
 
 ## [0.1.0-alpha.5] - 2026-07-19
 
@@ -149,7 +149,7 @@ All notable changes to Mapsoo Worldsmith will be documented here. The project fo
 - Integer-snapped Canvas drawing primitives for crisp proportional pixel-art details.
 - A versioned Sunny Meadow World Spec fixture and ZIP contract regression tests.
 - Explicit manifest references for world specs, map layers, previews, receipts, and numeric tile IDs.
-- A strict, namespaced `extensions` field for integrations such as STOYO.
+- A strict, namespaced `extensions` field for integrations such as External Host.
 - A separately installed Godot 4.3+ EditorPlugin that derives `TileSet`, `TileMapLayer`, and prop resources from validated portable packs.
 - Godot 4.3/4.7 headless smoke tests, security-negative fixtures, and CI coverage.
 - Executable-free asset packs that declare the required official importer version without bundling GDScript.

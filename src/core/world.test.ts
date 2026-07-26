@@ -106,7 +106,7 @@ describe('world spec validation', () => {
 
   it('rejects undeclared fields but preserves explicitly namespaced extensions', () => {
     const spec = cloneWorldSpec(DEFAULT_WORLD_SPEC);
-    spec.extensions = { 'dev.stoyo.world.v1': { learningGoals: ['ecosystem-observation'] } };
+    spec.extensions = { 'org.mapsoo.externalhost.world.v1': { learningGoals: ['ecosystem-observation'] } };
 
     expect(validateWorldSpec(spec).some((issue) => issue.severity === 'error')).toBe(false);
     expect(generateWorld(spec).spec.extensions).toEqual(spec.extensions);
@@ -118,13 +118,13 @@ describe('world spec validation', () => {
     );
 
     const invalidNamespace = cloneWorldSpec(DEFAULT_WORLD_SPEC);
-    invalidNamespace.extensions = { 'stoyo/world': {} };
+    invalidNamespace.extensions = { 'external-host/world': {} };
     expect(validateWorldSpec(invalidNamespace)).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'spec.extension-namespace', severity: 'error' })]),
     );
 
     const noDotNamespace = cloneWorldSpec(DEFAULT_WORLD_SPEC);
-    noDotNamespace.extensions = { 'dev-stoyo': {} };
+    noDotNamespace.extensions = { 'dev-external-host': {} };
     expect(validateWorldSpec(noDotNamespace)).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'spec.extension-namespace', severity: 'error' })]),
     );
@@ -132,7 +132,7 @@ describe('world spec validation', () => {
 
   it('rejects non-JSON and circular extension data before cloning or export', () => {
     const withFunction = cloneWorldSpec(DEFAULT_WORLD_SPEC);
-    withFunction.extensions = { 'dev.stoyo': { callback: () => undefined } };
+    withFunction.extensions = { 'org.mapsoo.externalhost': { callback: () => undefined } };
     expect(validateWorldSpec(withFunction)).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'spec.non-json-value', severity: 'error' })]),
     );
@@ -140,7 +140,7 @@ describe('world spec validation', () => {
     const circularValue: Record<string, unknown> = {};
     circularValue.self = circularValue;
     const circular = cloneWorldSpec(DEFAULT_WORLD_SPEC);
-    circular.extensions = { 'dev.stoyo': circularValue };
+    circular.extensions = { 'org.mapsoo.externalhost': circularValue };
     expect(validateWorldSpec(circular)).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'spec.circular-json', severity: 'error' })]),
     );

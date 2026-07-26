@@ -84,7 +84,7 @@ schemas/
 
 ## 4. World Spec
 
-World Spec 是系统的主要输入，也是 STOYO 与 Mapsoo 的共享协议。示意：
+World Spec 是系统的主要输入，也是 External Host 与 Mapsoo 的共享协议。示意：
 
 ```json
 {
@@ -117,7 +117,7 @@ World Spec 是系统的主要输入，也是 STOYO 与 Mapsoo 的共享协议。
 - `seed` 是字符串，算法内部稳定映射为整数；
 - 尺寸必须设上限，防止浏览器内存失控；
 - v0.1 JSON Schema 采用严格模式：未声明字段校验失败，避免拼写错误和不可复现输入被静默接受；
-- v0.1 已显式声明顶层 `extensions` 对象；生态扩展必须使用 reverse-DNS namespaced key（例如已实现的 `dev.stoyo.assetrequest.v1`）；Mapsoo 原样保留其值但不解释；`extensions` 之外的未知字段仍校验失败；
+- v0.1 已显式声明顶层 `extensions` 对象；生态扩展必须使用 reverse-DNS namespaced key（例如已实现的 `org.mapsoo.externalhost.assetrequest.v1`）；Mapsoo 原样保留其值但不解释；`extensions` 之外的未知字段仍校验失败；
 - 每次迁移保留纯函数和夹具测试。
 
 ## 5. Generator Provider

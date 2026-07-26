@@ -39,22 +39,32 @@ async function verify() {
     const assets = new Map();
     for (const asset of release.assets ?? []) {
       assert(typeof asset.name === 'string' && !assets.has(asset.name), `${config.tag} has duplicate release asset names`);
+      assert(asset.state === 'uploaded', `${config.tag} has an attachment that is not uploaded`);
+      assert(Number.isSafeInteger(asset.size) && asset.size > 0, `${config.tag} has an empty attachment`);
+      assert(/^sha256:[a-f0-9]{64}$/.test(asset.digest ?? ''), `${config.tag} has an invalid attachment digest`);
       assets.set(asset.name, asset);
     }
     const expectedNames = Object.keys(config.publicReleaseAssetSha256).sort();
-    assert(
-      JSON.stringify([...assets.keys()].sort()) === JSON.stringify(expectedNames),
-      `${config.tag} GitHub release asset list differs from the immutable registry`,
-    );
-
-    for (const name of expectedNames) {
-      const asset = assets.get(name);
-      const expectedDigest = `sha256:${config.publicReleaseAssetSha256[name]}`;
-      assert(asset.state === 'uploaded', `${config.tag} asset is not uploaded: ${name}`);
-      assert(Number.isSafeInteger(asset.size) && asset.size > 0, `${config.tag} asset is empty: ${name}`);
-      assert(asset.digest === expectedDigest, `${config.tag} GitHub digest changed: ${name}`);
-      assetCount += 1;
+    if (config.publicAssetNamePolicy === 'exact') {
+      assert(
+        JSON.stringify([...assets.keys()].sort()) === JSON.stringify(expectedNames),
+        `${config.tag} GitHub release asset list differs from the immutable registry`,
+      );
+      for (const name of expectedNames) {
+        const expectedDigest = `sha256:${config.publicReleaseAssetSha256[name]}`;
+        assert(assets.get(name).digest === expectedDigest, `${config.tag} GitHub digest changed: ${name}`);
+      }
+    } else {
+      const actualDigests = [...assets.values()].map(({ digest }) => digest).sort();
+      const expectedDigests = Object.values(config.publicReleaseAssetSha256)
+        .map((digest) => `sha256:${digest}`)
+        .sort();
+      assert(
+        JSON.stringify(actualDigests) === JSON.stringify(expectedDigests),
+        `${config.tag} privacy-redacted attachment digest set differs from the immutable registry`,
+      );
     }
+    assetCount += assets.size;
   }
 
   console.log(`MAPSOO_PUBLIC_RELEASE_ASSETS_OK releases=${configs.length} assets=${assetCount}`);

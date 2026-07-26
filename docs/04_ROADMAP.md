@@ -116,7 +116,7 @@
 - [x] 真实浏览器 ZIP、Linux/Windows × Godot 4.3/4.7 exact-pack、GitHub prerelease 与 13-attachment 摘要门禁；
 - [x] Alpha.1–Alpha.5 fixture、hash、tag 与合同保持不可变。
 
-本版本只覆盖地点关联的四类建筑外观及可安装采用入口，不包含内部、门、碰撞、导航、玩法、STOYO 专用映射/采用、itch.io 上传或 Godot Asset Library 上架声明。完整范围、门禁与停止条件见 [`15_ALPHA6_EXTERIOR_STRUCTURES.md`](15_ALPHA6_EXTERIOR_STRUCTURES.md)。
+本版本只覆盖地点关联的四类建筑外观及可安装采用入口，不包含内部、门、碰撞、导航、玩法、External Host 专用映射/采用、itch.io 上传或 Godot Asset Library 上架声明。完整范围、门禁与停止条件见 [`15_ALPHA6_EXTERIOR_STRUCTURES.md`](15_ALPHA6_EXTERIOR_STRUCTURES.md)。
 
 ### alpha.7 — Multi-world Gallery（已发布）
 
@@ -131,17 +131,17 @@
 
 本版本是在三个独立单-biome 世界之间提供可验证选择，不实现单个世界内部的多 biome transition。完整范围、门禁与停止条件见 [`17_ALPHA7_MULTI_WORLD_GALLERY.md`](17_ALPHA7_MULTI_WORLD_GALLERY.md)。
 
-### alpha.8 — Reproducible STOYO Pack Export CLI（已发布）
+### alpha.8 — Reproducible External Host Pack Export CLI（已发布）
 
-- [x] 严格解析公开安全的 `StoyoAssetRequest 1.0`，绑定 canonical SHA-256；
+- [x] 严格解析公开安全的 `ExternalHostAssetRequest 1.0`，绑定 canonical SHA-256；
 - [x] 无损迁移到 World Spec 0.3，不推断或虚构地点与建筑；
 - [x] 通过 loopback-only headless Chrome 复用已审核的 Alpha.7 浏览器导出器；
-- [x] 输出 executable-free Alpha.7 兼容 ZIP 与 `dev.stoyo.mapsoo-export-receipt/1.0.0` 外部回执；
+- [x] 输出 executable-free Alpha.7 兼容 ZIP 与 `org.mapsoo.externalhost.mapsoo-export-receipt/1.0.0` 外部回执；
 - [x] 显式 UTC 时间、跨运行字节复现、`created / unchanged / conflict` 与原子独占写入；
 - [x] Linux/Windows × Godot 4.3/4.7 exact-pack CI 全绿；
 - [x] 公开 PR、Alpha.8 prerelease 与发布后 20 个远端附件摘要回写。
 
-本切片提供公开可执行的生产边界，不代表 STOYO 已有运行时消费者或生产采用。完整范围见 [`18_ALPHA8_STOYO_EXPORT_CLI.md`](18_ALPHA8_STOYO_EXPORT_CLI.md)。
+本切片提供公开可执行的生产边界，不代表 External Host 已有运行时消费者或生产采用。完整范围见 [`18_ALPHA8_EXTERNAL_HOST_EXPORT_CLI.md`](18_ALPHA8_EXTERNAL_HOST_EXPORT_CLI.md)。
 
 ### alpha.9 — Reference Images to Top-down Farm Pack（已发布）
 
@@ -155,7 +155,7 @@
 - [x] Alpha.1–Alpha.8 fixture、hash、tag、附件与合同保持不可变；
 - [x] Alpha.9 release registry、24 个固定附件、公共 tag、发布工作流与发布后远端摘要审计。
 
-项目最终目标包含 `side-platformer`、`isometric-action`、`topdown-farm`、`layered-depth-2d` 四个公开 profile，但 Alpha.9 只实现 `topdown-farm` 纵向闭环；另外三个仍为计划。Alpha.9 已公开发布，但不表示外部采用、STOYO 生产接入或第三方平台上架。完整范围、隐私/权利边界与验收证据见 [`19_ALPHA9_REFERENCE_TO_FARM_WORLD.md`](19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)。
+项目最终目标包含 `side-platformer`、`isometric-action`、`topdown-farm`、`layered-depth-2d` 四个公开 profile，但 Alpha.9 只实现 `topdown-farm` 纵向闭环；另外三个仍为计划。Alpha.9 已公开发布，但不表示外部采用、External Host 生产接入或第三方平台上架。完整范围、隐私/权利边界与验收证据见 [`19_ALPHA9_REFERENCE_TO_FARM_WORLD.md`](19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)。
 
 ### Alpha.10 — complete side-platformer contract（进行中）
 
@@ -179,9 +179,9 @@ Alpha.10 不能修改已发布 Alpha.9 Pack 0.6、receipt 0.1、fixture、附件
 - [ ] 建筑和内部场景；
 - [ ] 角色 sprite/动画合同；
 - [ ] 世界版本和增量更新；
-- [x] 可执行、隐私最小化的 `StoyoAssetRequest` → World Spec namespaced extension 契约与 Workbench 本地导入；
-- [x] 可复现、无 UI 的 STOYO 请求 → portable Godot pack + 外部 hash 回执桥接；
-- [ ] 在公开中立合同稳定后评估 STOYO 专用运行时映射；未接入前不声明采用。
+- [x] 可执行、隐私最小化的 `ExternalHostAssetRequest` → World Spec namespaced extension 契约与 Workbench 本地导入；
+- [x] 可复现、无 UI 的 External Host 请求 → portable Godot pack + 外部 hash 回执桥接；
+- [ ] 在公开中立合同稳定后评估 External Host 专用运行时映射；未接入前不声明采用。
 
 ## v0.5 — Community Beta
 

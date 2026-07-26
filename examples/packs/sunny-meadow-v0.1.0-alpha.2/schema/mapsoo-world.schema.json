@@ -127,7 +127,7 @@
     },
     "extensions": {
       "type": "object",
-      "description": "Namespaced integration metadata. Keys should use reverse-DNS notation, for example dev.stoyo.",
+      "description": "Namespaced integration metadata. Keys should use reverse-DNS notation, for example org.mapsoo.externalhost.",
       "propertyNames": {
         "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z0-9]+)+$"
       },

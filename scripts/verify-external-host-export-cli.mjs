@@ -12,13 +12,13 @@ import addFormats from 'ajv-formats';
 import { REPOSITORY_ROOT } from './release-config.mjs';
 
 const execFileAsync = promisify(execFile);
-const cli = join(REPOSITORY_ROOT, 'scripts', 'export-stoyo-pack.mjs');
-const fixture = join(REPOSITORY_ROOT, 'examples', 'integrations', 'stoyo', 'river-valley-asset-request.json');
+const cli = join(REPOSITORY_ROOT, 'scripts', 'export-external-host-pack.mjs');
+const fixture = join(REPOSITORY_ROOT, 'examples', 'integrations', 'external-host', 'river-valley-asset-request.json');
 const completedAt = '2026-07-19T12:00:00.000Z';
 const packName = 'mapsoo-river-valley-observation-v0.1.0-alpha.7.zip';
-const receiptName = 'mapsoo-river-valley-observation-stoyo-export-receipt.json';
+const receiptName = 'mapsoo-river-valley-observation-external-host-export-receipt.json';
 const receiptSchema = JSON.parse(await readFile(
-  join(REPOSITORY_ROOT, 'integrations', 'stoyo', 'stoyo-mapsoo-export-receipt.schema.json'),
+  join(REPOSITORY_ROOT, 'integrations', 'external-host', 'external-host-mapsoo-export-receipt.schema.json'),
   'utf8',
 ));
 const ajv = new Ajv2020({ allErrors: true, strict: true });
@@ -47,45 +47,45 @@ async function expectFailure(input, outDir, pattern) {
   try {
     await run(input, outDir);
   } catch (error) {
-    assert(pattern.test(String(error.stderr ?? error.message)), 'STOYO CLI failed for the wrong reason.');
+    assert(pattern.test(String(error.stderr ?? error.message)), 'External Host CLI failed for the wrong reason.');
     return;
   }
-  throw new Error('STOYO CLI accepted an invalid or conflicting export.');
+  throw new Error('External Host CLI accepted an invalid or conflicting export.');
 }
 
-const root = await mkdtemp(join(tmpdir(), 'mapsoo-stoyo-cli-verify-'));
+const root = await mkdtemp(join(tmpdir(), 'mapsoo-external-host-cli-verify-'));
 try {
   const firstDir = join(root, 'first');
   const secondDir = join(root, 'second');
   const first = await run(fixture, firstDir);
-  assert(first.status === 'created' && first.pack === packName && first.receipt === receiptName, 'First STOYO export summary is invalid.');
+  assert(first.status === 'created' && first.pack === packName && first.receipt === receiptName, 'First External Host export summary is invalid.');
   const packMtime = (await stat(join(firstDir, packName))).mtimeMs;
   const receiptMtime = (await stat(join(firstDir, receiptName))).mtimeMs;
   const unchanged = await run(fixture, firstDir);
-  assert(unchanged.status === 'unchanged' && unchanged.sha256 === first.sha256, 'Repeated STOYO export was not an unchanged no-op.');
-  assert((await stat(join(firstDir, packName))).mtimeMs === packMtime, 'Unchanged STOYO export rewrote the pack.');
-  assert((await stat(join(firstDir, receiptName))).mtimeMs === receiptMtime, 'Unchanged STOYO export rewrote the receipt.');
+  assert(unchanged.status === 'unchanged' && unchanged.sha256 === first.sha256, 'Repeated External Host export was not an unchanged no-op.');
+  assert((await stat(join(firstDir, packName))).mtimeMs === packMtime, 'Unchanged External Host export rewrote the pack.');
+  assert((await stat(join(firstDir, receiptName))).mtimeMs === receiptMtime, 'Unchanged External Host export rewrote the receipt.');
   const second = await run(fixture, secondDir);
-  assert(second.status === 'created' && second.sha256 === first.sha256, 'Independent STOYO export hash differs.');
+  assert(second.status === 'created' && second.sha256 === first.sha256, 'Independent External Host export hash differs.');
   const separator = await run(fixture, join(root, 'pnpm-separator'), true);
-  assert(separator.status === 'created' && separator.sha256 === first.sha256, 'pnpm leading separator changed the STOYO export.');
+  assert(separator.status === 'created' && separator.sha256 === first.sha256, 'pnpm leading separator changed the External Host export.');
 
   const firstPack = await readFile(join(firstDir, packName));
   const secondPack = await readFile(join(secondDir, packName));
   const firstReceipt = await readFile(join(firstDir, receiptName));
   const secondReceipt = await readFile(join(secondDir, receiptName));
-  assert(firstPack.equals(secondPack) && firstReceipt.equals(secondReceipt), 'STOYO ZIP or export receipt is not byte-reproducible.');
+  assert(firstPack.equals(secondPack) && firstReceipt.equals(secondReceipt), 'External Host ZIP or export receipt is not byte-reproducible.');
   const receipt = JSON.parse(firstReceipt.toString('utf8'));
-  assert(validateReceipt(receipt), `STOYO export receipt failed its JSON Schema: ${ajv.errorsText(validateReceipt.errors)}`);
-  assert(receipt.schema_version === 'dev.stoyo.mapsoo-export-receipt/1.0.0', 'STOYO export receipt schema is invalid.');
-  assert(receipt.pack.sha256 === sha256(firstPack) && receipt.pack.bytes === firstPack.byteLength, 'STOYO export receipt does not bind the ZIP.');
-  assert(!firstReceipt.toString('utf8').includes(root), 'STOYO export receipt leaked an absolute test path.');
+  assert(validateReceipt(receipt), `External Host export receipt failed its JSON Schema: ${ajv.errorsText(validateReceipt.errors)}`);
+  assert(receipt.schema_version === 'org.mapsoo.externalhost.mapsoo-export-receipt/1.0.0', 'External Host export receipt schema is invalid.');
+  assert(receipt.pack.sha256 === sha256(firstPack) && receipt.pack.bytes === firstPack.byteLength, 'External Host export receipt does not bind the ZIP.');
+  assert(!firstReceipt.toString('utf8').includes(root), 'External Host export receipt leaked an absolute test path.');
   const extraFieldReceipt = structuredClone(receipt);
   extraFieldReceipt.request.child_id = 'must-not-be-accepted';
-  assert(!validateReceipt(extraFieldReceipt), 'STOYO export receipt schema accepted an unknown private field.');
+  assert(!validateReceipt(extraFieldReceipt), 'External Host export receipt schema accepted an unknown private field.');
   const invalidTimestampReceipt = structuredClone(receipt);
   invalidTimestampReceipt.completed_at = '2026-07-19T12:00:00Z';
-  assert(!validateReceipt(invalidTimestampReceipt), 'STOYO export receipt schema accepted a non-canonical timestamp.');
+  assert(!validateReceipt(invalidTimestampReceipt), 'External Host export receipt schema accepted a non-canonical timestamp.');
 
   const originalPackHash = sha256(firstPack);
   await writeFile(join(firstDir, receiptName), `${firstReceipt.toString('utf8').trimEnd()} `);
@@ -115,15 +115,15 @@ try {
   const fulfilled = concurrent.filter((entry) => entry.status === 'fulfilled').map((entry) => entry.value.status);
   const rejected = concurrent.filter((entry) => entry.status === 'rejected');
   const rejectedMessages = rejected.map((entry) => String(entry.reason.stderr ?? entry.reason.message));
-  assert(fulfilled.includes('created'), 'Concurrent STOYO exports did not create one complete output pair.');
+  assert(fulfilled.includes('created'), 'Concurrent External Host exports did not create one complete output pair.');
   assert(
     (fulfilled.length === 2 && fulfilled.includes('unchanged'))
       || (fulfilled.length === 1 && rejected.length === 1 && /Output conflict/.test(rejectedMessages[0])),
-    `Concurrent STOYO export did not resolve as unchanged or fail-closed conflict: fulfilled=${JSON.stringify(fulfilled)} rejected=${JSON.stringify(rejectedMessages)}.`,
+    `Concurrent External Host export did not resolve as unchanged or fail-closed conflict: fulfilled=${JSON.stringify(fulfilled)} rejected=${JSON.stringify(rejectedMessages)}.`,
   );
-  assert(validateReceipt(JSON.parse(await readFile(join(concurrentDir, receiptName), 'utf8'))), 'Concurrent STOYO export left an invalid receipt.');
+  assert(validateReceipt(JSON.parse(await readFile(join(concurrentDir, receiptName), 'utf8'))), 'Concurrent External Host export left an invalid receipt.');
 
-  console.log(`MAPSOO_STOYO_EXPORT_CLI_OK bytes=${firstPack.byteLength} sha256=${first.sha256} request_sha256=${receipt.request.asset_request_sha256}`);
+  console.log(`MAPSOO_EXTERNAL_HOST_EXPORT_CLI_OK bytes=${firstPack.byteLength} sha256=${first.sha256} request_sha256=${receipt.request.asset_request_sha256}`);
 } finally {
   await rm(root, { recursive: true, force: true });
 }

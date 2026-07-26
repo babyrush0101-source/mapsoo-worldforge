@@ -14,19 +14,19 @@ Alpha.9 已于 2026-07-20 从 tag commit `7e0a254e59e5d49fda87fb52b91aecc46f32e3
 
 > 本文同时记录已完成的公开证据和仍待执行的 itch.io / Codex for OSS 模板。2026-07-19 维护者决定暂缓 itch.io 页面：GitHub Release/Pages 是当前主渠道，已验证的 itch 上传套件继续保留，但页面不是 GitHub alpha 或申请准备的必需前置。只有带权威 URL 的项目才算完成；模板中的 `[REPLACE: ...]` 仍必须在正式提交或公开页面粘贴前替换，不能把不存在的外部反馈写成已完成。
 
-Alpha.9 的已发布事实边界：离线程序化 Provider、`contains_generative_ai: false`、完整 `topdown-farm` Pack 0.6、Godot 4.3+，以及不嵌入参考原图/本地路径/原始摘要/自由文本的公开包。World ID 与 seed 是公开字段，必须使用公开安全值。当前只允许 owned 且明确同意衍生、再分发与 CC0 dedication 的参考图；licensed 输入拒绝导出。字节与权利验证不是人脸、OCR、商标检测或内容级净化。生成 PNG/runtime JSON 为 CC0-1.0，源码/文档为 MIT，参考原图保留原权利。没有外部采用、STOYO 生产接入、itch.io 或 Godot Asset Library 上架声明。
+Alpha.9 的已发布事实边界：离线程序化 Provider、`contains_generative_ai: false`、完整 `topdown-farm` Pack 0.6、Godot 4.3+，以及不嵌入参考原图/本地路径/原始摘要/自由文本的公开包。World ID 与 seed 是公开字段，必须使用公开安全值。当前只允许 owned 且明确同意衍生、再分发与 CC0 dedication 的参考图；licensed 输入拒绝导出。字节与权利验证不是人脸、OCR、商标检测或内容级净化。生成 PNG/runtime JSON 为 CC0-1.0，源码/文档为 MIT，参考原图保留原权利。没有外部采用、External Host 生产接入、itch.io 或 Godot Asset Library 上架声明。
 
 ## 0H. Alpha.9 发布执行状态（2026-07-20）
 
 - [Alpha.9 GitHub prerelease](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.9) 已公开；[发布流水线](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29727475555) 提供 24 附件、45 files / 256 tests、221 个负向案例及 Linux/Windows × Godot 4.3/4.7 的公开审查证据；
 - tag commit 为 `7e0a254e59e5d49fda87fb52b91aecc46f32e3ae`；Pack 0.6 ZIP SHA-256 为 `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`；
-- itch.io 继续延期；社区证据台账仍为空，不把维护者/CI 下载或 STOYO 计划写成外部采用。
+- itch.io 继续延期；社区证据台账仍为空，不把维护者/CI 下载或 External Host 计划写成外部采用。
 
 ## 0G. Alpha.8 发布执行状态（2026-07-19）
 
 - [GitHub prerelease](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.8) 已公开；[PR #46](https://github.com/babyrush0101-source/mapsoo-kids/pull/46) 与 [发布流水线](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29691179168) 提供公开审查证据；
-- 20 个附件摘要全部进入不可变 registry；Linux/Windows × Godot 4.3/4.7 对三份 Alpha.7 兼容包和可复现 STOYO 桥接包全部通过；
-- STOYO 桥接 ZIP 固定为 SHA-256 `0ef0dd3a5b76e832a31847a120f65a4a6b9a60f8c4fa7c22397762ad2b542ad8`，但不作为第四个官方世界画廊附件；
+- 20 个附件摘要全部进入不可变 registry；Linux/Windows × Godot 4.3/4.7 对三份 Alpha.7 兼容包和可复现 External Host 桥接包全部通过；
+- External Host 桥接 ZIP 固定为 SHA-256 `0ef0dd3a5b76e832a31847a120f65a4a6b9a60f8c4fa7c22397762ad2b542ad8`，但不作为第四个官方世界画廊附件；
 - itch.io 继续延期；社区证据台账仍为空，不把维护者/CI 下载写成外部采用。
 
 ## 0F. Alpha.7 发布执行状态（2026-07-19）
@@ -34,7 +34,7 @@ Alpha.9 的已发布事实边界：离线程序化 Provider、`contains_generati
 - [GitHub prerelease](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.7) 已公开，包含三份独立、可逐包核验的 World Spec 0.3 / Pack Schema 0.5 素材包；
 - [PR #44](https://github.com/babyrush0101-source/mapsoo-kids/pull/44) 与 [发布流水线](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29688782893) 提供公开审查证据；
 - 17 个附件摘要全部进入不可变 registry；Linux/Windows × Godot 4.3/4.7 对三个 exact pack 全部通过；
-- itch.io 继续延期；社区证据台账仍为空，不把维护者/CI 下载或 STOYO 计划写成外部采用。
+- itch.io 继续延期；社区证据台账仍为空，不把维护者/CI 下载或 External Host 计划写成外部采用。
 
 ## 0E. Alpha.6 发布执行状态（2026-07-19）
 
@@ -46,7 +46,7 @@ Alpha.6 使用 World Spec 0.3、pack schema 0.4、`runtime/structures.json`、�
 - Alpha.1–Alpha.5 的公开 tag、fixture 与摘要保持不变，当前 prerelease 入口已指向 Alpha.6；
 - Alpha.6 的 itch.io metadata/page 与延期视觉源仍仅用于离线审查；不执行 itch.io 登录、上传或页面创建；
 - Alpha.6 专用首次导入指南见 [`16_ALPHA6_FIRST_GODOT_IMPORT.md`](16_ALPHA6_FIRST_GODOT_IMPORT.md)，覆盖真实下载地址、摘要、addon icon、安装/启用、2 个 structures 与 `created → unchanged`；
-- STOYO 仍是计划中的消费场景，不宣称生产采用；当前也没有独立社区反馈或外部采用证据；
+- External Host 仍是计划中的消费场景，不宣称生产采用；当前也没有独立社区反馈或外部采用证据；
 
 ## 0D. Alpha.5 发布执行状态（2026-07-19）
 
@@ -106,7 +106,7 @@ alpha.2 没有覆盖或重建已经公开的 alpha.1。它使用独立的版本�
 
 - `[延期/可选]` itch.io 页面暂不创建；`release/itch/v0.1.0-alpha.2/` 的精确文件与验证门禁继续保留，未来恢复时仍须先创建 Draft 并逐张预览；
 - `[延期/可选]` 若未来恢复，只有 GitHub prerelease URL 有效且 itch Draft 复核完成后，才把 itch 页面设为 Public；
-- `[ ]` 收集真实下载、issue 或外部用户反馈并公开响应；不得把维护者自测、机器人访问或 STOYO 计划写成外部采用；
+- `[ ]` 收集真实下载、issue 或外部用户反馈并公开响应；不得把维护者自测、机器人访问或 External Host 计划写成外部采用；
 - `[ ]` 最后按申请当天的官方表单重新核对字段、500 字符限制、公开 GitHub profile、ChatGPT 邮箱和 OpenAI Organization ID，再提交 Codex for OSS。
 
 alpha.2 的宣传图统一使用“CI-gated”措辞，不把静态图片当执行证明。权威执行证据是上述 tag release workflow 的真实 job URL；权威下载源是公开 prerelease，静态宣传图本身不代表测试结果。
@@ -139,13 +139,13 @@ alpha.2 的宣传图统一使用“CI-gated”措辞，不把静态图片当执�
 - `[ ]` itch.io 免费 Graphical Assets 页面；
 - `[ ]` 外部用户 issue、评价、下载量、star、fork 或采用案例。
 
-因此，本文后半部分的 Codex for OSS 文案是“收集完公开证据后提交”的模板。STOYO 是计划中的首个真实使用方，不得提前写成已有生产采用或外部用户。
+因此，本文后半部分的 Codex for OSS 文案是“收集完公开证据后提交”的模板。External Host 是计划中的首个真实使用方，不得提前写成已有生产采用或外部用户。
 
 ## 1. 发布顺序与停止条件
 
 按以下顺序执行，不跳过验证门槛：
 
-1. 将 alpha 分支通过 PR 合入 `main`，确认公开提交中不含旧凭据、私有 STOYO 内容或本机绝对路径；
+1. 将 alpha 分支通过 PR 合入 `main`，确认公开提交中不含旧凭据、私有 External Host 内容或本机绝对路径；
 2. 在仓库 `Settings → Pages` 把 Source 设为 `GitHub Actions`；不要选择 branch/folder 发布源；
 3. 在合入后的准确 commit 上运行 `pnpm install --frozen-lockfile` 和 `pnpm check`；
 4. 等待公开 GitHub Actions 的 Node、Godot 4.3/4.7 与 Pages jobs 全绿，并记录真实 Demo URL；
@@ -521,7 +521,7 @@ Thanks for trying Mapsoo Worldsmith v0.1.0-alpha.1. This issue collects first-im
 - Screenshot or minimal reproduction：
 - Approximate minutes from download to first imported scene：
 
-Please remove private paths, credentials, paid API keys, and private STOYO content before posting.
+Please remove private paths, credentials, paid API keys, and private External Host content before posting.
 ```
 
 将它 pin 在仓库 issue 列表或从 README/release/itch 页面统一链接，不在多个平台建立互不相通的重复反馈池。
@@ -549,13 +549,13 @@ Please remove private paths, credentials, paid API keys, and private STOYO conte
 - 外部用户公开评论或经许可引用的简短评价；
 - PR、文档修正或第三方示例等贡献。
 
-零下载、零 issue 或负面反馈也必须如实记录。自己的下载、机器人访问、同一人的重复报告和 STOYO 内部测试不得包装成外部采用。
+零下载、零 issue 或负面反馈也必须如实记录。自己的下载、机器人访问、同一人的重复报告和 External Host 内部测试不得包装成外部采用。
 
 ## 6. Codex for OSS 申请证据包
 
 OpenAI 当前说明：活跃开源项目的 primary/core maintainer 可以申请；评审会关注 meaningful usage、broad adoption、生态重要性，以及 PR review、issue triage、release management 等持续维护证据。表单目前要求公开 GitHub profile/repository，并提供 role、qualifying reason、OpenAI Organization ID 和 API credits 用途；三个长文本字段上限均为 500 字符。项目支持包括 6 个月 ChatGPT Pro（含 Codex）、按条件提供的 Codex Security，以及适用项目的 API credits，但都属于申请和评审结果，不能写成已获批。参考：[Codex for Open Source 项目页](https://developers.openai.com/community/codex-for-oss) 与 [当前申请表和评审说明](https://openai.com/form/codex-for-oss/)（2026-07-19 核对）。
 
-提交前同时阅读 [Program Terms](https://developers.openai.com/codex/codex-for-oss-terms)：必须使用有效 ChatGPT 账号并准确说明身份、仓库和维护职责；提交不保证入选，OpenAI 可要求验证仓库控制权。不要提交机密 STOYO 信息，不要为多个身份重复申请，也不要将 Codex Security/API credits 用于没有授权的仓库或系统。福利不可转让，具体范围和期限以书面获批结果为准。
+提交前同时阅读 [Program Terms](https://developers.openai.com/codex/codex-for-oss-terms)：必须使用有效 ChatGPT 账号并准确说明身份、仓库和维护职责；提交不保证入选，OpenAI 可要求验证仓库控制权。不要提交机密 External Host 信息，不要为多个身份重复申请，也不要将 Codex Security/API credits 用于没有授权的仓库或系统。福利不可转让，具体范围和期限以书面获批结果为准。
 
 ### 6.1 官方表单字段清单
 
@@ -581,7 +581,7 @@ OpenAI 当前说明：活跃开源项目的 primary/core maintainer 可以申请
 | 证据 | 当前状态 | 可提交的权威 URL/数据 |
 | --- | --- | --- |
 | Public GitHub profile | 已匿名访问验证；申请表使用 `babyrush0101-source` | [GitHub profile](https://github.com/babyrush0101-source) |
-| Public repository | Provider、runner evidence、STOYO 请求契约、release architecture、安全重导入、四层地形、语义地点与 Alpha.6 地点关联建筑已在默认分支 | [Alpha.6 release commit `315bc1b`](https://github.com/babyrush0101-source/mapsoo-kids/tree/315bc1b) |
+| Public repository | Provider、runner evidence、External Host 请求契约、release architecture、安全重导入、四层地形、语义地点与 Alpha.6 地点关联建筑已在默认分支 | [Alpha.6 release commit `315bc1b`](https://github.com/babyrush0101-source/mapsoo-kids/tree/315bc1b) |
 | 源码与资产许可边界 | 已公开 | [`LICENSE`](https://github.com/babyrush0101-source/mapsoo-kids/blob/main/LICENSE)、release 素材 ZIP 内 `license-assets.md` |
 | 可复现构建与测试 | Alpha.6 tag release workflow 已通过并审计 13 个附件 | [tag release workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29685960441) |
 | Godot 4.3/4.7 兼容 | Alpha.6 tag workflow 在 Linux/Windows 对同一个公开固定哈希包完成 exact-pack 导入 | [tag release workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29685960441) |
@@ -592,7 +592,7 @@ OpenAI 当前说明：活跃开源项目的 primary/core maintainer 可以申请
 | 演示视频 | 已作为版本化 release asset 公开 | [75 秒 H.264 MP4](https://github.com/babyrush0101-source/mapsoo-kids/releases/download/v0.1.0-alpha.1/mapsoo-worldsmith-v0.1.0-alpha.1-75s.mp4) |
 | 外部反馈与维护响应 | 版本绑定的 10 分钟指南、结构化表单和统一索引已创建；截至 2026-07-19 仍无独立用户结果或外部反馈 | [first-import guide](10_FIRST_GODOT_IMPORT.md)、[feedback form](https://github.com/babyrush0101-source/mapsoo-kids/issues/new?template=first-import-feedback.yml)、[feedback issue #12](https://github.com/babyrush0101-source/mapsoo-kids/issues/12) |
 | downloads / stars / forks | 2026-07-19：0 stars，0 forks；附件下载包含维护者发布审计且下载者身份不可见，因此计数不能证明外部采用 | [Alpha.6 release](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.6)、[repository](https://github.com/babyrush0101-source/mapsoo-kids) |
-| STOYO 使用 | 计划中的首个真实消费者 | 只有真正接入后才附公开且不泄密的案例；否则明确写 planned |
+| External Host 使用 | 计划中的首个真实消费者 | 只有真正接入后才附公开且不泄密的案例；否则明确写 planned |
 
 推荐申请门槛：版本化 release、公开 CI、Demo/首次导入路径已经可验证，并且有至少一轮真实外部反馈与维护响应。itch.io 是可选分发面，不是官方资格条件；star 也不是唯一标准，但不能用愿景替代活跃维护证据。
 
@@ -603,7 +603,7 @@ OpenAI 当前说明：活跃开源项目的 primary/core maintainer 可以申请
 **Why does this repository qualify?（388 characters）**
 
 ```text
-Mapsoo Worldsmith is an active public, local-first tool that turns versioned World Specs into deterministic, validated PNG/JSON world packs for Godot. The alpha includes an executable-free CC0 sample, a separate MIT importer, public CI on Godot 4.3/4.7, a live demo, release, and reproducible feedback workflow. It is designed for indie creators; STOYO is the planned first real consumer.
+Mapsoo Worldsmith is an active public, local-first tool that turns versioned World Specs into deterministic, validated PNG/JSON world packs for Godot. The alpha includes an executable-free CC0 sample, a separate MIT importer, public CI on Godot 4.3/4.7, a live demo, release, and reproducible feedback workflow. It is designed for indie creators; External Host is the planned first real consumer.
 ```
 
 这段有意不写 stars、downloads 或外部用户数量：GitHub 虽报告每个 alpha.1 附件各 1 次下载，但无法证明下载者是外部用户，因此不能据此声称采用。申请当天只有在 GitHub/itch.io 出现可如实解释的真实指标时才加入精确值。
@@ -611,7 +611,7 @@ Mapsoo Worldsmith is an active public, local-first tool that turns versioned Wor
 **How will you use API credits for your project?（342 characters）**
 
 ```text
-API credits would support maintainer automation for schema and manifest compatibility checks, PR fixture review, release/changelog validation, issue reproduction summaries, and security-focused review of the Godot importer. User-generated assets remain local by default; no private STOYO data, credentials, or paid provider keys will be sent.
+API credits would support maintainer automation for schema and manifest compatibility checks, PR fixture review, release/changelog validation, issue reproduction summaries, and security-focused review of the Godot importer. User-generated assets remain local by default; no private External Host data, credentials, or paid provider keys will be sent.
 ```
 
 这是当前表单必填字段的具体维护用途；未来商业图像生成额度不是这段文案的主理由。
@@ -619,7 +619,7 @@ API credits would support maintainer automation for schema and manifest compatib
 **Anything else we should know?（399 characters）**
 
 ```text
-I am the primary maintainer responsible for roadmap, releases, issue triage, and compatibility. STOYO is the planned first real consumer and is not counted as external adoption. Mapsoo works without an account, backend, or paid API and is built as reusable open-source infrastructure rather than STOYO-only code. Public release, demo, CI, video, feedback intake, and an explicitly empty community evidence ledger are linked from the repository.
+I am the primary maintainer responsible for roadmap, releases, issue triage, and compatibility. External Host is the planned first real consumer and is not counted as external adoption. Mapsoo works without an account, backend, or paid API and is built as reusable open-source infrastructure rather than External Host-only code. Public release, demo, CI, video, feedback intake, and an explicitly empty community evidence ledger are linked from the repository.
 ```
 
 ### 6.4 推荐勾选策略

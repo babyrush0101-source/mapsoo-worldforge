@@ -4,7 +4,7 @@ import {
   downloadCurrentPortablePack,
 } from '../adapters/export-current-pack';
 import { downloadAlpha5PortablePack } from '../adapters/export-browser-pack-alpha5';
-import { readStoyoAssetRequestFile } from '../adapters/import-stoyo-asset-request';
+import { readExternalHostAssetRequestFile } from '../adapters/import-external-host-asset-request';
 import { readWorldSpecFile } from '../adapters/import-world-spec';
 import type { GenerationRunResult } from '../core/generation-evidence';
 import { runGenerationProviderWithEvidence } from '../core/generation-provider';
@@ -60,7 +60,7 @@ function downloadJson(filename: string, value: unknown) {
 
 export function App() {
   const worldSpecInputRef = useRef<HTMLInputElement>(null);
-  const stoyoAssetRequestInputRef = useRef<HTMLInputElement>(null);
+  const externalHostAssetRequestInputRef = useRef<HTMLInputElement>(null);
   const generationSessionRef = useRef<GenerationSession | null>(null);
   if (generationSessionRef.current === null) generationSessionRef.current = new GenerationSession();
   const generationSession = generationSessionRef.current;
@@ -75,7 +75,7 @@ export function App() {
     message: string;
   } | null>(null);
   const [importState, setImportState] = useState<'idle' | 'reading' | 'generating'>('idle');
-  const [importKind, setImportKind] = useState<'world' | 'stoyo' | null>(null);
+  const [importKind, setImportKind] = useState<'world' | 'external-host' | null>(null);
   const [importNotice, setImportNotice] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const draftIssues = useMemo(() => validateWorldSpec(draft), [draft]);
   const activeExampleId = useMemo(() => findMatchingWorldExample(draft)?.id ?? '', [draft]);
@@ -292,19 +292,19 @@ export function App() {
     await generateImportedSpec(result.spec, request, successMessage);
   }
 
-  async function importStoyoAssetRequest(event: ChangeEvent<HTMLInputElement>) {
+  async function importExternalHostAssetRequest(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = '';
     if (!file) return;
 
     const request = generationSession.begin();
     setImportState('reading');
-    setImportKind('stoyo');
+    setImportKind('external-host');
     setImportNotice(null);
     setGenerationState('idle');
     setGenerationNotice(null);
 
-    const result = await readStoyoAssetRequestFile(file);
+    const result = await readExternalHostAssetRequestFile(file);
     if (!generationSession.isCurrent(request)) return;
     if (!result.ok) {
       setImportNotice({ tone: 'error', message: result.message });
@@ -647,12 +647,12 @@ export function App() {
                 disabled={operationBusy}
               />
               <input
-                ref={stoyoAssetRequestInputRef}
+                ref={externalHostAssetRequestInputRef}
                 className="file-input"
                 type="file"
                 accept=".json,application/json"
-                aria-label="Choose a STOYO Asset Request JSON file"
-                onChange={importStoyoAssetRequest}
+                aria-label="Choose an External Host Asset Request JSON file"
+                onChange={importExternalHostAssetRequest}
                 disabled={operationBusy}
               />
               <button
@@ -671,15 +671,15 @@ export function App() {
               <button
                 className="secondary-action is-ready"
                 type="button"
-                onClick={() => stoyoAssetRequestInputRef.current?.click()}
+                onClick={() => externalHostAssetRequestInputRef.current?.click()}
                 disabled={operationBusy}
                 aria-describedby="json-import-status"
               >
-                {importKind === 'stoyo' && importState === 'reading'
-                  ? 'Reading STOYO request…'
-                  : importKind === 'stoyo' && importState === 'generating'
-                    ? 'Generating STOYO world…'
-                    : 'Load STOYO Asset Request'}
+                {importKind === 'external-host' && importState === 'reading'
+                  ? 'Reading External Host request…'
+                  : importKind === 'external-host' && importState === 'generating'
+                    ? 'Generating External Host world…'
+                    : 'Load External Host Asset Request'}
               </button>
               <button
                 className="secondary-action is-ready"
@@ -713,7 +713,7 @@ export function App() {
             >
               {importState === 'reading' && (
                 <p>
-                  Reading and validating the selected {importKind === 'stoyo' ? 'STOYO Asset Request' : 'World Spec'}…
+                  Reading and validating the selected {importKind === 'external-host' ? 'External Host Asset Request' : 'World Spec'}…
                 </p>
               )}
               {importState === 'generating' && <p>Generating the imported spec through the active provider…</p>}

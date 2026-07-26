@@ -512,13 +512,13 @@ describe('generation provider contract', () => {
     const cyclic = cloneWorldSpec(DEFAULT_WORLD_SPEC);
     const extension: Record<string, unknown> = {};
     extension.self = extension;
-    cyclic.extensions = { 'dev.stoyo': extension };
+    cyclic.extensions = { 'org.mapsoo.externalhost': extension };
     await expect(runGenerationProvider(failingProvider, cyclic)).rejects.toMatchObject({
       code: 'provider.invalid-spec',
     });
 
     const withFunction = cloneWorldSpec(DEFAULT_WORLD_SPEC);
-    withFunction.extensions = { 'dev.stoyo': { callback: () => undefined } };
+    withFunction.extensions = { 'org.mapsoo.externalhost': { callback: () => undefined } };
     await expect(runGenerationProvider(failingProvider, withFunction)).rejects.toMatchObject({
       code: 'provider.invalid-spec',
     });

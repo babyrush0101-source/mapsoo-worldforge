@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mapsoo.dev/integrations/stoyo/stoyo-asset-request-1.0.0.json",
-  "title": "STOYO Asset Request",
-  "description": "A privacy-minimized, allowlisted request for projecting caller-supplied public-safe STOYO scene values into a Mapsoo World Spec.",
+  "$id": "https://mapsoo.dev/integrations/external-host/external-host-asset-request-1.0.0.json",
+  "title": "External Host Asset Request",
+  "description": "A privacy-minimized, allowlisted request for projecting caller-supplied public-safe External Host scene values into a Mapsoo World Spec.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "packId", "world", "scene", "seed", "visual", "map", "output"],
   "properties": {
-    "schemaVersion": { "const": "dev.stoyo.asset-request/1.0.0" },
+    "schemaVersion": { "const": "org.mapsoo.externalhost.asset-request/1.0.0" },
     "packId": { "$ref": "#/$defs/id" },
     "world": {
       "type": "object",

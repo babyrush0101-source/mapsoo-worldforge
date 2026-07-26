@@ -110,7 +110,7 @@ mapsoo-sunny-meadow-v0.1.0-alpha.1/
 
 上述树形是已发布、保持不变的 alpha.1。alpha.2 在相同结构中增加 `schema/mapsoo-generation-receipt.schema.json`，因此默认浏览器包为 12 个文件、11 条 manifest payload record；它不会把 importer addon 放进素材 ZIP。
 
-当前已发布 Alpha.7 包使用 Pack Schema 0.5：每个包有一个版本化根目录、18 个文件和 17 条 manifest payload record，并增加四层地图数据、places/structures runtime sidecar、地点/建筑 atlas，以及对应的 World/Pack/Places/Structures/Receipt 五份 schema。Sunny Meadow、Dustwind Outpost 与 Frostwatch Vale 是三个相互独立的包，不是一个包内的多 biome。Alpha.8 STOYO CLI 复用这份已审核合同；CLI 旁路生成的 `*-stoyo-export-receipt.json` 位于 ZIP 外部，用来绑定请求 hash 与整体 ZIP hash，不计入包内 18 文件，也不改写 Alpha.7 官方附件。
+当前已发布 Alpha.7 包使用 Pack Schema 0.5：每个包有一个版本化根目录、18 个文件和 17 条 manifest payload record，并增加四层地图数据、places/structures runtime sidecar、地点/建筑 atlas，以及对应的 World/Pack/Places/Structures/Receipt 五份 schema。Sunny Meadow、Dustwind Outpost 与 Frostwatch Vale 是三个相互独立的包，不是一个包内的多 biome。Alpha.8 External Host CLI 复用这份已审核合同；CLI 旁路生成的 `*-external-host-export-receipt.json` 位于 ZIP 外部，用来绑定请求 hash 与整体 ZIP hash，不计入包内 18 文件，也不改写 Alpha.7 官方附件。
 
 所有消费者读取同一套 PNG、JSON、manifest 和许可文件。Godot 用户从官方仓库或未来的 Godot Asset Library 独立安装 importer；素材 ZIP 只在 manifest 中声明 importer ID、最低版本和官方来源，不维护容易漂移的第二套“Godot ZIP”。
 

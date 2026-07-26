@@ -1,6 +1,6 @@
 # Alpha10: complete side-platformer world assets
 
-Status: contract implementation in progress. Nothing in this document is a published Alpha10, external-adoption, STOYO-production, itch.io, model-understanding, or gameplay claim.
+Status: contract implementation in progress. Nothing in this document is a published Alpha10, external-adoption, External Host-production, itch.io, model-understanding, or gameplay claim.
 
 ## Outcome
 
@@ -108,8 +108,8 @@ Alpha10 cannot be released if it:
 - uses a farm `NavigationPolygon` as platform traversal evidence;
 - claims slopes, one-way collision, hazards or parallax without real portable data and Godot checks;
 - changes Alpha9 schemas, attachments or pinned hashes;
-- embeds reference bytes, private paths, raw digests, free-text descriptions or private STOYO content in the public pack;
-- claims a player controller, combat, platform physics tuning, complete game, external adoption, or STOYO production integration.
+- embeds reference bytes, private paths, raw digests, free-text descriptions or private External Host content in the public pack;
+- claims a player controller, combat, platform physics tuning, complete game, external adoption, or External Host production integration.
 
 ## Implementation order
 

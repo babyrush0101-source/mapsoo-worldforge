@@ -4,7 +4,7 @@ This ledger records only public, independently reproducible use of Mapsoo Worlds
 
 ## Current state
 
-As of 2026-07-19, **no independent user report has been recorded**. The public [first-import index](https://github.com/babyrush0101-source/mapsoo-kids/issues/12) is ready, but an empty feedback issue is an invitation, not adoption evidence. STOYO remains a planned consumer scenario and is not counted here.
+As of 2026-07-19, **no independent user report has been recorded**. The public [first-import index](https://github.com/babyrush0101-source/mapsoo-kids/issues/12) is ready, but an empty feedback issue is an invitation, not adoption evidence. External Host remains a planned consumer scenario and is not counted here.
 
 ## Evidence requirements
 

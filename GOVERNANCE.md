@@ -52,7 +52,7 @@ itch.io is an optional distribution surface and is currently postponed. A locall
 
 ## Security
 
-Do not put vulnerability details, credentials, private paths, children's data, private STOYO material, or unlicensed assets in a public issue. Follow [SECURITY.md](SECURITY.md), using GitHub private vulnerability reporting when available. Security reports are prioritized by reproducibility, impact, and exposure, but no fixed response or remediation deadline is promised.
+Do not put vulnerability details, credentials, private paths, children's data, private External Host material, or unlicensed assets in a public issue. Follow [SECURITY.md](SECURITY.md), using GitHub private vulnerability reporting when available. Security reports are prioritized by reproducibility, impact, and exposure, but no fixed response or remediation deadline is promised.
 
 ## Response expectations
 
@@ -60,4 +60,4 @@ This is a volunteer-maintained project with **no service-level agreement (SLA)**
 
 ## Community and project claims
 
-Public documentation must distinguish implemented and verified behaviour from plans. Stars, forks, attachment counts, maintainer-run audits, and generated upload kits must not be presented as proof of independent users or adoption. STOYO is a planned consumer scenario unless and until a public-safe, verifiable integration exists. Community size, usage, partnerships, and program eligibility must never be invented or inferred from unavailable evidence.
+Public documentation must distinguish implemented and verified behaviour from plans. Stars, forks, attachment counts, maintainer-run audits, and generated upload kits must not be presented as proof of independent users or adoption. External Host is a planned consumer scenario unless and until a public-safe, verifiable integration exists. Community size, usage, partnerships, and program eligibility must never be invented or inferred from unavailable evidence.

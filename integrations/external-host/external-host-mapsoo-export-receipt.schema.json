@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mapsoo.dev/integrations/stoyo/stoyo-mapsoo-export-receipt-1.0.0.json",
-  "title": "STOYO to Mapsoo export receipt",
+  "$id": "https://mapsoo.dev/integrations/external-host/external-host-mapsoo-export-receipt-1.0.0.json",
+  "title": "External Host to Mapsoo export receipt",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "completed_at", "request", "projection", "provider", "pack", "tool"],
   "properties": {
-    "schema_version": { "const": "dev.stoyo.mapsoo-export-receipt/1.0.0" },
+    "schema_version": { "const": "org.mapsoo.externalhost.mapsoo-export-receipt/1.0.0" },
     "completed_at": {
       "type": "string",
       "format": "date-time",
@@ -15,13 +15,13 @@
     "request": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "pack_id", "asset_request_sha256", "stoyo_world_id", "stoyo_world_version", "scene_id", "required_scene_tags", "content_rating"],
+      "required": ["schema_version", "pack_id", "asset_request_sha256", "external_host_world_id", "external_host_world_version", "scene_id", "required_scene_tags", "content_rating"],
       "properties": {
-        "schema_version": { "const": "dev.stoyo.asset-request/1.0.0" },
+        "schema_version": { "const": "org.mapsoo.externalhost.asset-request/1.0.0" },
         "pack_id": { "$ref": "#/$defs/id" },
         "asset_request_sha256": { "$ref": "#/$defs/sha256" },
-        "stoyo_world_id": { "$ref": "#/$defs/id" },
-        "stoyo_world_version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$" },
+        "external_host_world_id": { "$ref": "#/$defs/id" },
+        "external_host_world_version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$" },
         "scene_id": { "$ref": "#/$defs/id" },
         "required_scene_tags": { "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
         "content_rating": { "$ref": "#/$defs/id" }
@@ -67,7 +67,7 @@
       "additionalProperties": false,
       "required": ["id", "version"],
       "properties": {
-        "id": { "const": "mapsoo-stoyo-export" },
+        "id": { "const": "mapsoo-external-host-export" },
         "version": { "const": "0.1.0" }
       }
     }
