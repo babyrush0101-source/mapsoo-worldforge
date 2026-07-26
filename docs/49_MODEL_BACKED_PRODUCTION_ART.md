@@ -353,6 +353,24 @@ identity fidelity, human art approval, distribution rights or execution on a
 physical Raspberry Pi. The emitted verification record keeps
 `physical_raspberry_pi: not-tested`.
 
+The same synthetic candidate also exercises the Pack 1.0 Raspberry Pi staging
+boundary:
+
+```bash
+pnpm pi4:pack10-review:prepare
+pnpm pi4:pack10-review:build
+pnpm pi4:pack10-review:verify
+pnpm pi4:pack10-review:godot
+```
+
+Pinned Godot 4.3 creates an importer-managed scene, TileSet and integrity
+state. A second prepare is `unchanged`. The deterministic Linux ARM64 review
+archive has SHA-256
+`86f210ce9ff45d7acabeccee2ce50af7f3b3173e484bb0ecfe6247c2f40b60c8`;
+an isolated extraction passes a direct Godot 4.3 scene load without the source
+Pack or build workspace. This remains synthetic technical evidence and does
+not change the physical Raspberry Pi gate from `not-tested`.
+
 ## Alpha policy
 
 GPT Image 2 currently does not support transparent output. For every task that

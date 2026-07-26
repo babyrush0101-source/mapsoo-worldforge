@@ -20,8 +20,8 @@
     {
       "source": "godot/runtime_candidates/layered-depth-2d-production-v1.world.tscn",
       "target": "layered-depth-2d-production-v1.world.tscn",
-      "bytes": 520,
-      "sha256": "b6381f2fe996d72165981c55f7f539c56a9dc17b2036d4c97c564cd71c54b624"
+      "bytes": 597,
+      "sha256": "483c82e02b9ccff0a17b072b89996f955a9323278a63621713b0d877278af665"
     },
     {
       "source": "docs/visual-qa/production-art/layered-depth-2d-production-layers-v1.json",

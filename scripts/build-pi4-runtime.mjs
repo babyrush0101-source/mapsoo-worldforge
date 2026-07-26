@@ -29,7 +29,7 @@ const BASE_WORLD_IDS = Object.freeze([
   'alpha12-godot-smoke-pack',
 ]);
 const SAFE_WORLD_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const SAFE_EXTRA_SUFFIXES = new Set(['.json', '.png', '.tscn']);
+const SAFE_EXTRA_SUFFIXES = new Set(['.json', '.png', '.tscn', '.tres']);
 const TEXT_SUFFIXES = new Set(['.cfg', '.gd', '.json', '.md', '.tscn', '.tres']);
 
 function option(name, fallback) {
@@ -88,6 +88,102 @@ function assertPortableText(path, bytes) {
   }
 }
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, canonicalJson(value[key])]),
+    );
+  }
+  return value;
+}
+
+function validateManagedImport(manifest, byTarget) {
+  const sceneName = `${manifest.id}.world.tscn`;
+  const tilesetName = `${manifest.id}.tileset.tres`;
+  const stateName = 'mapsoo.import-state.json';
+  const exactTargets = [sceneName, tilesetName, stateName];
+  if (byTarget.size !== exactTargets.length
+    || exactTargets.some((target) => !byTarget.has(target))) {
+    throw new Error('Importer-managed world-set must contain exactly scene, TileSet and import state.');
+  }
+  const sourcePack = manifest.source_pack;
+  if (!sourcePack
+    || !/^[0-9a-f]{64}$/u.test(sourcePack.candidate_sha256 ?? '')
+    || !/^[0-9a-f]{64}$/u.test(sourcePack.manifest_sha256 ?? '')
+    || sourcePack.schema_version !== '1.0.0-draft.1'
+    || sourcePack.importer_version !== '1.0.0'
+    || sourcePack.godot_serialization !== '4.3') {
+    throw new Error('Importer-managed world-set source binding is invalid.');
+  }
+  let state;
+  try {
+    state = JSON.parse(Buffer.from(byTarget.get(stateName).bytes).toString('utf8'));
+  } catch (error) {
+    throw new Error(`Unable to parse importer-managed state: ${error.message}`);
+  }
+  const expectedStateKeys = [
+    'cell_count',
+    'generated_files',
+    'godot_serialization',
+    'importer',
+    'integrity_sha256',
+    'manifest_sha256',
+    'pack_id',
+    'prop_count',
+    'schema_version',
+  ];
+  const generatedFiles = state?.generated_files;
+  if (JSON.stringify(Object.keys(state ?? {}).sort()) !== JSON.stringify(expectedStateKeys)
+    || state.schema_version !== '1.0.0'
+    || state.pack_id !== manifest.id
+    || state.manifest_sha256 !== sourcePack.manifest_sha256
+    || state.godot_serialization !== sourcePack.godot_serialization
+    || state.importer?.id !== 'mapsoo_importer'
+    || state.importer?.version !== sourcePack.importer_version
+    || !Number.isSafeInteger(state.cell_count)
+    || state.cell_count < 0
+    || !Number.isSafeInteger(state.prop_count)
+    || state.prop_count < 0
+    || !generatedFiles
+    || JSON.stringify(Object.keys(generatedFiles).sort())
+      !== JSON.stringify([tilesetName, sceneName].sort())
+    || generatedFiles[sceneName] !== digest('sha256', byTarget.get(sceneName).bytes)
+    || generatedFiles[tilesetName] !== digest('sha256', byTarget.get(tilesetName).bytes)) {
+    throw new Error('Importer-managed state is not bound to the exact generated resources.');
+  }
+  const stateCore = {
+    schema_version: state.schema_version,
+    importer: {
+      id: state.importer.id,
+      version: state.importer.version,
+    },
+    godot_serialization: state.godot_serialization,
+    pack_id: state.pack_id,
+    manifest_sha256: state.manifest_sha256,
+    generated_files: generatedFiles,
+    cell_count: state.cell_count,
+    prop_count: state.prop_count,
+  };
+  if (state.integrity_sha256
+    !== digest('sha256', new TextEncoder().encode(JSON.stringify(canonicalJson(stateCore))))) {
+    throw new Error('Importer-managed state integrity digest is invalid.');
+  }
+  const sceneText = Buffer.from(byTarget.get(sceneName).bytes).toString('utf8');
+  const requiredMetadata = [
+    `metadata/mapsoo_pack_id = "${manifest.id}"`,
+    'metadata/mapsoo_profile = "layered-depth-2d"',
+    'metadata/mapsoo_schema_version = "1.0.0-draft.1"',
+    'metadata/mapsoo_distribution = "internal-review"',
+    'metadata/mapsoo_output_license = "LicenseRef-UNRELEASED"',
+    'metadata/mapsoo_authorization_grant = "pi4-pack10-review-prepare"',
+    'metadata/mapsoo_data_only = true',
+  ];
+  if (requiredMetadata.some((record) => !sceneText.includes(record))) {
+    throw new Error('Importer-managed scene metadata is incomplete.');
+  }
+}
+
 async function loadExtraWorldSet() {
   if (!extraWorldSetPath) return null;
   const manifestPath = resolve(extraWorldSetPath);
@@ -98,20 +194,25 @@ async function loadExtraWorldSet() {
   } catch (error) {
     throw new Error(`Unable to parse extra world-set manifest: ${error.message}`);
   }
+  const isTrustedScene = manifest?.runtime_kind === 'trusted-controlled-scene';
+  const isManagedImport = manifest?.runtime_kind === 'importer-managed-scene';
   if (manifest?.schema_version !== 'mapsoo-pi4-world-set/1.0'
     || !SAFE_WORLD_ID.test(manifest.id ?? '')
     || BASE_WORLD_IDS.includes(manifest.id)
     || manifest.profile !== 'layered-depth-2d'
     || manifest.scene_target !== `${manifest.id}.world.tscn`
     || manifest.distribution !== 'internal-review'
-    || manifest.output_license !== 'UNRELEASED'
+    || (isTrustedScene && manifest.output_license !== 'UNRELEASED')
+    || (isManagedImport && manifest.output_license !== 'LicenseRef-UNRELEASED')
     || manifest.standard_pack !== false
-    || manifest.runtime_kind !== 'trusted-controlled-scene'
+    || (!isTrustedScene && !isManagedImport)
     || !Array.isArray(manifest.files)
-    || manifest.files.length === 0) {
+    || (isTrustedScene && manifest.files.length !== 16)
+    || (isManagedImport && manifest.files.length !== 3)) {
     throw new Error('Extra world-set manifest does not satisfy the controlled internal-review contract.');
   }
   const targetPaths = new Set();
+  const byTarget = new Map();
   let exactSceneCount = 0;
   const entries = [];
   for (const record of manifest.files) {
@@ -139,30 +240,42 @@ async function loadExtraWorldSet() {
       const resourcePaths = [...sceneText.matchAll(/path="(res:\/\/[^"]+)"/gu)].map((match) => match[1]);
       if (resourcePaths.length === 0
         || resourcePaths.some((path) => !path.startsWith('res://addons/mapsoo_importer/runtime/'))
-        || /(?:uid:\/\/|\.\.|\\)/u.test(sceneText)) {
+        || /(?:uid:\/\/|https?:\/\/|file:\/\/|\.\.|\\)/u.test(sceneText)) {
         throw new Error(`Controlled scene has an untrusted resource reference: ${record.source}`);
+      }
+    }
+    if (record.target.endsWith('.tres')) {
+      const resourceText = Buffer.from(bytes).toString('utf8');
+      if (/path="res:\/\//u.test(resourceText)
+        || /(?:uid:\/\/|https?:\/\/|file:\/\/|\.\.|\\)/u.test(resourceText)) {
+        throw new Error(`Controlled TileSet has an untrusted resource reference: ${record.source}`);
       }
     }
     entries.push({
       path: `project/mapsoo_imports/${manifest.id}/${record.target}`,
       bytes,
     });
+    byTarget.set(record.target, { bytes, source: record.source });
   }
   if (exactSceneCount !== 1) {
     throw new Error('Extra world-set must provide exactly one canonical world scene.');
   }
-  const requiredTargets = [
-    'manifests/layers.json',
-    'manifests/props.json',
-    'manifests/player.json',
-    'manifests/npc.json',
-    'assets/props.png',
-    'assets/player.png',
-    'assets/npc.png',
-  ];
-  if (requiredTargets.some((target) => !targetPaths.has(target))
-    || [...targetPaths].filter((target) => target.startsWith('assets/layer-')).length !== 8) {
-    throw new Error('Extra layered production world is missing its exact manifests or art inventory.');
+  if (isTrustedScene) {
+    const requiredTargets = [
+      'manifests/layers.json',
+      'manifests/props.json',
+      'manifests/player.json',
+      'manifests/npc.json',
+      'assets/props.png',
+      'assets/player.png',
+      'assets/npc.png',
+    ];
+    if (requiredTargets.some((target) => !targetPaths.has(target))
+      || [...targetPaths].filter((target) => target.startsWith('assets/layer-')).length !== 8) {
+      throw new Error('Extra layered production world is missing its exact manifests or art inventory.');
+    }
+  } else {
+    validateManagedImport(manifest, byTarget);
   }
   return {
     manifest,
@@ -176,6 +289,7 @@ async function loadExtraWorldSet() {
       output_license: manifest.output_license,
       standard_pack: false,
       source_evidence_status: manifest.source_evidence?.status ?? 'runtime-candidate',
+      source_pack: manifest.source_pack,
       not_accepted_for: manifest.not_accepted_for,
       files: entries.map(({ path, bytes }) => ({
         path,
@@ -297,12 +411,15 @@ chmod +x godot run-mapsoo.sh
 
 Available world IDs:
 
-${worldRecords.map((world) => `- \`${world.id}\`${world.distribution ? ` — ${world.distribution}, ${world.output_license}; not a standard Pack 0.9 release` : ''}`).join('\n')}
+${worldRecords.map((world) => `- \`${world.id}\`${world.distribution ? ` — ${world.distribution}, ${world.output_license}; not a public release` : ''}`).join('\n')}
 
-New worlds should be imported and verified before deployment, then copied into \`project/mapsoo_imports/<world-id>/\`. The runtime shell loads an exact generated scene path; it does not recompile the Godot application for each world.
+New worlds are imported and verified before deployment, then copied into
+\`project/mapsoo_imports/<world-id>/\` with their importer ownership state. The
+runtime shell loads an exact generated scene path; it does not recompile the
+Godot application for each world.
 
 The controlled production candidate, when present, is for internal review only. Its
-UNRELEASED assets must not be redistributed or described as a standard Pack 0.9.
+UNRELEASED assets must not be redistributed or described as a public release.
 `;
   const manifest = {
     schema_version: '1.0.0',

@@ -73,6 +73,12 @@ characters, pivot-baked structures, and byte-stable re-import. This proves the
 technical Pack/Godot boundary only: it is not real model output, human art
 approval, or physical Raspberry Pi evidence.
 
+The same fixture can be prepared with pinned Godot 4.3 into the exact
+importer-managed scene, TileSet and integrity state used by a reproducible
+Linux ARM64 review bundle. An extracted bundle passes an independent Godot 4.3
+load without the source Pack or build workspace. Physical Raspberry Pi 4B
+performance remains an explicit pending gate.
+
 Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The current provider is procedural and truthfully records `contains_generative_ai: false`; that statement does not apply to future model providers. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.
 
 ## Project status
