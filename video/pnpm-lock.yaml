@@ -28,8 +28,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       remotion:
-        specifier: 4.0.490
-        version: 4.0.490(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: 4.0.491
+        version: 4.0.491(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
       '@remotion/eslint-config-flat':
         specifier: 4.0.490
@@ -1257,6 +1257,12 @@ packages:
 
   remotion@4.0.490:
     resolution: {integrity: sha512-acyJNHljJvH7+I9kXJAK5bVVN7FAyM3tILGhnwZKJoB27Xp2WQ3cMyGIh8XFwlR66/ZESWkw74s49GItHejOWQ==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
+  remotion@4.0.491:
+    resolution: {integrity: sha512-17Y4QpoYvdkToWEimCcz44ydNeXjUGc25j0hXn0aKxgkBkZsa00s9D3q7/t/TW1vrQ7QIZCz2kVkXHB/5XHpXA==}
     peerDependencies:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
@@ -2787,6 +2793,11 @@ snapshots:
       tslib: 2.8.1
 
   remotion@4.0.490(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
+  remotion@4.0.491(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
