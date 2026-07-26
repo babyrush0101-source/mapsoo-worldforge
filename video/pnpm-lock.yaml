@@ -32,8 +32,8 @@ importers:
         version: 4.0.490(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
       '@remotion/eslint-config-flat':
-        specifier: 4.0.490
-        version: 4.0.490(eslint@9.19.0)(typescript@5.7.3)
+        specifier: 4.0.491
+        version: 4.0.491(eslint@9.19.0)(typescript@5.7.3)
       '@types/react':
         specifier: 19.2.7
         version: 19.2.7
@@ -417,8 +417,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@remotion/eslint-config-flat@4.0.490':
-    resolution: {integrity: sha512-SxoGx+yQCH4oeEjRboQ/Q5tHFzMeOHOJexVJFUgDxwGYLWakSwQu5K3h4hnBMHb8Q1boVaHJyMjXE1jc+gxk+A==}
+  '@remotion/eslint-config-flat@4.0.491':
+    resolution: {integrity: sha512-yAtRRKyOTcSs+k92o8qV+vwtwQeCmXqNFAQPqZOuGlCTDpxpCcwtWoZC+fS7UbNEeHfFptkeykCRLjVTAGsV9A==}
     peerDependencies:
       eslint: '>=9'
 
@@ -1853,7 +1853,7 @@ snapshots:
   '@remotion/compositor-win32-x64-msvc@4.0.490':
     optional: true
 
-  '@remotion/eslint-config-flat@4.0.490(eslint@9.19.0)(typescript@5.7.3)':
+  '@remotion/eslint-config-flat@4.0.491(eslint@9.19.0)(typescript@5.7.3)':
     dependencies:
       eslint: 9.19.0
       typescript-eslint: 8.21.0(eslint@9.19.0)(typescript@5.7.3)
