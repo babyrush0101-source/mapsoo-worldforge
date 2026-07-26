@@ -83,3 +83,23 @@ Provider 可以是内置图像工具、本地模型、人工绘制或未来的�
 TypeScript 与 JSON Schema 双重验证。它建立的是生产美术“接入与拒绝错误
 输出”的边界；还不表示现有占位图已经自动变成最终美术，也不替代逐张视觉
 QA。
+
+## Layered-depth Pack 1.0 character projection
+
+`src/adapters/project-layered-depth-production-character.ts` is the first
+runtime projection of this contract. It consumes only a normalized,
+hash/evidence-bound layered-depth player or NPC sheet and produces the exact
+Pack 1.0 character shape:
+
+- `48 × 72` runtime frames and pivot `24,67`;
+- 32 player poses / 16 clips, or 16 NPC poses / 8 clips;
+- two unique frame coordinates per canonical action-direction clip;
+- `independent-generated-pose` provenance on every projected frame;
+- an immutable PNG snapshot, Pack file record, role binding, atlas record,
+  character record and machine-readable projection record.
+
+Endpoint-aligned nearest-neighbor sampling maps source pivot `64,180` to runtime
+pivot `24,67`. The projector checks transparent borders, grounded foot position,
+distinct frame bytes and horizontal mirror copies before an atlas can enter a
+Pack 1.0 candidate. Its record remains `human_review: required`; these pixel
+checks cannot prove action meaning, identity fidelity or aesthetic quality.

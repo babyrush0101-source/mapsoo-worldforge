@@ -4,6 +4,11 @@ import { relative, resolve, sep } from 'node:path';
 
 import { normalizeProductionArtPng } from '../src/adapters/normalize-production-art-png';
 import {
+  LayeredDepthCharacterProjectionError,
+  projectLayeredDepthProductionCharacter,
+  type LayeredDepthCharacterProjection,
+} from '../src/adapters/project-layered-depth-production-character';
+import {
   createOpenAiProductionArtProvider,
   OPENAI_PRODUCTION_ART_MODEL,
   OPENAI_PRODUCTION_ART_PROVIDER_ID,
@@ -314,27 +319,68 @@ async function main(): Promise<void> {
     remoteAuthorization: authorization,
   }, { credential });
   const normalized = await normalizeProductionArtPng(trusted);
+  let projection: LayeredDepthCharacterProjection | undefined;
+  let projectionErrorCode: string | undefined;
+  if (plan.profile === 'layered-depth-2d' && task.kind === 'character-animation-sheet') {
+    try {
+      projection = await projectLayeredDepthProductionCharacter(plan, normalized);
+    } catch (error) {
+      projectionErrorCode = error instanceof LayeredDepthCharacterProjectionError
+        ? error.code
+        : 'projection.failed';
+    }
+  }
   const runId = normalized.evidence.provider_request_id
     ?? normalized.evidence.source.sha256.slice(0, 20);
   const directory = safeRunDirectory(args.profile, task.task_id, runId);
   await mkdir(resolve(directory, '..'), { recursive: true });
   await mkdir(directory, { recursive: false });
-  await Promise.all([
+  const writes: Promise<unknown>[] = [
     writeFile(resolve(directory, 'source.png'), normalized.source.readBytes(), { flag: 'wx' }),
     writeFile(resolve(directory, 'normalized.png'), normalized.normalized.readBytes(), { flag: 'wx' }),
     writeJson(resolve(directory, 'output.json'), normalized.output),
     writeJson(resolve(directory, 'evidence.json'), normalized.evidence),
-  ]);
+  ];
+  if (projection) {
+    writes.push(
+      writeFile(resolve(directory, 'runtime-atlas.png'), projection.png.readBytes(), { flag: 'wx' }),
+      writeJson(resolve(directory, 'projection.json'), projection.record),
+      writeJson(resolve(directory, 'pack-character.json'), projection.character),
+    );
+  } else if (projectionErrorCode) {
+    writes.push(writeJson(resolve(directory, 'projection-rejection.json'), {
+      schema_version: '1.0.0',
+      document_type: 'production-character-atlas-projection-rejection',
+      profile: args.profile,
+      task_id: task.task_id,
+      code: projectionErrorCode,
+      human_review: 'required',
+    }));
+  }
+  await Promise.all(writes);
   console.log(JSON.stringify({
-    status: 'candidate-written',
+    status: projectionErrorCode
+      ? 'candidate-written-projection-rejected'
+      : 'candidate-written',
     remote_request_count: 1,
     profile: args.profile,
     task_id: task.task_id,
     source_sha256: normalized.evidence.source.sha256,
     normalized_sha256: normalized.evidence.normalized.sha256,
+    pack10_projection: projection
+      ? 'passed'
+      : projectionErrorCode
+        ? 'rejected'
+        : 'not-applicable',
+    ...(projection ? {
+      runtime_atlas_sha256: projection.file.sha256,
+      runtime_atlas_path: 'runtime-atlas.png',
+    } : {}),
+    ...(projectionErrorCode ? { projection_error_code: projectionErrorCode } : {}),
     human_review: 'required',
     output_directory: relative(process.cwd(), directory).replaceAll('\\', '/'),
   }, null, 2));
+  if (projectionErrorCode) process.exitCode = 2;
 }
 
 main().catch((error) => {

@@ -42,10 +42,13 @@ confirmed style samples, continuity checks, and human approval.
 The first optional **server-only image-model source adapter** is now implemented
 behind that boundary. It converts one explicitly authorized production task into
 a hash-bound internal-review PNG candidate and deterministic normalized output;
-it is dry-run by default, never stores the API key, and is not yet wired to claim
-a complete production pack. Character plans now bind every required source cell
-to an explicit action, direction, frame index and duration, while semantic
-identity and animation quality still require human review. See
+it is dry-run by default and never stores the API key. Layered-depth player and
+NPC tasks now additionally project into exact Pack 1.0 `48 × 72` Godot atlases
+with complete two-frame clip records, rejecting empty, duplicate, mirrored and
+mis-anchored frames. This is still an internal-review candidate rather than a
+complete production pack. Character plans bind every required source cell to an
+explicit action, direction, frame index and duration, while semantic identity
+and animation quality still require human review. See
 [Model-backed production art](docs/49_MODEL_BACKED_PRODUCTION_ART.md).
 
 Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The current provider is procedural and truthfully records `contains_generative_ai: false`; that statement does not apply to future model providers. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.

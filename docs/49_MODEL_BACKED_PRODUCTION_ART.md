@@ -132,6 +132,27 @@ directory as:
 World brief, style bible, raw prompt, local paths, API key, and reference bytes
 are not copied into either JSON record.
 
+For a `layered-depth-2d` player or NPC task, the same invocation also runs the
+deterministic Pack 1.0 character projector. A passing candidate adds:
+
+- `runtime-atlas.png`: an 8-column Godot runtime atlas with `48 × 72` frames;
+- `pack-character.json`: the complete player or NPC clip record ready for a
+  Pack 1.0 manifest;
+- `projection.json`: source/output hashes, geometry and machine-check evidence.
+
+The player projection contains 32 independently mapped poses and 16
+action-direction clips. The NPC projection contains 16 poses and 8 clips. Each
+clip has two independent frames. The projector rejects empty frames, visible
+frame borders, feet that do not land near the declared `24,67` pivot, exact
+duplicate frames, horizontal mirror copies and normalized-byte/evidence digest
+mismatches.
+
+A paid model response is not discarded merely because this technical
+projection fails. The original source, normalized candidate and evidence are
+still written, together with `projection-rejection.json`; the command exits
+non-zero and reports a bounded rejection code. Passing projection still leaves
+`human_review: required` and does not approve the art for release.
+
 ## Alpha policy
 
 GPT Image 2 currently does not support transparent output. For every task that
@@ -202,10 +223,9 @@ This source adapter is a real provider implementation, but the following work is
 still required before claiming “a few dialogue rounds create one complete
 production world”:
 
-- connect accepted per-task outputs to the full `WorldAssetProvider` bundle
-  builder;
-- start with one `layered-depth-2d` Pack 1.0 character replacement, then expand
-  the same provider to the other three profiles;
+- connect the projected layered-depth player and NPC, followed by accepted
+  environment outputs, to the full `WorldAssetProvider` bundle builder;
+- expand the same runtime projection boundary to the other three profiles;
 - execute the canonical character pose inventory in smaller, independently
   reviewed batches instead of relying on one perfect sprite-sheet request;
 - add semantic identity, action, direction, temporal-continuity, seam, pivot,
