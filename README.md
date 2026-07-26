@@ -9,6 +9,13 @@
 
 Mapsoo Worldsmith is evolving from the original `mapsoo-kids` website into a local-first tool that turns a compact world specification into previewable, versioned game-art asset packs for Godot. itch.io distribution is intentionally postponed; GitHub Releases is the audited public channel for this alpha.
 
+The public repository slug is **`mapsoo-worldforge`**. `Mapsoo Worldsmith`
+remains the alpha generator/protocol identifier because it is embedded in
+immutable release manifests, schemas, receipts, and verified archive hashes.
+Renaming that identifier in place would break existing pack verification; any
+future product-name migration must use a new schema version with an explicit
+compatibility path.
+
 The **published v0.1.0-alpha.9 prerelease** is the immutable compatibility baseline. It accepts one environment image, one character image, and a short description, then builds a complete `topdown-farm` Pack Schema 0.6.0 ZIP. The exact published pack passed Linux/Windows with Godot 4.3/4.7 and remains pinned at SHA-256 `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`.
 
 The current **unpublished Alpha12 development candidate** expands that workflow into a guided four-round conversation and four complete original world grammars:
