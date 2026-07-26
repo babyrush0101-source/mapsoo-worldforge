@@ -158,7 +158,10 @@ async function verify() {
 
     const canonical = await buildExamplePackArchive(ALPHA2_RELEASE_CONFIG.version);
     assert(exported.bytes.equals(canonical), 'Real browser export bytes differ from the registered canonical alpha.2 pack.');
-    assert(hash === ALPHA2_RELEASE_CONFIG.expectedExamplePackSha256, 'Real browser export hash differs from the registered alpha.2 hash.');
+    assert(
+      hash === ALPHA2_RELEASE_CONFIG.currentSourceExamplePackSha256,
+      'Real browser export hash differs from the registered current-source alpha.2 hash.',
+    );
     console.log(
       `MAPSOO_BROWSER_ALPHA2_OK bytes=${exported.bytes.length} sha256=${hash}`
       + ` external_host_request_sha256=${exported.externalHostRequestSha256} external_host_world=${exported.externalHostWorldId}`,

@@ -164,8 +164,14 @@ async function verify() {
 
     const canonical = await buildExamplePackArchive(browserReleaseConfig.version);
     assert(exported.bytes.equals(canonical), 'Real browser export bytes differ from the registered canonical pack.');
-    assert(browserReleaseConfig.expectedExamplePackSha256, 'Capture and pin this candidate browser export hash before verification.');
-    assert(hash === browserReleaseConfig.expectedExamplePackSha256, 'Real browser export hash differs from the registered hash.');
+    assert(
+      browserReleaseConfig.currentSourceExamplePackSha256,
+      'Capture and pin this current-source browser export hash before verification.',
+    );
+    assert(
+      hash === browserReleaseConfig.currentSourceExamplePackSha256,
+      'Real browser export hash differs from the registered current-source hash.',
+    );
     console.log(
       `MAPSOO_BROWSER_${browserLabel}_OK bytes=${exported.bytes.length} sha256=${hash}`
       + ` external_host_request_sha256=${exported.externalHostRequestSha256} external_host_world=${exported.externalHostWorldId}`,

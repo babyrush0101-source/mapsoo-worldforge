@@ -10,10 +10,10 @@ const packageJson = JSON.parse(await readFile(PACKAGE_JSON_PATH, 'utf8'));
 export const PACKAGE_VERSION = packageJson.version;
 
 const CURRENT_SOURCE_EXAMPLE_PACK_SHA256 = Object.freeze({
-  '0.1.0-alpha.1': '11caf38c73fd6c4cd7e1a6d61d63826e50ac58811c6c569c4295aab20400f8cd',
-  '0.1.0-alpha.2': '6d171a3163c3eff69adf57b714f7d53a6efc49fac8c4aae6d44e1a03106b4675',
-  '0.1.0-alpha.3': '85b5d4062e0a9c834558aff4dc2153b9294d514b829ead36811289af88392758',
-  '0.1.0-alpha.4': 'bcd46e53a3b22fabf3c6b2963c16a585e1ce2bf4d4b69f1767c70eea55a5bc20',
+  '0.1.0-alpha.1': 'bc221386971434a08f21c69f0537c0f93cc266d76d47bb08a7ccc834e5a64621',
+  '0.1.0-alpha.2': 'e139519ed8d3e6e6e8ed811e9da2761eb7f227a1a3ddd7206adff171b50aa0ca',
+  '0.1.0-alpha.3': 'c1acb8d61e72ccfcf609c02e37868fe3f20e0bd28b9f65aff71e25ac8b45d409',
+  '0.1.0-alpha.4': 'f815676485f08cac53783d99b7b6fbf2a1dcbdef5ac2fc501a26ccefba3fd127',
   '0.1.0-alpha.5': '8d86124a4a37fa4a78487c4e91cb7f5024561f140814a5fd139c5b93fde54f36',
   '0.1.0-alpha.6': '4563552187977b38cdba86c7d3cbf5429a67b7a0a6049e978c2ef2992ef3a054',
   '0.1.0-alpha.7': '6113b30fec3615b72730d8d775919aa3c5552285c614b6916a109b887ab8012c',
