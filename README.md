@@ -36,8 +36,15 @@ representative projection cues through all four complete ZIP routes, and
 verifies each emitted player atlas against its manifest. It intentionally
 exposes the remaining boundary: deterministic silhouette/palette projection
 works today, while production-quality arbitrary-reference adaptation still
-needs a model provider, confirmed style sample, continuity checks, and human
-approval.
+needs model-backed pose generation connected to the complete pack builder,
+confirmed style samples, continuity checks, and human approval.
+
+The first optional **server-only image-model source adapter** is now implemented
+behind that boundary. It converts one explicitly authorized production task into
+a hash-bound internal-review PNG candidate and deterministic normalized output;
+it is dry-run by default, never stores the API key, and is not yet wired to claim
+a complete production pack. See
+[Model-backed production art](docs/49_MODEL_BACKED_PRODUCTION_ART.md).
 
 Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The current provider is procedural and truthfully records `contains_generative_ai: false`; that statement does not apply to future model providers. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.
 
@@ -132,6 +139,7 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 - [Production-art task/output contract for all four profiles](docs/32_PRODUCTION_ART_CONTRACT.md)
 - [Independent character profile revisions and neutral runtime binding](docs/33_CHARACTER_PROFILE_REVISION.md)
 - [Generation Provider SDK](docs/09_PROVIDER_SDK.md)
+- [Model-backed production art and safe single-task CLI](docs/49_MODEL_BACKED_PRODUCTION_ART.md)
 - [10-minute first Godot import](docs/10_FIRST_GODOT_IMPORT.md)
 - [Safe Godot re-import contract](docs/11_SAFE_GODOT_REIMPORT.md)
 - [Alpha.9 reference-to-farm scope and acceptance](docs/19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)

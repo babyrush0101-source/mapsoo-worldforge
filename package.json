@@ -106,6 +106,7 @@
     "pack10:fixture:verify": "node scripts/verify-pack10-public-fixture.mjs",
     "character:fixture:build": "vite-node scripts/build-character-reference-conformance-fixture.ts --write",
     "character:fixture:verify": "vite-node scripts/build-character-reference-conformance-fixture.ts",
+    "production-art:model": "vite-node scripts/run-openai-production-art-source.ts",
     "pi4:runtime:build": "node scripts/build-pi4-runtime.mjs",
     "pi4:runtime:verify": "node scripts/verify-pi4-runtime.mjs",
     "pi4:production-review:build": "node scripts/build-pi4-runtime.mjs --extra-world-set=config/pi4-worlds/layered-depth-2d-production-v1.json --out=release/pi4-runtime/mapsoo-pi4-arm64-alpha12-production-review.zip",

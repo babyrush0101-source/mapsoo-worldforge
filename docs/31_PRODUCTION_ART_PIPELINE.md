@@ -287,7 +287,13 @@ The production provider is intentionally model-neutral. OpenAI's current image d
 - [GPT Image 2 model](https://developers.openai.com/api/docs/models/gpt-image-2)
 - [Image generation guide](https://developers.openai.com/api/docs/guides/image-generation)
 
-No browser client stores an API key. A future hosted adapter receives a bounded task, reference inputs and a private credential on the server; it returns files that must still pass the local contract. The offline provider remains usable without that adapter.
+No browser client stores an API key. The first server-only/local CLI adapter now
+receives one bounded task, explicitly authorized reference inputs, and a private
+runtime credential; it returns files that must still pass the local contract.
+The command is dry-run by default and a real request requires both `--execute`
+and `--allow-remote-upload`. The offline provider remains usable without that
+adapter. See
+[`49_MODEL_BACKED_PRODUCTION_ART.md`](49_MODEL_BACKED_PRODUCTION_ART.md).
 
 ## Acceptance rule
 

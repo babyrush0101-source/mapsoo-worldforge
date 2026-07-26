@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.example/schemas/mapsoo-production-art-generation-evidence-1.0.schema.json",
+  "title": "Mapsoo production art generation evidence 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "provider",
+    "plan_id",
+    "profile",
+    "task_id",
+    "model",
+    "workflow",
+    "source",
+    "normalized",
+    "postprocess",
+    "human_review"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "document_type": {
+      "const": "production-art-generation-evidence"
+    },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "documentation_url",
+        "execution",
+        "provenance",
+        "determinism"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "maxLength": 80
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
+        },
+        "documentation_url": {
+          "type": "string",
+          "pattern": "^https://[^#\\s]{1,290}$",
+          "maxLength": 300
+        },
+        "execution": {
+          "enum": [
+            "local",
+            "remote"
+          ]
+        },
+        "provenance": {
+          "enum": [
+            "generative-ai",
+            "recorded-replay"
+          ]
+        },
+        "determinism": {
+          "enum": [
+            "best-effort",
+            "replay"
+          ]
+        }
+      }
+    },
+    "plan_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "profile": {
+      "enum": [
+        "topdown-farm",
+        "side-platformer",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "model": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+    },
+    "workflow": {
+      "enum": [
+        "image-generation",
+        "image-edit",
+        "recorded-replay"
+      ]
+    },
+    "provider_request_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$"
+    },
+    "source": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/imageCore"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "normalized": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/imageCore"
+        },
+        {
+          "type": "object",
+          "required": [
+            "alpha_policy"
+          ],
+          "properties": {
+            "alpha_policy": {
+              "enum": [
+                "opaque",
+                "straight-alpha"
+              ]
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "postprocess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resize",
+        "alpha_extraction",
+        "transparent_rgb_zeroed",
+        "mapped_grid_cells_checked"
+      ],
+      "properties": {
+        "resize": {
+          "const": "nearest-neighbor-v1"
+        },
+        "alpha_extraction": {
+          "enum": [
+            "none",
+            "edge-connected-green-chroma-v1"
+          ]
+        },
+        "transparent_rgb_zeroed": {
+          "const": true
+        },
+        "mapped_grid_cells_checked": {
+          "const": true
+        }
+      }
+    },
+    "human_review": {
+      "const": "required"
+    }
+  },
+  "$defs": {
+    "imageCore": {
+      "type": "object",
+      "required": [
+        "media_type",
+        "bytes",
+        "sha256",
+        "width",
+        "height"
+      ],
+      "properties": {
+        "media_type": {
+          "const": "image/png"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        }
+      }
+    }
+  }
+}
