@@ -40,6 +40,9 @@ The relevant code is:
   cleanup, mapped-cell checks, hashes, output record, and evidence;
 - [`schemas/mapsoo-production-art-generation-evidence-1.0.schema.json`](../schemas/mapsoo-production-art-generation-evidence-1.0.schema.json):
   the strict portable schema for scrubbed generation evidence;
+- [`src/providers/production-art-replay-provider.ts`](../src/providers/production-art-replay-provider.ts):
+  a local replay provider bound to the plan, task, source SHA-256, ordered
+  reference ids, and private reference digests;
 - [`scripts/run-openai-production-art-source.ts`](../scripts/run-openai-production-art-source.ts):
   the local, one-task CLI.
 
@@ -176,6 +179,14 @@ after a candidate is frozen:
 - packing, scene layout, collision, navigation, Godot import, and release
   receipts remain deterministic;
 - replay should use the frozen source bytes rather than call the model again.
+
+The repository now implements that last step. A
+`createProductionArtReplayProvider(...)` fixture takes the frozen source bytes,
+their expected SHA-256, original model id, exact plan/task, and the ordered
+reference ids plus reference digests. The replay is local, needs no credential
+or remote-upload authorization, and must produce the same normalized PNG bytes.
+Changing the caller-owned source buffer after provider creation, changing a
+reference digest, or lying about the source hash fails closed.
 
 Automated tests inject a fake HTTP transport. They verify form fields, reference
 uploads, absence of `input_fidelity`, opaque output requests, authorization
