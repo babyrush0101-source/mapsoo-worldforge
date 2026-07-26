@@ -19,8 +19,8 @@ importers:
         specifier: 4.0.490
         version: 4.0.490(postcss@8.5.19)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@remotion/media-parser':
-        specifier: 4.0.490
-        version: 4.0.490
+        specifier: 4.0.491
+        version: 4.0.491
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -427,6 +427,9 @@ packages:
 
   '@remotion/media-parser@4.0.490':
     resolution: {integrity: sha512-Dj64dV0YAh5DiTYyGTRexJNPqa+plCB7YOc/ij5bEBvJfvDAx2zWZtoUNLVjosmhyniHdK3GSB9fUJoLBFUJLw==}
+
+  '@remotion/media-parser@4.0.491':
+    resolution: {integrity: sha512-24T2fAehxlVfN7Uh+S4mBsdR72s8OE3Td2hPkOvczPcplYUtodcbjkYM1LrtG7yrYpQYP1y8JJSHVbssty0qMA==}
 
   '@remotion/media-utils@4.0.490':
     resolution: {integrity: sha512-2bO0sSMfeSMlCKFaYggSXyLi8EjsCGdsOaE9c7SeWkCPpMiXSmnM+7eAWBrubEmjP4HMn9RFNJPlRX9MuXJlbA==}
@@ -1864,6 +1867,8 @@ snapshots:
   '@remotion/licensing@4.0.490': {}
 
   '@remotion/media-parser@4.0.490': {}
+
+  '@remotion/media-parser@4.0.491': {}
 
   '@remotion/media-utils@4.0.490(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:

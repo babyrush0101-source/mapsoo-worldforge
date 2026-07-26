@@ -8,7 +8,7 @@
   "dependencies": {
     "@remotion/captions": "4.0.490",
     "@remotion/cli": "4.0.490",
-    "@remotion/media-parser": "4.0.490",
+    "@remotion/media-parser": "4.0.491",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "4.0.490"
