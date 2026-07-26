@@ -344,18 +344,23 @@ for (const metric of criticalRoleMetrics) {
 const spawn = { x: 80, y: 416 };
 const idleSouth = characterRecord.clips.find(({ clip_id: id }) => id === 'idle.south');
 assert(idleSouth?.frames?.length === 2, 'Character idle.south clip is incomplete.');
-const characterRenderScale = 0.75;
+const characterRenderScale = 0.58;
+const characterRenderSize = Math.round(128 * characterRenderScale);
+const characterPivot = {
+  x: Math.round(characterRenderSize / 2),
+  y: Math.round(characterRenderSize * 0.94),
+};
 const characterFrame = resizeNearest(
   crop(character, characterRect(idleSouth.frames[0])),
-  96,
-  96,
+  characterRenderSize,
+  characterRenderSize,
 );
 blit(
   preview,
   characterFrame,
-  spawn.x - 48,
-  spawn.y - 90,
-  { x: 0, y: 0, width: 96, height: 96 },
+  spawn.x - characterPivot.x,
+  spawn.y - characterPivot.y,
+  { x: 0, y: 0, width: characterRenderSize, height: characterRenderSize },
 );
 const characterPlacement = {
   role: 'character.player.atlas',
@@ -363,8 +368,11 @@ const characterPlacement = {
   atlas_cell: idleSouth.frames[0],
   clip_id: 'idle.south',
   render_scale: characterRenderScale,
-  rendered_frame_size: { width: 96, height: 96 },
-  rendered_pivot: { x: 48, y: 90 },
+  rendered_frame_size: {
+    width: characterRenderSize,
+    height: characterRenderSize,
+  },
+  rendered_pivot: characterPivot,
 };
 
 let opaquePixels = 0;
@@ -418,7 +426,7 @@ const manifest = {
       collision_size: { width: 24, height: 20 },
       collision_offset: { x: 0, y: -10 },
       visual_scale: { x: characterRenderScale, y: characterRenderScale },
-      visual_offset: { x: 0, y: -42 },
+      visual_offset: { x: 0, y: -34 },
     },
     exit: { id: 'exit-node', x: 592, y: 96, radius: 20 },
     collision_shapes: [
@@ -502,7 +510,10 @@ const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
 await writeIdenticalOrNew(
   OUTPUT_PATH,
   outputBytes,
-  ['13bc1323fb72ad21de83199e3f97d124de9b3bec3d4b7ed4c441cec10203b8a5'],
+  [
+    '13bc1323fb72ad21de83199e3f97d124de9b3bec3d4b7ed4c441cec10203b8a5',
+    '9104ee7a7362fa4a3f03fd1fa3112ee5979804fddf334e219bd01bf905bc6e9e',
+  ],
 );
 await writeIdenticalOrNew(
   MANIFEST_PATH,
@@ -510,6 +521,7 @@ await writeIdenticalOrNew(
   [
     '3dc7c3371be0070177fd6132c81555b6dd3f8f5d2dd4cc02607d4292ffd45f95',
     '4050dcfd3bdc6904b0b40c84527eac1d8fe96fd6d849d3e11625f50146d47788',
+    '05bd2330a51eb95c3874f69786645f310ab3ebba8f4f9edd49ea973b7369cea6',
   ],
 );
 console.log(

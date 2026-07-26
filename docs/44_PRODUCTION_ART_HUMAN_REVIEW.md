@@ -18,12 +18,18 @@ the same candidate assets.
 | Profile | Asset-built preview | Godot runtime render | Decision |
 | --- | --- | --- | --- |
 | Side platformer | [`5e6adab2…`](visual-qa/production-art/side-platformer-production-preview-v1.png) | [`17035a97…`](visual-qa/production-art/side-platformer-production-godot-4.3-v1.png) | `not-reviewed` |
-| Top-down farm | [`9104ee7a…`](visual-qa/production-art/topdown-farm-production-preview-v1.png) | [`f7f28825…`](visual-qa/production-art/topdown-farm-production-godot-4.3-v1.png) | `not-reviewed` |
+| Top-down farm | [`6e0ed7ae…`](visual-qa/production-art/topdown-farm-production-preview-v1.png) | [`7a697e0e…`](visual-qa/production-art/topdown-farm-production-godot-4.3-v1.png) | `not-reviewed` |
 | Isometric action | [`4c3d6ddb…`](visual-qa/production-art/isometric-action-production-preview-v1.png) | [`982e0249…`](visual-qa/production-art/isometric-action-production-godot-4.3-v1.png) | `not-reviewed` |
-| Layered-depth 2D | [`687903d5…`](visual-qa/production-art/layered-depth-2d-production-preview-v1.png) | [`6fcecdf3…`](visual-qa/production-art/layered-depth-2d-production-godot-4.3-v1.png) | `not-reviewed` |
+| Layered-depth 2D | [`687903d5…`](visual-qa/production-art/layered-depth-2d-production-preview-v1.png) | [`546eae79…`](visual-qa/production-art/layered-depth-2d-production-godot-4.3-v1.png) | `not-reviewed` |
 
 The complete digests remain in each adjacent JSON evidence record; shortened
 digests in this table are labels, not verification inputs.
+
+An AI-assisted pre-review on 2026-07-27 reduced the top-down player scale and
+adjusted layered-depth lighting order, foreground modulation, and local-light
+intensity. Both revised runtime candidates remain byte-identical across Godot
+4.3 and 4.7. This refinement is not a human decision; every row above remains
+`not-reviewed`.
 
 ## Review order
 

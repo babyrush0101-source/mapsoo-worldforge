@@ -235,6 +235,10 @@ func _add_layers(world: Node2D, manifest: Dictionary, textures: Dictionary) -> b
 		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		sprite.z_index = _runtime_z(role)
 		sprite.set_meta("mapsoo_role", role)
+		if role in ["near.overlay", "foreground.overlay"]:
+			sprite.modulate = Color(0.72, 0.76, 0.86, 0.90)
+		elif role == "lighting.local":
+			sprite.modulate = Color(1.0, 1.0, 1.0, 0.82)
 		var blend := str(record.get("blend_mode", "mix"))
 		if blend in ["multiply", "add"]:
 			var material := CanvasItemMaterial.new()
@@ -263,7 +267,9 @@ func _runtime_z(role: String) -> int:
 		"foreground.overlay":
 			return 40
 		"lighting.ambient":
-			return 50
+			# Match the runtime candidate: ambient darkness affects the world,
+			# while actors render above it for gameplay readability.
+			return 5
 		"lighting.local":
 			return 60
 	return 0
