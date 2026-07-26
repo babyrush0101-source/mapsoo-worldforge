@@ -98,7 +98,10 @@ The intended workflow is deliberately staged:
 All non-scene CLI tasks fail closed unless `--approved-direction` is supplied.
 Character tasks also require the original character reference so recognizable
 identity cues can be reviewed against both the approved world style and source
-character.
+character. Their plan contains a canonical per-cell pose inventory with action,
+direction, frame index, duration, and grid position. The normalizer requires
+every declared cell to contain pixels and every undeclared cell to remain
+transparent.
 
 Example of an explicitly authorized direction request:
 
@@ -203,8 +206,8 @@ production world”:
   builder;
 - start with one `layered-depth-2d` Pack 1.0 character replacement, then expand
   the same provider to the other three profiles;
-- generate character actions and directions as independently reviewed poses
-  instead of relying on one perfect sprite-sheet request;
+- execute the canonical character pose inventory in smaller, independently
+  reviewed batches instead of relying on one perfect sprite-sheet request;
 - add semantic identity, action, direction, temporal-continuity, seam, pivot,
   and art-to-collision human review;
 - render the imported pack in Godot rather than approving a direction image;

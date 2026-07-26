@@ -1,13 +1,23 @@
 import {
   TOPDOWN_FARM_REQUIRED_ROLES,
+  type CharacterAction,
+  type CharacterDirection,
 } from './generated-asset-bundle';
 import {
+  SIDE_PLATFORMER_ACTIONS,
+  SIDE_PLATFORMER_DIRECTIONS,
   SIDE_PLATFORMER_REQUIRED_ROLES,
 } from './side-platformer-asset-bundle';
 import {
+  ISOMETRIC_ACTION_DIRECTIONS,
+  ISOMETRIC_ENEMY_ACTIONS,
+  ISOMETRIC_PLAYER_ACTIONS,
   ISOMETRIC_ACTION_REQUIRED_ROLES,
 } from './isometric-action-asset-bundle';
 import {
+  LAYERED_DEPTH_DIRECTIONS,
+  LAYERED_DEPTH_NPC_ACTIONS,
+  LAYERED_DEPTH_PLAYER_ACTIONS,
   LAYERED_DEPTH_REQUIRED_ROLES,
 } from './layered-depth-asset-bundle';
 import {
@@ -74,6 +84,18 @@ export interface ProductionArtRoleMapping {
   readonly grid_rect: ProductionArtGridRect;
 }
 
+export interface ProductionArtPoseMapping {
+  readonly role: string;
+  readonly action: CharacterAction;
+  readonly direction: CharacterDirection;
+  readonly frame_index: number;
+  readonly duration_ms: number;
+  readonly grid_cell: {
+    readonly column: number;
+    readonly row: number;
+  };
+}
+
 export interface ProductionArtTarget {
   readonly width: number;
   readonly height: number;
@@ -97,6 +119,7 @@ export interface ProductionArtTask {
   readonly pivot: ProductionArtPivot;
   readonly reference_roles: readonly ('environment-style' | 'character')[];
   readonly role_mappings: readonly ProductionArtRoleMapping[];
+  readonly pose_mappings?: readonly ProductionArtPoseMapping[];
   readonly prompt: string;
   readonly negative_constraints: readonly string[];
 }
@@ -225,6 +248,104 @@ interface TaskGeometry {
   readonly pivotY: number;
 }
 
+const TOPDOWN_PRODUCTION_ACTIONS = Object.freeze([
+  'idle', 'walk',
+] as const satisfies readonly CharacterAction[]);
+const TOPDOWN_PRODUCTION_DIRECTIONS = Object.freeze([
+  'north', 'east', 'south', 'west',
+] as const satisfies readonly CharacterDirection[]);
+
+interface CharacterAnimationSpec {
+  readonly actions: readonly CharacterAction[];
+  readonly directions: readonly CharacterDirection[];
+}
+
+function characterAnimationSpec(
+  profile: WorldAssetProfile,
+  role: string,
+): CharacterAnimationSpec | undefined {
+  if (profile === 'side-platformer' && role === 'character.player.atlas') {
+    return { actions: SIDE_PLATFORMER_ACTIONS, directions: SIDE_PLATFORMER_DIRECTIONS };
+  }
+  if (profile === 'topdown-farm' && role === 'character.player.atlas') {
+    return { actions: TOPDOWN_PRODUCTION_ACTIONS, directions: TOPDOWN_PRODUCTION_DIRECTIONS };
+  }
+  if (profile === 'isometric-action' && role === 'character.player.atlas') {
+    return { actions: ISOMETRIC_PLAYER_ACTIONS, directions: ISOMETRIC_ACTION_DIRECTIONS };
+  }
+  if (
+    profile === 'isometric-action'
+    && (role === 'character.enemy-melee.atlas' || role === 'character.enemy-ranged.atlas')
+  ) {
+    return { actions: ISOMETRIC_ENEMY_ACTIONS, directions: ISOMETRIC_ACTION_DIRECTIONS };
+  }
+  if (profile === 'layered-depth-2d' && role === 'character.player.atlas') {
+    return { actions: LAYERED_DEPTH_PLAYER_ACTIONS, directions: LAYERED_DEPTH_DIRECTIONS };
+  }
+  if (profile === 'layered-depth-2d' && role === 'character.npc.atlas') {
+    return { actions: LAYERED_DEPTH_NPC_ACTIONS, directions: LAYERED_DEPTH_DIRECTIONS };
+  }
+  return undefined;
+}
+
+function productionFrameCount(profile: WorldAssetProfile, action: CharacterAction): number {
+  if (profile === 'side-platformer' && action === 'run') return 4;
+  if (profile === 'topdown-farm' && action === 'walk') return 4;
+  return 2;
+}
+
+function productionFrameDuration(action: CharacterAction): number {
+  if (action === 'idle' || action === 'talk') return 250;
+  if (action === 'walk' || action === 'interact') return 150;
+  if (action === 'run' || action === 'move') return 100;
+  if (action === 'attack-primary' || action === 'dash') return 80;
+  if (action === 'defeat') return 180;
+  return 120;
+}
+
+function characterPoseMappings(
+  profile: WorldAssetProfile,
+  role: string,
+  geometry: TaskGeometry,
+): readonly ProductionArtPoseMapping[] {
+  const spec = characterAnimationSpec(profile, role);
+  if (!spec) return Object.freeze([]);
+  const columns = geometry.width / geometry.cellWidth;
+  const rows = geometry.height / geometry.cellHeight;
+  const framesPerRow = Math.floor(columns / spec.directions.length);
+  if (framesPerRow < 1) {
+    throw new Error(`Character production grid is too narrow for ${profile}/${role}.`);
+  }
+  const mappings: ProductionArtPoseMapping[] = [];
+  let row = 0;
+  for (const action of spec.actions) {
+    const frameCount = productionFrameCount(profile, action);
+    for (let frameStart = 0; frameStart < frameCount; frameStart += framesPerRow) {
+      const frameEnd = Math.min(frameStart + framesPerRow, frameCount);
+      for (let frameIndex = frameStart; frameIndex < frameEnd; frameIndex += 1) {
+        for (let directionIndex = 0; directionIndex < spec.directions.length; directionIndex += 1) {
+          mappings.push(Object.freeze({
+            role,
+            action,
+            direction: spec.directions[directionIndex],
+            frame_index: frameIndex,
+            duration_ms: productionFrameDuration(action),
+            grid_cell: Object.freeze({
+              column: (frameIndex - frameStart) * spec.directions.length + directionIndex,
+              row,
+            }),
+          }));
+        }
+      }
+      row += 1;
+    }
+  }
+  if (row > rows) {
+    throw new Error(`Character production grid is too short for ${profile}/${role}.`);
+  }
+  return Object.freeze(mappings);
+}
+
 function profileGeometry(profile: WorldAssetProfile): Readonly<Record<'tile' | 'prop' | 'character' | 'effect', TaskGeometry>> {
   if (profile === 'side-platformer') {
     return {
@@ -246,7 +367,7 @@ function profileGeometry(profile: WorldAssetProfile): Readonly<Record<'tile' | '
     return {
       tile: { width: 768, height: 384, cellWidth: 96, cellHeight: 48, pivotX: 48, pivotY: 48 },
       prop: { width: 768, height: 768, cellWidth: 96, cellHeight: 96, pivotX: 48, pivotY: 88 },
-      character: { width: 1536, height: 1024, cellWidth: 192, cellHeight: 128, pivotX: 96, pivotY: 120 },
+      character: { width: 1536, height: 1536, cellWidth: 192, cellHeight: 128, pivotX: 96, pivotY: 120 },
       effect: { width: 768, height: 512, cellWidth: 96, cellHeight: 64, pivotX: 48, pivotY: 32 },
     };
   }
@@ -256,6 +377,13 @@ function profileGeometry(profile: WorldAssetProfile): Readonly<Record<'tile' | '
     character: { width: 1024, height: 1152, cellWidth: 128, cellHeight: 192, pivotX: 64, pivotY: 180 },
     effect: { width: 512, height: 512, cellWidth: 64, cellHeight: 64, pivotX: 32, pivotY: 32 },
   };
+}
+
+export function requiredProductionCharacterPoseMappings(
+  profile: WorldAssetProfile,
+  role: string,
+): readonly ProductionArtPoseMapping[] {
+  return characterPoseMappings(profile, role, profileGeometry(profile).character);
 }
 
 function slugRole(role: string): string {
@@ -291,7 +419,8 @@ function makeTask(
     reference_roles: Object.freeze([...referenceRoles]),
     role_mappings: gridMappings(roles, columns, rows, fullSheet),
     prompt: `Create a production source image for an ${PROFILE_LABELS[profile]}. Task: ${kind}. `
-      + `Fill the declared ${columns} by ${rows} grid exactly and preserve the declared role order. `
+      + `Respect the declared ${columns} by ${rows} grid exactly, populate only mapped cells, `
+      + 'and preserve the declared role order. '
       + 'Use an original, internally consistent art direction suitable for deterministic Godot post-processing.',
     negative_constraints: NEGATIVE_CONSTRAINTS,
   });
@@ -311,7 +440,7 @@ function backgroundTask(profile: WorldAssetProfile, role: string): ProductionArt
 }
 
 function characterTask(profile: WorldAssetProfile, role: string, geometry: TaskGeometry): ProductionArtTask {
-  return makeTask(
+  const base = makeTask(
     profile,
     `character-${slugRole(role)}`,
     'character-animation-sheet',
@@ -321,6 +450,13 @@ function characterTask(profile: WorldAssetProfile, role: string, geometry: TaskG
     'transparent-cell-padding',
     ['environment-style', 'character'],
   );
+  const poseMappings = characterPoseMappings(profile, role, geometry);
+  return Object.freeze({
+    ...base,
+    pose_mappings: poseMappings,
+    prompt: `${base.prompt} Populate only the ${poseMappings.length} declared semantic pose cells, `
+      + 'with independently rendered model-native frames; keep every undeclared cell empty.',
+  });
 }
 
 export function createProductionArtPlan(
@@ -480,6 +616,54 @@ export function validateProductionArtPlan(plan: ProductionArtPlan): ProductionAr
           occupied.add(cell);
         }
       }
+    }
+    if (task.kind === 'character-animation-sheet') {
+      const characterRoleMapping = task.role_mappings.length === 1
+        ? task.role_mappings[0]
+        : undefined;
+      const characterRole = characterRoleMapping?.role;
+      const canonicalGeometry = profileGeometry(plan.profile).character;
+      const canonicalColumns = canonicalGeometry.width / canonicalGeometry.cellWidth;
+      const canonicalRows = canonicalGeometry.height / canonicalGeometry.cellHeight;
+      const canonicalRect = characterRoleMapping?.grid_rect;
+      const geometryMatches = width === canonicalGeometry.width
+        && height === canonicalGeometry.height
+        && cellWidth === canonicalGeometry.cellWidth
+        && cellHeight === canonicalGeometry.cellHeight
+        && task.pivot.x === canonicalGeometry.pivotX
+        && task.pivot.y === canonicalGeometry.pivotY
+        && canonicalRect?.column === 0
+        && canonicalRect.row === 0
+        && canonicalRect.column_span === canonicalColumns
+        && canonicalRect.row_span === canonicalRows;
+      let expectedPoses: readonly ProductionArtPoseMapping[] = [];
+      try {
+        expectedPoses = characterRole
+          ? characterPoseMappings(plan.profile, characterRole, canonicalGeometry)
+          : [];
+      } catch {
+        expectedPoses = [];
+      }
+      if (
+        !characterRole
+        || !geometryMatches
+        || expectedPoses.length < 1
+        || !Array.isArray(task.pose_mappings)
+        || JSON.stringify(task.pose_mappings) !== JSON.stringify(expectedPoses)
+      ) {
+        issues.push({
+          code: 'task.pose-mappings',
+          message: 'Character tasks require the exact canonical action, direction, frame, duration, and grid-cell inventory.',
+          task_id: task.task_id,
+          ...(characterRole ? { role: characterRole } : {}),
+        });
+      }
+    } else if (task.pose_mappings !== undefined) {
+      issues.push({
+        code: 'task.pose-mappings',
+        message: 'Only character animation tasks may declare semantic pose mappings.',
+        task_id: task.task_id,
+      });
     }
     if (task.role_mappings.length < 1) {
       issues.push({ code: 'task.roles-empty', message: 'Every production art task must map at least one role.', task_id: task.task_id });

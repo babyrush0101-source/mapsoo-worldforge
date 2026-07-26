@@ -258,6 +258,7 @@ function dryRunSummary(args: Arguments, task: ProductionArtTask): object {
     source_scale: source.scale,
     quality: args.quality,
     required_reference_roles: task.reference_roles,
+    semantic_pose_cells: task.pose_mappings?.length ?? 0,
     requires_approved_direction: task.task_id !== 'scene-direction',
     output_policy: 'internal-review',
     human_review: 'required',

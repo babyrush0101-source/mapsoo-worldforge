@@ -26,6 +26,29 @@
 
 图像模型不必直接生成最终 32×32 运行时像素。契约允许先生成较高分辨率的生产源表，之后由确定性工具裁切、去底色、修 alpha、nearest-neighbor 缩放并写入既有 Pack 角色。每个角色在计划中只能出现一次，所有单元格必须在目标网格内且不能重叠。
 
+角色任务不再把整张源表当成一个没有语义的矩形。每个
+`character-animation-sheet` 必须同时提供 canonical `pose_mappings`，逐格声明：
+
+- 绑定的角色 role；
+- `action` 和 `direction`；
+- clip 内 `frame_index` 与 `duration_ms`；
+- 唯一的 `{column,row}` 源格。
+
+四档当前独立源姿势清单为：
+
+| 档位 | 角色 | 声明源姿势 |
+| --- | --- | ---: |
+| `side-platformer` | player | 28 |
+| `topdown-farm` | player | 24 |
+| `isometric-action` | player / melee / ranged | 96 / 80 / 80 |
+| `layered-depth-2d` | player / NPC | 32 / 16 |
+
+格子布局是确定性的：同一 action 连续排列，方向顺序固定，多个 animation
+frame 使用独立格。未声明格必须完全透明；已声明格必须非空并留出透明边界。
+契约和 JSON Schema 会拒绝缺帧、重复格、错误方向、错误时长或被修改的
+canonical 布局。自动校验只能证明格子和像素库存，动作含义、身份一致性以及
+“是否真的为独立绘制而非复制位移”仍需视觉/人工审核。
+
 ## 输出验收
 
 每张生产源图必须提交一个 `production-art-output`：
@@ -56,4 +79,7 @@ Provider 可以是内置图像工具、本地模型、人工绘制或未来的�
 
 ## 当前状态
 
-本契约已经覆盖四类世界和全部可见的必需角色，并有 TypeScript 与 JSON Schema 双重验证。它建立的是生产美术“接入与拒绝错误输出”的边界；还不表示现有占位图已经自动变成最终美术，也不替代逐张视觉 QA。
+本契约已经覆盖四类世界、全部可见必需角色和 canonical 角色姿势库存，并有
+TypeScript 与 JSON Schema 双重验证。它建立的是生产美术“接入与拒绝错误
+输出”的边界；还不表示现有占位图已经自动变成最终美术，也不替代逐张视觉
+QA。

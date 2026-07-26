@@ -181,6 +181,9 @@ function resizeNearest(
 }
 
 function occupiedCells(task: ProductionArtTask): ReadonlySet<string> {
+  if (task.kind === 'character-animation-sheet' && task.pose_mappings) {
+    return new Set(task.pose_mappings.map(({ grid_cell: cell }) => `${cell.column}:${cell.row}`));
+  }
   const occupied = new Set<string>();
   for (const mapping of task.role_mappings) {
     const rect = mapping.grid_rect;

@@ -105,9 +105,10 @@ export function buildOpenAiProductionArtPrompt(job: ProductionArtProviderJob): s
       'Render on one perfectly solid #00FF00 green chroma background connected to all four outer image borders.',
       'Do not use green in any subject, prop, costume, effect, terrain, or lighting.',
       'Keep every subject fully isolated from neighboring cells.',
+      'Keep every undeclared grid cell entirely chroma green.',
       job.task.seam_policy === 'transparent-cell-padding'
         ? 'Leave a clean empty chroma border on all four edges of every grid cell.'
-        : 'Keep all undeclared grid cells entirely chroma green.',
+        : 'Preserve the declared cell boundaries exactly.',
     ]
     : [
       'Render a fully opaque image with no transparent or empty pixels.',
@@ -119,6 +120,14 @@ export function buildOpenAiProductionArtPrompt(job: ProductionArtProviderJob): s
     `Approved style bible: ${styleBible}`,
     `Canvas grid: ${gridDescription(job.task)}. Preserve the declared role order exactly.`,
     `Declared roles: ${job.task.role_mappings.map(({ role }) => role).join(', ')}.`,
+    ...(job.task.pose_mappings
+      ? [
+        `Semantic pose cells: ${job.task.pose_mappings.map((pose) =>
+          `${pose.grid_cell.column},${pose.grid_cell.row}=`
+          + `${pose.action}.${pose.direction}.frame-${pose.frame_index}`).join('; ')}.`,
+        'Every declared pose cell is an independently rendered animation frame, not a mirrored or shifted duplicate.',
+      ]
+      : []),
     job.task.prompt,
     ...alphaInstructions,
     ...job.task.negative_constraints,

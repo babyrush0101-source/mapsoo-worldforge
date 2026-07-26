@@ -72,6 +72,21 @@ async function job(): Promise<ProductionArtProviderJob> {
   };
 }
 
+async function characterJob(): Promise<ProductionArtProviderJob> {
+  const value = await job();
+  const task = value.plan.tasks.find(({ task_id: taskId }) =>
+    taskId === 'character-character-player-atlas');
+  if (!task) throw new Error('Layered-depth player production task missing.');
+  return {
+    ...value,
+    task,
+    remoteAuthorization: {
+      ...value.remoteAuthorization!,
+      task_id: task.task_id,
+    },
+  };
+}
+
 function base64(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -157,5 +172,16 @@ describe('OpenAI production art source adapter', () => {
       ...value,
       worldBrief: 'Make this look exactly like Stardew Valley.',
     })).toThrow(/original visual traits/);
+  });
+
+  it('serializes canonical action, direction, frame and cell semantics into character prompts', async () => {
+    const value = await characterJob();
+    const prompt = buildOpenAiProductionArtPrompt(value);
+    expect(value.task.pose_mappings).toHaveLength(32);
+    expect(prompt).toContain('0,0=idle.left.frame-0');
+    expect(prompt).toContain('4,0=idle.left.frame-1');
+    expect(prompt).toContain('independently rendered animation frame');
+    expect(prompt).toContain('not a mirrored or shifted duplicate');
+    expect(selectOpenAiSourceSize(value.task.target).value).toBe('1024x1152');
   });
 });

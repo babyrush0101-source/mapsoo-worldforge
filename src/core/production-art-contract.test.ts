@@ -6,6 +6,7 @@ import {
   PRODUCTION_ART_CONTRACT_VERSION,
   PRODUCTION_ART_TASK_KINDS,
   createProductionArtPlan,
+  requiredProductionCharacterPoseMappings,
   requiredProductionArtRoles,
   validateProductionArtOutput,
   validateProductionArtPlan,
@@ -118,6 +119,42 @@ describe('provider-neutral production art plans', () => {
     } as ProductionArtPlan;
     expect(validateProductionArtPlan(falselyPublished))
       .toContainEqual(expect.objectContaining({ code: 'rights.public-proprietary' }));
+  });
+
+  it.each([
+    ['side-platformer', [28]],
+    ['topdown-farm', [24]],
+    ['isometric-action', [96, 80, 80]],
+    ['layered-depth-2d', [32, 16]],
+  ] as const)('declares exact independent semantic pose cells for %s', (profile, counts) => {
+    const plan = createProductionArtPlan(profile, PUBLIC_RIGHTS);
+    const characterTasks = plan.tasks.filter(({ kind }) => kind === 'character-animation-sheet');
+    expect(characterTasks.map(({ pose_mappings: poses }) => poses?.length)).toEqual([...counts]);
+    for (const task of characterTasks) {
+      const role = task.role_mappings[0].role;
+      expect(task.pose_mappings).toEqual(requiredProductionCharacterPoseMappings(profile, role));
+      expect(new Set(task.pose_mappings?.map(({ grid_cell: cell }) => `${cell.column}:${cell.row}`)).size)
+        .toBe(task.pose_mappings?.length);
+      expect(task.pose_mappings?.every(({ role: poseRole }) => poseRole === role)).toBe(true);
+    }
+  });
+
+  it('rejects missing, duplicated, or semantically changed character pose cells', () => {
+    const plan = createProductionArtPlan('layered-depth-2d', PUBLIC_RIGHTS);
+    const character = plan.tasks.find(({ kind }) => kind === 'character-animation-sheet');
+    expect(character?.pose_mappings).toBeDefined();
+    const changedTask = {
+      ...character!,
+      pose_mappings: character!.pose_mappings!.map((pose, index) => index === 1
+        ? { ...pose, grid_cell: character!.pose_mappings![0].grid_cell }
+        : pose).slice(0, -1),
+    };
+    const changedPlan = {
+      ...plan,
+      tasks: plan.tasks.map((task) => task.task_id === changedTask.task_id ? changedTask : task),
+    };
+    expect(validateProductionArtPlan(changedPlan))
+      .toContainEqual(expect.objectContaining({ code: 'task.pose-mappings' }));
   });
 
   it('detects grid overlap, role duplication, and a missing production role', () => {
