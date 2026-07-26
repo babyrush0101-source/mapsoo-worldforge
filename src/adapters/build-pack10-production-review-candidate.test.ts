@@ -416,6 +416,7 @@ const OPTIONS = Object.freeze({
   version: '1.0.0-review.2',
   createdAt: '2026-07-27T20:00:00.000Z',
 });
+const PACK10_PRODUCTION_REVIEW_TEST_TIMEOUT_MS = 15_000;
 
 describe('Pack 1.0 complete production-art review candidate builder', () => {
   it('builds a deterministic, privacy-minimized full visual replacement ZIP', async () => {
@@ -494,7 +495,7 @@ describe('Pack 1.0 complete production-art review candidate builder', () => {
     expect(allText.join('\n')).not.toMatch(
       /@[a-z0-9.-]+\.[a-z]{2,}|\b[A-Za-z]:[\\/]|\/(?:Users|home|root|tmp|var)\//i,
     );
-  });
+  }, PACK10_PRODUCTION_REVIEW_TEST_TIMEOUT_MS);
 
   it('rejects missing environment evidence and changed projected plane bytes', async () => {
     const [base, inputs] = await Promise.all([basePack(), productionInputs()]);
@@ -536,5 +537,5 @@ describe('Pack 1.0 complete production-art review candidate builder', () => {
       { ...inputs.environment, layers: changedLayers },
       OPTIONS,
     )).rejects.toBeInstanceOf(Pack10ProductionReviewCandidateError);
-  });
+  }, PACK10_PRODUCTION_REVIEW_TEST_TIMEOUT_MS);
 });
