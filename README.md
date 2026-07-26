@@ -29,6 +29,16 @@ The current **unpublished Alpha12 development candidate** expands that workflow 
 
 The intended user path is: **world brief → art direction → map layout → style sample → complete assets → Godot map → enter the world**. The first four stages run in the browser; complete packs, trusted Godot importers, controllers, and headless playability tests exist for all four profiles. The candidate is not yet a public release and physical Raspberry Pi 4B performance validation remains pending.
 
+The public [character-reference conformance
+fixture](docs/48_CHARACTER_REFERENCE_CONFORMANCE.md) now decodes one synthetic
+`64 × 96` reference, carries the same deterministic identity signature and
+representative projection cues through all four complete ZIP routes, and
+verifies each emitted player atlas against its manifest. It intentionally
+exposes the remaining boundary: deterministic silhouette/palette projection
+works today, while production-quality arbitrary-reference adaptation still
+needs a model provider, confirmed style sample, continuity checks, and human
+approval.
+
 Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The current provider is procedural and truthfully records `contains_generative_ai: false`; that statement does not apply to future model providers. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.
 
 ## Project status

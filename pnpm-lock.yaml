@@ -45,6 +45,9 @@ importers:
       vite:
         specifier: 6.4.3
         version: 6.4.3(yaml@2.8.1)
+      vite-node:
+        specifier: 3.2.4
+        version: 3.2.4(yaml@2.8.1)
       vitest:
         specifier: ^3.2.4
         version: 3.2.7(yaml@2.8.1)

@@ -1,0 +1,170 @@
+{
+  "schema_version": "mapsoo-character-reference-conformance/1.0",
+  "status": "synthetic-conformance-pass",
+  "distribution": "public",
+  "license": "CC0-1.0",
+  "license_notice": "tests/fixtures/character-reference-conformance/license-assets.md",
+  "fixture_inventory": [
+    "tests/fixtures/character-reference-conformance/reference-character.png",
+    "tests/fixtures/character-reference-conformance/four-profile-contact-sheet.png",
+    "tests/fixtures/character-reference-conformance/evidence.json",
+    "tests/fixtures/character-reference-conformance/license-assets.md"
+  ],
+  "fixture_provenance": {
+    "reference_character": "drawn from zero by deterministic rectangle and pixel operations in this fixture script",
+    "environment_reference": "drawn from zero by deterministic pixel operations in this fixture script",
+    "contact_sheet_labels": "drawn from the fixture script embedded bitmap glyphs",
+    "png_chunks_allowed": [
+      "IHDR",
+      "IDAT",
+      "IEND"
+    ]
+  },
+  "zip_privacy_checks": [
+    "raw character and environment reference bytes are absent",
+    "reference paths, source filenames, descriptor IDs, and reference SHA-256 values are absent",
+    "the private free-text generation description is absent"
+  ],
+  "reference": {
+    "path": "tests/fixtures/character-reference-conformance/reference-character.png",
+    "media_type": "image/png",
+    "width": 64,
+    "height": 96,
+    "sha256": "ff73b55248e98a9241137e5d11188638c3380c319552b81fd14babdb707ad4c4",
+    "origin": "deterministic synthetic fixture"
+  },
+  "identity": {
+    "signature_sha256": "ad666bce845380d0aa5b6e99ced52ba87bfb613475e31cda80dbda559db07794",
+    "normalized_size": [
+      16,
+      16
+    ],
+    "palette": {
+      "outline": "#181828",
+      "primary": "#782858",
+      "secondary": "#e8a878",
+      "accent": "#e8a838"
+    },
+    "anchors": {
+      "head": [
+        415,
+        132
+      ],
+      "center": [
+        456,
+        517
+      ],
+      "foot": [
+        433,
+        1000
+      ],
+      "left": [
+        0,
+        667
+      ],
+      "right": [
+        1000,
+        700
+      ]
+    }
+  },
+  "profiles": [
+    {
+      "profile": "topdown-farm",
+      "pack_schema_version": "0.6.0",
+      "clip_count": 8,
+      "pack_sha256": "d72110cd472c1fa10752c8b5e0ad9db50dd0fb6fdfcb9b313ccbe15e34fb0c2f",
+      "atlas_path": "atlases/character.png",
+      "atlas_sha256": "162bb31c3bcd3a4e732d65d1ef87008a97d9cc515689e527c138e027c3760558",
+      "palette_bound": true,
+      "representative_frame_exact": true,
+      "representative_frame_origin": [
+        96,
+        64
+      ],
+      "projected_frame_size": [
+        32,
+        32
+      ]
+    },
+    {
+      "profile": "side-platformer",
+      "pack_schema_version": "0.7.0",
+      "clip_count": 12,
+      "pack_sha256": "282ba87a92861ca04d7d1c52a2f28b4393e413004f320f988162e019c15ff9e5",
+      "atlas_path": "atlases/character.png",
+      "atlas_sha256": "6eeb5ea495eda97a6b3abe34435f25ce7f3c50d95b94c60abdf27d56ee8f2839",
+      "palette_bound": true,
+      "representative_frame_exact": true,
+      "representative_frame_origin": [
+        96,
+        0
+      ],
+      "projected_frame_size": [
+        32,
+        64
+      ]
+    },
+    {
+      "profile": "isometric-action",
+      "pack_schema_version": "0.8.0",
+      "clip_count": 128,
+      "pack_sha256": "9a61eb42bcfbf0d6b55c7d544b8e1dba2715c8aed945d5cb25ea21168d305441",
+      "atlas_path": "atlases/player.png",
+      "atlas_sha256": "20a25813c49257dd0263a892dcc8de476ecfa6eff9bfb445f27433a7130b1e3f",
+      "palette_bound": true,
+      "representative_frame_exact": true,
+      "representative_frame_origin": [
+        480,
+        0
+      ],
+      "projected_frame_size": [
+        48,
+        64
+      ]
+    },
+    {
+      "profile": "layered-depth-2d",
+      "pack_schema_version": "0.9.0",
+      "clip_count": 24,
+      "pack_sha256": "cb00bc656c86f6fbd4fa159c2b2185c193acec6cc3c2a58240a871a22f8b1b87",
+      "atlas_path": "atlases/player.png",
+      "atlas_sha256": "61e89d4abfc705fdf3f9cf2c96259a7a9c2262176c18df6483168df3f37036ab",
+      "palette_bound": true,
+      "representative_frame_exact": true,
+      "representative_frame_origin": [
+        240,
+        0
+      ],
+      "projected_frame_size": [
+        48,
+        72
+      ]
+    }
+  ],
+  "contact_sheet": {
+    "path": "tests/fixtures/character-reference-conformance/four-profile-contact-sheet.png",
+    "width": 760,
+    "height": 286,
+    "sha256": "673513f4b30054adaab7eb0d1e9a56dbf73e125c89295405f731136e0dca340c",
+    "order": [
+      "reference",
+      "topdown-farm",
+      "side-platformer",
+      "isometric-action",
+      "layered-depth-2d"
+    ]
+  },
+  "proves": [
+    "the actual PNG decoder reads a nontrivial 64x96 character reference",
+    "one local-only identity signature drives all four implemented profile generators",
+    "all four complete ZIP pipelines contain an exact representative projected frame and all palette roles in their player atlas",
+    "the fixture is deterministic and contains no private reference or consumer data"
+  ],
+  "does_not_prove": [
+    "semantic recognition of facial identity, costume parts, species, or named traits",
+    "semantic identity or motion continuity across every direction and animation frame",
+    "model-generated production art quality from an arbitrary reference",
+    "human approval, public rights for user-supplied references, or Raspberry Pi performance"
+  ]
+}

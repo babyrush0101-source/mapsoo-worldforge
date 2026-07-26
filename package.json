@@ -38,7 +38,7 @@
     "security:history": "node scripts/scan-git-history-secrets.mjs",
     "third-party:write": "node scripts/verify-third-party-notices.mjs --write",
     "third-party:verify": "node scripts/verify-third-party-notices.mjs",
-    "check": "pnpm release:version:verify && pnpm workflow:verify && pnpm security:history && pnpm pack10:fixture:verify && pnpm typecheck && pnpm test && pnpm release:history:verify && pnpm release:receipt:negative && pnpm release:visuals:verify && pnpm third-party:verify && pnpm build",
+    "check": "pnpm release:version:verify && pnpm workflow:verify && pnpm security:history && pnpm pack10:fixture:verify && pnpm character:fixture:verify && pnpm typecheck && pnpm test && pnpm release:history:verify && pnpm release:receipt:negative && pnpm release:visuals:verify && pnpm third-party:verify && pnpm build",
     "check:production-art": "pnpm check && pnpm production-art:verify",
     "release:version:verify": "node scripts/verify-release-version.mjs",
     "release:build": "node scripts/verify-release-version.mjs build && pnpm typecheck && pnpm third-party:verify && vite build --base / && node scripts/build-release.mjs",
@@ -104,6 +104,8 @@
     "production-art:verify": "node scripts/verify-production-art-directions.mjs && node scripts/build-side-platformer-character-atlas.mjs && node scripts/verify-side-platformer-character-atlas-v2.mjs && node scripts/build-side-platformer-terrain-atlas.mjs && node scripts/build-side-platformer-prop-atlas.mjs && node scripts/build-side-platformer-background-layers.mjs && node scripts/build-side-platformer-runtime-background-layers.mjs --target=1280x720 && node scripts/build-side-platformer-runtime-background-layers.mjs --target=640x360 && node scripts/build-side-platformer-production-preview.mjs && node scripts/verify-production-art-samples.mjs && pnpm production-art:topdown:verify && pnpm production-art:isometric:verify && pnpm production-art:layered:verify",
     "pack10:fixture:build": "node scripts/build-pack10-public-fixture.mjs",
     "pack10:fixture:verify": "node scripts/verify-pack10-public-fixture.mjs",
+    "character:fixture:build": "vite-node scripts/build-character-reference-conformance-fixture.ts --write",
+    "character:fixture:verify": "vite-node scripts/build-character-reference-conformance-fixture.ts",
     "pi4:runtime:build": "node scripts/build-pi4-runtime.mjs",
     "pi4:runtime:verify": "node scripts/verify-pi4-runtime.mjs",
     "pi4:production-review:build": "node scripts/build-pi4-runtime.mjs --extra-world-set=config/pi4-worlds/layered-depth-2d-production-v1.json --out=release/pi4-runtime/mapsoo-pi4-arm64-alpha12-production-review.zip",
@@ -136,6 +138,7 @@
     "@vitejs/plugin-react-swc": "^3.10.2",
     "typescript": "^5.8.3",
     "vite": "6.4.3",
+    "vite-node": "3.2.4",
     "vitest": "^3.2.4",
     "yaml": "2.8.1"
   }
