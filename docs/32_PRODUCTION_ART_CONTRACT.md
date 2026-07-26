@@ -118,3 +118,30 @@ This projection proves exact inventory, dimensions, alpha structure and
 direction binding. It deliberately records `seam_review: required` and
 `human_review: required`; pixel checks do not prove a visually seamless
 parallax loop, coherent composition or final art quality.
+
+## Layered-depth Pack 1.0 environment atlas projection
+
+`src/adapters/project-layered-depth-production-atlases.ts` converts the exact
+canonical `terrain-sheet`, `prop-sheet` and `effect-sheet` results into five
+Pack 1.0 runtime atlases:
+
+- terrain: six roles in `64 × 128` pivot-baked cells;
+- props: six roles in `96 × 176` pivot-baked cells;
+- structures: four roles in `96 × 176` pivot-baked cells;
+- collectibles: two roles in `96 × 176` pivot-baked cells;
+- effects: four roles in `64 × 64` centered cells.
+
+Every result must be bound to the approved scene direction. The projector
+revalidates normalized output/evidence hashes, rejects pixels in undeclared
+source cells, rejects empty or exact-duplicate role cells, requires zero RGB
+under transparent pixels and binary alpha, and requires transparent source
+borders for every non-terrain role. It emits immutable PNGs plus canonical
+Pack atlas, role-region, file and machine-readable projection records.
+
+Pack 1.0 `Sprite2D` placements use the center of an atlas region as their world
+anchor. The projector therefore preserves every source pixel and pads each
+runtime cell so the declared terrain, prop or effect pivot lands exactly at the
+runtime cell center. Terrain cells may touch their source boundary because they
+require a separate tile-seam review. Both `seam_review` and `human_review`
+remain `required`; technical projection does not prove tileability, role
+meaning, composition or aesthetic quality.

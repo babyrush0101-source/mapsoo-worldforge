@@ -1,0 +1,350 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-production-environment-atlas-projection-1.0.schema.json",
+  "title": "Mapsoo layered-depth production environment atlas projection 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "profile",
+    "plan_id",
+    "approved_direction",
+    "atlases",
+    "checks",
+    "seam_review",
+    "human_review"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "production-environment-atlas-pack10-projection" },
+    "profile": { "const": "layered-depth-2d" },
+    "plan_id": { "$ref": "#/$defs/safeId" },
+    "approved_direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "normalized_sha256"],
+      "properties": {
+        "task_id": { "const": "scene-direction" },
+        "normalized_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "atlases": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/terrainAtlas"
+        },
+        {
+          "$ref": "#/$defs/propsAtlas"
+        },
+        {
+          "$ref": "#/$defs/structuresAtlas"
+        },
+        {
+          "$ref": "#/$defs/collectiblesAtlas"
+        },
+        {
+          "$ref": "#/$defs/effectsAtlas"
+        }
+      ],
+      "items": false,
+      "minItems": 5,
+      "maxItems": 5
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact_canonical_source_tasks",
+        "approved_direction_bound",
+        "normalized_evidence_bound",
+        "mapped_cells_nonempty",
+        "unmapped_cells_transparent",
+        "transparent_rgb_zeroed",
+        "binary_alpha_checked",
+        "transparent_boundaries_checked",
+        "exact_duplicates_rejected",
+        "pivot_baked_to_cell_center"
+      ],
+      "properties": {
+        "exact_canonical_source_tasks": { "const": true },
+        "approved_direction_bound": { "const": true },
+        "normalized_evidence_bound": { "const": true },
+        "mapped_cells_nonempty": { "const": true },
+        "unmapped_cells_transparent": { "const": true },
+        "transparent_rgb_zeroed": { "const": true },
+        "binary_alpha_checked": { "const": true },
+        "transparent_boundaries_checked": { "const": true },
+        "exact_duplicates_rejected": { "const": true },
+        "pivot_baked_to_cell_center": { "const": true }
+      }
+    },
+    "seam_review": { "const": "required" },
+    "human_review": { "const": "required" }
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "roleList": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "atlas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "roles",
+        "source_task_id",
+        "source_normalized_sha256",
+        "source_cell_size",
+        "source_pivot",
+        "cell_size",
+        "runtime_cell_center",
+        "pivot_transform",
+        "width",
+        "height",
+        "bytes",
+        "sha256",
+        "alpha_policy",
+        "seam_policy"
+      ],
+      "properties": {
+        "id": {
+          "enum": ["terrain", "props", "structures", "collectibles", "effects"]
+        },
+        "path": {
+          "enum": [
+            "atlases/terrain.png",
+            "atlases/props.png",
+            "atlases/structures.png",
+            "atlases/collectibles.png",
+            "atlases/effects.png"
+          ]
+        },
+        "roles": { "$ref": "#/$defs/roleList" },
+        "source_task_id": {
+          "enum": ["terrain-sheet", "prop-sheet", "effect-sheet"]
+        },
+        "source_normalized_sha256": { "$ref": "#/$defs/sha256" },
+        "source_cell_size": { "$ref": "#/$defs/positivePair" },
+        "source_pivot": { "$ref": "#/$defs/nonNegativePair" },
+        "cell_size": { "$ref": "#/$defs/positivePair" },
+        "runtime_cell_center": { "$ref": "#/$defs/nonNegativePair" },
+        "pivot_transform": { "const": "source-pivot-to-runtime-cell-center-v1" },
+        "width": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 1024
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 512
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "alpha_policy": { "const": "straight-alpha" },
+        "seam_policy": {
+          "enum": ["tileable-cells", "transparent-cell-padding"]
+        }
+      }
+    },
+    "terrainAtlas": {
+      "allOf": [
+        { "$ref": "#/$defs/atlas" },
+        {
+          "type": "object",
+          "properties": {
+            "id": { "const": "terrain" },
+            "path": { "const": "atlases/terrain.png" },
+            "source_task_id": { "const": "terrain-sheet" },
+            "source_cell_size": { "const": [64, 64] },
+            "source_pivot": { "const": [32, 64] },
+            "cell_size": { "const": [64, 128] },
+            "runtime_cell_center": { "const": [32, 64] },
+            "width": { "const": 384 },
+            "height": { "const": 128 },
+            "seam_policy": { "const": "tileable-cells" },
+            "roles": {
+              "type": "array",
+              "prefixItems": [
+                { "const": "terrain.ground" },
+                { "const": "terrain.path" },
+                { "const": "terrain.edge" },
+                { "const": "terrain.bridge" },
+                { "const": "terrain.stairs" },
+                { "const": "terrain.water" }
+              ],
+              "items": false,
+              "minItems": 6,
+              "maxItems": 6
+            }
+          }
+        }
+      ]
+    },
+    "propsAtlas": {
+      "allOf": [
+        { "$ref": "#/$defs/atlas" },
+        {
+          "type": "object",
+          "properties": {
+            "id": { "const": "props" },
+            "path": { "const": "atlases/props.png" },
+            "source_task_id": { "const": "prop-sheet" },
+            "source_cell_size": { "const": [96, 96] },
+            "source_pivot": { "const": [48, 88] },
+            "cell_size": { "const": [96, 176] },
+            "runtime_cell_center": { "const": [48, 88] },
+            "width": { "const": 576 },
+            "height": { "const": 176 },
+            "seam_policy": { "const": "transparent-cell-padding" },
+            "roles": {
+              "type": "array",
+              "prefixItems": [
+                { "const": "prop.tree" },
+                { "const": "prop.rock" },
+                { "const": "prop.crate" },
+                { "const": "prop.sign" },
+                { "const": "prop.lamp" },
+                { "const": "prop.occluder" }
+              ],
+              "items": false,
+              "minItems": 6,
+              "maxItems": 6
+            }
+          }
+        }
+      ]
+    },
+    "structuresAtlas": {
+      "allOf": [
+        { "$ref": "#/$defs/atlas" },
+        {
+          "type": "object",
+          "properties": {
+            "id": { "const": "structures" },
+            "path": { "const": "atlases/structures.png" },
+            "source_task_id": { "const": "prop-sheet" },
+            "source_cell_size": { "const": [96, 96] },
+            "source_pivot": { "const": [48, 88] },
+            "cell_size": { "const": [96, 176] },
+            "runtime_cell_center": { "const": [48, 88] },
+            "width": { "const": 384 },
+            "height": { "const": 176 },
+            "seam_policy": { "const": "transparent-cell-padding" },
+            "roles": {
+              "type": "array",
+              "prefixItems": [
+                { "const": "structure.entrance" },
+                { "const": "structure.exit" },
+                { "const": "structure.checkpoint" },
+                { "const": "structure.landmark" }
+              ],
+              "items": false,
+              "minItems": 4,
+              "maxItems": 4
+            }
+          }
+        }
+      ]
+    },
+    "collectiblesAtlas": {
+      "allOf": [
+        { "$ref": "#/$defs/atlas" },
+        {
+          "type": "object",
+          "properties": {
+            "id": { "const": "collectibles" },
+            "path": { "const": "atlases/collectibles.png" },
+            "source_task_id": { "const": "prop-sheet" },
+            "source_cell_size": { "const": [96, 96] },
+            "source_pivot": { "const": [48, 88] },
+            "cell_size": { "const": [96, 176] },
+            "runtime_cell_center": { "const": [48, 88] },
+            "width": { "const": 192 },
+            "height": { "const": 176 },
+            "seam_policy": { "const": "transparent-cell-padding" },
+            "roles": {
+              "type": "array",
+              "prefixItems": [
+                { "const": "collectible.primary" },
+                { "const": "collectible.health" }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        }
+      ]
+    },
+    "effectsAtlas": {
+      "allOf": [
+        { "$ref": "#/$defs/atlas" },
+        {
+          "type": "object",
+          "properties": {
+            "id": { "const": "effects" },
+            "path": { "const": "atlases/effects.png" },
+            "source_task_id": { "const": "effect-sheet" },
+            "source_cell_size": { "const": [64, 64] },
+            "source_pivot": { "const": [32, 32] },
+            "cell_size": { "const": [64, 64] },
+            "runtime_cell_center": { "const": [32, 32] },
+            "width": { "const": 256 },
+            "height": { "const": 64 },
+            "seam_policy": { "const": "transparent-cell-padding" },
+            "roles": {
+              "type": "array",
+              "prefixItems": [
+                { "const": "effect.footstep" },
+                { "const": "effect.interact" },
+                { "const": "effect.portal" },
+                { "const": "effect.ambient" }
+              ],
+              "items": false,
+              "minItems": 4,
+              "maxItems": 4
+            }
+          }
+        }
+      ]
+    },
+    "positivePair": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 1, "maximum": 2048 },
+        { "type": "integer", "minimum": 1, "maximum": 2048 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "nonNegativePair": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 0, "maximum": 2048 },
+        { "type": "integer", "minimum": 0, "maximum": 2048 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

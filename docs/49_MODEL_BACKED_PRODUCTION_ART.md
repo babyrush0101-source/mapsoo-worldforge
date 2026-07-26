@@ -215,9 +215,43 @@ runtime dimensions.
 The `640 × 360` target matches the current low-memory Raspberry Pi review
 resolution; it is not a physical Pi performance result. Horizontal seam quality
 and visual composition remain `required` human-review gates. The plane
-projector is implemented and tested, but the multi-run disk assembler and
-terrain/prop/effect atlas projection are still required before the complete
-environment can replace the base pack.
+projector is implemented and tested, but the multi-run disk assembler is still
+required before the complete environment can replace the base pack.
+
+## Layered-depth runtime environment atlas projection
+
+`projectLayeredDepthProductionAtlases(...)` accepts the approved
+`scene-direction` result plus exactly three direction-bound normalized results:
+`terrain-sheet`, `prop-sheet` and `effect-sheet`. It deterministically produces
+the five canonical Pack 1.0 gameplay atlases:
+
+| Runtime atlas | Roles | Pivot-baked cell | Atlas dimensions |
+| --- | ---: | --- | --- |
+| `terrain` | 6 | `64 × 128` | `384 × 128` |
+| `props` | 6 | `96 × 176` | `576 × 176` |
+| `structures` | 4 | `96 × 176` | `384 × 176` |
+| `collectibles` | 2 | `96 × 176` | `192 × 176` |
+| `effects` | 4 | `64 × 64` | `256 × 64` |
+
+The projector verifies normalized bytes against both output and generation
+evidence, requires the reserved `approved-scene-direction` binding, and uses
+the production plan's explicit role-to-grid mapping rather than guessing cell
+meaning. It rejects undeclared occupied source cells, empty mapped cells,
+non-zero RGB under transparent pixels, partial alpha, exact duplicate runtime
+cells, and source-boundary contact for props, structures, collectibles and
+effects. Each emitted role receives an independent Pack atlas region.
+
+Pack 1.0 currently places environment `Sprite2D` textures by their region
+center. To preserve the declared source anchor without adding an implicit
+runtime offset, the projector keeps the original source pixels unchanged and
+pads each cell until the source pivot equals the runtime cell center:
+terrain `32,64`, prop/structure/collectible `48,88`, and effect `32,32`.
+
+Terrain source boundaries may remain visible for tile continuity, so tile
+seams still need visual review. The projection record remains source-free and
+marks `seam_review: required` and `human_review: required`. The complete
+environment still needs the multi-run disk assembler and real Godot review
+before it can replace the synthetic base environment.
 
 ## Alpha policy
 
