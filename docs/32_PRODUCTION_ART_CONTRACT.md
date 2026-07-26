@@ -103,3 +103,18 @@ pivot `24,67`. The projector checks transparent borders, grounded foot position,
 distinct frame bytes and horizontal mirror copies before an atlas can enter a
 Pack 1.0 candidate. Its record remains `human_review: required`; these pixel
 checks cannot prove action meaning, identity fidelity or aesthetic quality.
+
+## Layered-depth Pack 1.0 plane projection
+
+`src/adapters/project-layered-depth-production-layers.ts` converts the eight
+canonical normalized background, overlay and lighting tasks into `640 × 360`
+Pack 1.0 runtime files. It requires the approved scene-direction hash and the
+reserved `approved-scene-direction` binding on every downstream layer, verifies
+the normalized output/evidence digest pair, preserves opaque-vs-straight-alpha
+policy, zeroes transparent RGB through the normalization contract and emits
+canonical plane, role-binding and file records.
+
+This projection proves exact inventory, dimensions, alpha structure and
+direction binding. It deliberately records `seam_review: required` and
+`human_review: required`; pixel checks do not prove a visually seamless
+parallax loop, coherent composition or final art quality.

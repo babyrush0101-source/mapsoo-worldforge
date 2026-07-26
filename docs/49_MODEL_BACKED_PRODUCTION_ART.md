@@ -190,6 +190,35 @@ The assembler always changes distribution to `internal-review`, license to
 chosen base environment; it is not evidence that the environment itself was
 model-generated or that a complete production-art world has passed review.
 
+## Layered-depth runtime plane projection
+
+`projectLayeredDepthProductionLayers(...)` is the next environment replacement
+boundary. It accepts the normalized `scene-direction` result plus exactly eight
+normalized background/foreground/lighting task results. Every runtime layer
+must contain the reserved `approved-scene-direction` reference binding, so
+results from an unrelated visual round cannot be silently mixed.
+
+The projector verifies every normalized PNG against its output and generation
+evidence hashes, then converts the eight canonical `1920 × 1080` working images
+to immutable `640 × 360` Pack 1.0 files:
+
+- sky, far, mid and depth-fog;
+- near and foreground overlays;
+- ambient multiply lighting and local additive lighting.
+
+Sky must remain fully opaque. Every other plane must contain both visible and
+transparent pixels, with zero RGB in transparent pixels and no partial alpha.
+The machine-readable projection record binds the approved direction hash,
+source-task hashes, output file hashes, canonical role/path/blend inventory and
+runtime dimensions.
+
+The `640 × 360` target matches the current low-memory Raspberry Pi review
+resolution; it is not a physical Pi performance result. Horizontal seam quality
+and visual composition remain `required` human-review gates. The plane
+projector is implemented and tested, but the multi-run disk assembler and
+terrain/prop/effect atlas projection are still required before the complete
+environment can replace the base pack.
+
 ## Alpha policy
 
 GPT Image 2 currently does not support transparent output. For every task that
