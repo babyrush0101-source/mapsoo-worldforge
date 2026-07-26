@@ -27,7 +27,11 @@ import type {
 export const CHARACTER_PROFILE_REVISION_VERSION = '1.0.0' as const;
 export const CHARACTER_PROFILE_BIND_VERSION = '1.0.0' as const;
 
-export const CHARACTER_PROFILE_DISTRIBUTIONS = Object.freeze(['private', 'public'] as const);
+export const CHARACTER_PROFILE_DISTRIBUTIONS = Object.freeze([
+  'private',
+  'internal-review',
+  'public',
+] as const);
 export const CHARACTER_PROFILE_LICENSES = Object.freeze([
   'CC0-1.0',
   'CC-BY-4.0',
@@ -244,7 +248,10 @@ function materializeRights(value: unknown): CharacterProfileRights {
   if (!isRecord(value)) fail('character-profile.invalid-shape', 'Character rights must be an object.');
   exactKeys(value, ['distribution', 'license'], ['attribution']);
   if (!CHARACTER_PROFILE_DISTRIBUTIONS.includes(value.distribution as CharacterProfileDistribution)) {
-    fail('character-profile.invalid-rights', 'Character distribution must be private or public.');
+    fail(
+      'character-profile.invalid-rights',
+      'Character distribution must be private, internal-review, or public.',
+    );
   }
   if (!CHARACTER_PROFILE_LICENSES.includes(value.license as CharacterProfileLicense)) {
     fail('character-profile.invalid-rights', 'Character output license is unsupported.');

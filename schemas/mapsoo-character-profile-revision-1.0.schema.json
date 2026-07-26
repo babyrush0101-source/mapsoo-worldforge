@@ -37,7 +37,7 @@
       "additionalProperties": false,
       "required": ["distribution", "license"],
       "properties": {
-        "distribution": { "enum": ["private", "public"] },
+        "distribution": { "enum": ["private", "internal-review", "public"] },
         "license": {
           "enum": [
             "CC0-1.0",

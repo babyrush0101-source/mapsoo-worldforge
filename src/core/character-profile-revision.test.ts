@@ -183,7 +183,7 @@ describe('CharacterProfileRevision 1.0', () => {
     })).toThrowError(expect.objectContaining({ code: 'character-profile.invalid-value' }));
   });
 
-  it('allows private proprietary output but rejects public proprietary output', () => {
+  it('allows private and internal-review proprietary output but rejects public proprietary output', () => {
     const privateRevision = {
       ...revision(),
       rights: {
@@ -192,6 +192,16 @@ describe('CharacterProfileRevision 1.0', () => {
       },
     };
     expect(materializeCharacterProfileRevision(privateRevision).rights).toEqual(privateRevision.rights);
+    const reviewRevision = {
+      ...revision(),
+      rights: {
+        distribution: 'internal-review',
+        license: 'LicenseRef-Proprietary',
+      },
+    };
+    expect(materializeCharacterProfileRevision(reviewRevision).rights).toEqual(reviewRevision.rights);
+    const validate = new Ajv2020({ strict: true, allErrors: true }).compile(characterProfileSchema);
+    expect(validate(reviewRevision), JSON.stringify(validate.errors)).toBe(true);
     const publicProprietary = {
       ...revision(),
       rights: {
@@ -201,7 +211,6 @@ describe('CharacterProfileRevision 1.0', () => {
     };
     expect(() => materializeCharacterProfileRevision(publicProprietary))
       .toThrowError(expect.objectContaining({ code: 'character-profile.invalid-rights' }));
-    const validate = new Ajv2020({ strict: true, allErrors: true }).compile(characterProfileSchema);
     expect(validate(publicProprietary)).toBe(false);
   });
 

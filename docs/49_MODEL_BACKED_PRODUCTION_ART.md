@@ -24,8 +24,10 @@ world dialogue
   -> bounded source PNG
   -> deterministic alpha / resize / grid checks
   -> ProductionArtOutput + scrubbed evidence
+  -> player task: portable four-profile CharacterProfileRevision
+  -> layered-depth task: additional Pack 1.0 runtime projection
   -> human art and rights review
-  -> later: deterministic pack projection and Godot runtime validation
+  -> deterministic pack projection and Godot runtime validation
 ```
 
 The relevant code is:
@@ -103,6 +105,23 @@ direction, frame index, duration, and grid position. The normalizer requires
 every declared cell to contain pixels and every undeclared cell to remain
 transparent.
 
+Every player task additionally requires `--character-id`. This is a portable
+lowercase identifier, not a display name or a private identity record:
+
+```bash
+pnpm production-art:model -- \
+  --profile topdown-farm \
+  --task character-character-player-atlas \
+  --character-id neutral-traveler \
+  --world-brief-file private/world-brief.txt \
+  --style-bible-file private/style-bible.txt \
+  --approved-direction private/accepted-direction.png \
+  --character-reference private/character.png \
+  --quality medium \
+  --execute \
+  --allow-remote-upload
+```
+
 Example of an explicitly authorized direction request:
 
 ```bash
@@ -132,26 +151,64 @@ directory as:
 World brief, style bible, raw prompt, local paths, API key, and reference bytes
 are not copied into either JSON record.
 
+## Portable player projection across all four profiles
+
+For a player-animation task in any supported profile, the same invocation runs
+the deterministic portable character projector. A passing candidate adds:
+
+- `character-profile-atlas.png`: the exact normalized PNG bytes, without
+  resampling;
+- `character-profile-revision.json`: a schema-valid
+  `CharacterProfileRevision` with the full canonical clip inventory;
+- `character-profile-projection.json`: task, source, atlas, identity-binding
+  and integrity evidence validated by
+  `mapsoo-production-character-profile-projection-1.0.schema.json`.
+
+The projector supports all four public player policies:
+
+| Profile | Semantic poses | Required clips |
+| --- | ---: | ---: |
+| `side-platformer` | 28 | 12 |
+| `topdown-farm` | 24 | 8 |
+| `isometric-action` | 96 | 48 |
+| `layered-depth-2d` | 32 | 16 |
+
+It independently verifies decoded dimensions, output/evidence/byte hashes,
+transparent RGB, every undeclared grid cell, minimum visible subject pixels,
+transparent cell borders, pivot-relative foot anchors, exact duplicate frames
+and horizontal mirror copies. The reference image remains outside the
+revision. The CLI records a domain-separated identity digest and the opaque
+`character-reference` id; it does not record the raw reference digest, input
+path, filename or character display name. These technical checks do not prove
+that the generated poses preserve identity or look good, so human review
+remains required.
+
+A rejected projection does not discard a paid response. Source, normalized
+candidate and scrubbed evidence are retained, a bounded
+`character-profile-projection-rejection.json` is written, and the command exits
+non-zero.
+
+## Additional layered-depth Pack 1.0 projection
+
 For a `layered-depth-2d` player or NPC task, the same invocation also runs the
-deterministic Pack 1.0 character projector. A passing candidate adds:
+specialized deterministic Pack 1.0 character projector. A passing candidate
+adds:
 
 - `runtime-atlas.png`: an 8-column Godot runtime atlas with `48 × 72` frames;
 - `pack-character.json`: the complete player or NPC clip record ready for a
   Pack 1.0 manifest;
 - `projection.json`: source/output hashes, geometry and machine-check evidence.
 
-The player projection contains 32 independently mapped poses and 16
+The specialized player projection contains 32 independently mapped poses and 16
 action-direction clips. The NPC projection contains 16 poses and 8 clips. Each
 clip has two independent frames. The projector rejects empty frames, visible
 frame borders, feet that do not land near the declared `24,67` pivot, exact
 duplicate frames, horizontal mirror copies and normalized-byte/evidence digest
 mismatches.
 
-A paid model response is not discarded merely because this technical
-projection fails. The original source, normalized candidate and evidence are
-still written, together with `projection-rejection.json`; the command exits
-non-zero and reports a bounded rejection code. Passing projection still leaves
-`human_review: required` and does not approve the art for release.
+A specialized projection failure writes `projection-rejection.json`. Passing
+either projection still leaves `human_review: required` and does not approve
+the art for release.
 
 ## Assemble the first complete Pack 1.0 review candidate
 
@@ -441,9 +498,11 @@ This source adapter is a real provider implementation, but the following work is
 still required before claiming “a few dialogue rounds create one complete
 production world”:
 
-- connect the projected layered-depth player and NPC, followed by accepted
-  environment outputs, to the full `WorldAssetProvider` bundle builder;
-- expand the same runtime projection boundary to the other three profiles;
+- connect the portable player revisions for all four profiles to each complete
+  pack builder and its neutral Godot runtime character slot;
+- connect accepted layered-depth player, NPC and environment outputs to the
+  full `WorldAssetProvider` bundle builder rather than only the review
+  assembler;
 - execute the canonical character pose inventory in smaller, independently
   reviewed batches instead of relying on one perfect sprite-sheet request;
 - add semantic identity, action, direction, temporal-continuity, seam, pivot,

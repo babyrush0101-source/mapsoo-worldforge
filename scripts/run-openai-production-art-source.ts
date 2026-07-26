@@ -4,6 +4,12 @@ import { relative, resolve, sep } from 'node:path';
 
 import { normalizeProductionArtPng } from '../src/adapters/normalize-production-art-png';
 import {
+  ProductionCharacterProfileProjectionError,
+  deriveCharacterIdentityDigestSha256,
+  projectProductionCharacterProfile,
+  type ProductionCharacterProfileProjection,
+} from '../src/adapters/project-production-character-profile';
+import {
   LayeredDepthCharacterProjectionError,
   projectLayeredDepthProductionCharacter,
   type LayeredDepthCharacterProjection,
@@ -36,6 +42,7 @@ import {
 } from '../src/core/asset-profile';
 
 const OUTPUT_ROOT = 'docs/visual-qa/production-art/model-runs';
+const SAFE_CHARACTER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VALUE_FLAGS = new Set([
   '--profile',
   '--task',
@@ -45,6 +52,7 @@ const VALUE_FLAGS = new Set([
   '--environment-reference',
   '--character-reference',
   '--approved-direction',
+  '--character-id',
 ]);
 const BOOLEAN_FLAGS = new Set([
   '--execute',
@@ -64,6 +72,7 @@ interface Arguments {
   readonly environmentReference?: string;
   readonly characterReference?: string;
   readonly approvedDirection?: string;
+  readonly characterId?: string;
 }
 
 function usage(): string {
@@ -79,9 +88,17 @@ function usage(): string {
     '    --environment-reference <environment.png> --character-reference <character.png> \\',
     '    --quality medium --execute --allow-remote-upload',
     '',
+    'Execute an approved player-character round:',
+    '  pnpm production-art:model -- --profile layered-depth-2d \\',
+    '    --task character-character-player-atlas --character-id neutral-traveler \\',
+    '    --world-brief-file <private-brief.txt> --style-bible-file <private-style.txt> \\',
+    '    --approved-direction <accepted-direction.png> --character-reference <character.png> \\',
+    '    --quality medium --execute --allow-remote-upload',
+    '',
     'Rules:',
     '  - OPENAI_API_KEY is read only at runtime and is never written to output.',
     '  - Non-scene tasks require --approved-direction from the accepted scene-direction round.',
+    '  - Player animation tasks require a portable --character-id; it is not a private display name.',
     '  - Each invocation can make at most one remote request.',
     `  - Candidate files stay ignored under ${OUTPUT_ROOT}/ until human review.`,
   ].join('\n');
@@ -130,6 +147,9 @@ function parseArguments(argv: readonly string[]): Arguments {
     ...(values.has('--approved-direction')
       ? { approvedDirection: values.get('--approved-direction') }
       : {}),
+    ...(values.has('--character-id')
+      ? { characterId: values.get('--character-id') }
+      : {}),
   });
 }
 
@@ -167,6 +187,19 @@ function assertExecutionArguments(args: Arguments, task: ProductionArtTask): voi
   }
   if (task.reference_roles.includes('character') && !args.characterReference) {
     throw new Error(`${task.task_id} requires --character-reference.`);
+  }
+  const isPlayerCharacterTask = task.kind === 'character-animation-sheet'
+    && task.role_mappings.length === 1
+    && task.role_mappings[0].role === 'character.player.atlas';
+  if (isPlayerCharacterTask && !args.characterId) {
+    throw new Error(`${task.task_id} requires --character-id for the portable character revision.`);
+  }
+  if (args.characterId && !isPlayerCharacterTask) {
+    throw new Error('--character-id is accepted only for a player animation task.');
+  }
+  if (args.characterId
+    && (!SAFE_CHARACTER_ID.test(args.characterId) || args.characterId.length > 48)) {
+    throw new Error('--character-id must be a lowercase portable id of at most 48 characters.');
   }
 }
 
@@ -265,6 +298,9 @@ function dryRunSummary(args: Arguments, task: ProductionArtTask): object {
     required_reference_roles: task.reference_roles,
     semantic_pose_cells: task.pose_mappings?.length ?? 0,
     requires_approved_direction: task.task_id !== 'scene-direction',
+    requires_character_id: task.kind === 'character-animation-sheet'
+      && task.role_mappings.length === 1
+      && task.role_mappings[0].role === 'character.player.atlas',
     output_policy: 'internal-review',
     human_review: 'required',
   };
@@ -319,13 +355,41 @@ async function main(): Promise<void> {
     remoteAuthorization: authorization,
   }, { credential });
   const normalized = await normalizeProductionArtPng(trusted);
-  let projection: LayeredDepthCharacterProjection | undefined;
-  let projectionErrorCode: string | undefined;
+  let characterProfileProjection: ProductionCharacterProfileProjection | undefined;
+  let characterProfileProjectionErrorCode: string | undefined;
+  const isPlayerCharacterTask = task.kind === 'character-animation-sheet'
+    && task.role_mappings.length === 1
+    && task.role_mappings[0].role === 'character.player.atlas';
+  if (isPlayerCharacterTask) {
+    const characterReference = references.find(({ descriptor }) =>
+      descriptor.id === 'character-reference');
+    if (!characterReference || !args.characterId) {
+      throw new Error('Player projection requires the validated character reference and character id.');
+    }
+    const identityDigestSha256 = await deriveCharacterIdentityDigestSha256(
+      characterReference.descriptor.sha256,
+    );
+    try {
+      characterProfileProjection = await projectProductionCharacterProfile(plan, normalized, {
+        characterId: args.characterId,
+        identityDigestSha256,
+        characterReferenceIds: [characterReference.descriptor.id],
+      });
+    } catch (error) {
+      characterProfileProjectionErrorCode =
+        error instanceof ProductionCharacterProfileProjectionError
+          ? error.code
+          : 'projection.failed';
+    }
+  }
+
+  let pack10Projection: LayeredDepthCharacterProjection | undefined;
+  let pack10ProjectionErrorCode: string | undefined;
   if (plan.profile === 'layered-depth-2d' && task.kind === 'character-animation-sheet') {
     try {
-      projection = await projectLayeredDepthProductionCharacter(plan, normalized);
+      pack10Projection = await projectLayeredDepthProductionCharacter(plan, normalized);
     } catch (error) {
-      projectionErrorCode = error instanceof LayeredDepthCharacterProjectionError
+      pack10ProjectionErrorCode = error instanceof LayeredDepthCharacterProjectionError
         ? error.code
         : 'projection.failed';
     }
@@ -341,25 +405,54 @@ async function main(): Promise<void> {
     writeJson(resolve(directory, 'output.json'), normalized.output),
     writeJson(resolve(directory, 'evidence.json'), normalized.evidence),
   ];
-  if (projection) {
+  if (characterProfileProjection) {
     writes.push(
-      writeFile(resolve(directory, 'runtime-atlas.png'), projection.png.readBytes(), { flag: 'wx' }),
-      writeJson(resolve(directory, 'projection.json'), projection.record),
-      writeJson(resolve(directory, 'pack-character.json'), projection.character),
+      writeFile(
+        resolve(directory, 'character-profile-atlas.png'),
+        characterProfileProjection.png.readBytes(),
+        { flag: 'wx' },
+      ),
+      writeJson(
+        resolve(directory, 'character-profile-revision.json'),
+        characterProfileProjection.revision,
+      ),
+      writeJson(
+        resolve(directory, 'character-profile-projection.json'),
+        characterProfileProjection.record,
+      ),
     );
-  } else if (projectionErrorCode) {
+  } else if (characterProfileProjectionErrorCode) {
+    writes.push(writeJson(resolve(directory, 'character-profile-projection-rejection.json'), {
+      schema_version: '1.0.0',
+      document_type: 'production-character-profile-projection-rejection',
+      profile: args.profile,
+      task_id: task.task_id,
+      code: characterProfileProjectionErrorCode,
+      human_review: 'required',
+    }));
+  }
+  if (pack10Projection) {
+    writes.push(
+      writeFile(resolve(directory, 'runtime-atlas.png'), pack10Projection.png.readBytes(), { flag: 'wx' }),
+      writeJson(resolve(directory, 'projection.json'), pack10Projection.record),
+      writeJson(resolve(directory, 'pack-character.json'), pack10Projection.character),
+    );
+  } else if (pack10ProjectionErrorCode) {
     writes.push(writeJson(resolve(directory, 'projection-rejection.json'), {
       schema_version: '1.0.0',
       document_type: 'production-character-atlas-projection-rejection',
       profile: args.profile,
       task_id: task.task_id,
-      code: projectionErrorCode,
+      code: pack10ProjectionErrorCode,
       human_review: 'required',
     }));
   }
   await Promise.all(writes);
+  const projectionRejected = Boolean(
+    characterProfileProjectionErrorCode || pack10ProjectionErrorCode,
+  );
   console.log(JSON.stringify({
-    status: projectionErrorCode
+    status: projectionRejected
       ? 'candidate-written-projection-rejected'
       : 'candidate-written',
     remote_request_count: 1,
@@ -367,20 +460,36 @@ async function main(): Promise<void> {
     task_id: task.task_id,
     source_sha256: normalized.evidence.source.sha256,
     normalized_sha256: normalized.evidence.normalized.sha256,
-    pack10_projection: projection
+    character_profile_projection: characterProfileProjection
       ? 'passed'
-      : projectionErrorCode
+      : characterProfileProjectionErrorCode
         ? 'rejected'
         : 'not-applicable',
-    ...(projection ? {
-      runtime_atlas_sha256: projection.file.sha256,
+    ...(characterProfileProjection ? {
+      character_profile_revision_id: characterProfileProjection.revision.profile_revision_id,
+      character_profile_revision_sha256:
+        characterProfileProjection.record.profile_revision_sha256,
+      character_profile_atlas_path: 'character-profile-atlas.png',
+    } : {}),
+    ...(characterProfileProjectionErrorCode
+      ? { character_profile_projection_error_code: characterProfileProjectionErrorCode }
+      : {}),
+    pack10_projection: pack10Projection
+      ? 'passed'
+      : pack10ProjectionErrorCode
+        ? 'rejected'
+        : 'not-applicable',
+    ...(pack10Projection ? {
+      runtime_atlas_sha256: pack10Projection.file.sha256,
       runtime_atlas_path: 'runtime-atlas.png',
     } : {}),
-    ...(projectionErrorCode ? { projection_error_code: projectionErrorCode } : {}),
+    ...(pack10ProjectionErrorCode
+      ? { pack10_projection_error_code: pack10ProjectionErrorCode }
+      : {}),
     human_review: 'required',
     output_directory: relative(process.cwd(), directory).replaceAll('\\', '/'),
   }, null, 2));
-  if (projectionErrorCode) process.exitCode = 2;
+  if (projectionRejected) process.exitCode = 2;
 }
 
 main().catch((error) => {

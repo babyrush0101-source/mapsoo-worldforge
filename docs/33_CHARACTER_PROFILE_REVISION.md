@@ -27,6 +27,12 @@ launch
 
 `profile_revision_id` and `character_id` are portable lowercase IDs. The world profile is one of Mapsoo's four public profiles. The character atlas declares a safe relative PNG path, exact byte count, SHA-256, dimensions, frame grid and pixel pivot.
 
+The model-backed projector derives its revision-id suffix from the character
+ID, profile, canonical task, normalized atlas digest, domain-separated identity
+digest, opaque reference IDs, and rights. Replaying identical inputs keeps the
+same ID; changing identity or rights creates a different revision ID even when
+the visible atlas bytes happen to match.
+
 Atlas dimensions must exactly equal:
 
 ```text
@@ -60,9 +66,17 @@ source_identity: {
 }
 ```
 
-The identity digest binds the normalized visual identity projection. Source reference IDs are opaque lowercase IDs, not file paths. Drive letters, separators, URLs, filenames, original images, local paths, prompts, private character names and private identity records are not part of this contract.
+The identity digest is supplied by the trusted projection boundary. The
+model-backed CLI derives it with a domain-separated SHA-256 over the approved
+character-reference digest, so the portable revision does not expose the raw
+reference digest. Source reference IDs are opaque lowercase IDs, not file
+paths. Drive letters, separators, URLs, filenames, original images, local
+paths, prompts, private character names and private identity records are not
+part of this contract.
 
-This digest is an integrity and correlation primitive, not proof of authorship or identity.
+This digest is a stable integrity and correlation primitive. It is not proof
+of authorship, identity, visual similarity, or preservation of semantic
+character traits; those remain human-review questions.
 
 ## Rights and distribution
 
@@ -70,7 +84,7 @@ Every revision declares:
 
 ```ts
 rights: {
-  distribution: 'private' | 'public';
+  distribution: 'private' | 'internal-review' | 'public';
   license:
     | 'CC0-1.0'
     | 'CC-BY-4.0'
@@ -80,12 +94,15 @@ rights: {
 }
 ```
 
-- Private output may remain `LicenseRef-Proprietary`.
+- Private and internal-review output may remain `LicenseRef-Proprietary`.
 - Public output with `LicenseRef-Proprietary` fails closed.
 - CC BY and CC BY-SA require non-empty attribution.
 - The character revision's rights are independent from the world pack's rights.
 
-A private consumer can therefore use a private character revision with an otherwise redistributable world without publishing that character.
+A private consumer can therefore use a private character revision with an
+otherwise redistributable world without publishing that character. A
+model-generated candidate remains `internal-review` until human art and rights
+review deliberately changes its distribution and license.
 
 ## Neutral runtime binding
 

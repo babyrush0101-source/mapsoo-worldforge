@@ -42,16 +42,19 @@ confirmed style samples, continuity checks, and human approval.
 The first optional **server-only image-model source adapter** is now implemented
 behind that boundary. It converts one explicitly authorized production task into
 a hash-bound internal-review PNG candidate and deterministic normalized output;
-it is dry-run by default and never stores the API key. Layered-depth player and
-NPC tasks now additionally project into exact Pack 1.0 `48 × 72` Godot atlases
-with complete two-frame clip records, rejecting empty, duplicate, mirrored and
-mis-anchored frames. Two passing runs can now be assembled into a deterministic,
+it is dry-run by default and never stores the API key. Player tasks for all four
+profiles now additionally project into portable, complete
+`CharacterProfileRevision` artifacts while preserving normalized atlas bytes.
+The projector rejects occupied undeclared cells, empty, duplicate, mirrored,
+border-touching and mis-anchored frames. Layered-depth player and NPC tasks also
+project into exact Pack 1.0 `48 × 72` Godot atlases with complete two-frame clip
+records. Two passing layered-depth runs can be assembled into a deterministic,
 non-redistributable Pack 1.0 review ZIP over a complete base world, with every
 human, rights, runtime and Raspberry Pi gate reset to pending. This is still an
 internal-review candidate rather than a complete production pack. Character
-plans bind every required source cell to an
-explicit action, direction, frame index and duration, while semantic identity
-and animation quality still require human review. The eight layered-depth
+plans bind every required source cell to an explicit action, direction, frame
+index and duration, while semantic identity and animation quality still require
+human review. The eight layered-depth
 background, overlay and lighting tasks can now also be projected from
 direction-bound `1920 × 1080` working images into hash-bound `640 × 360`
 Pack 1.0 runtime planes. The three direction-bound terrain, prop and effect
