@@ -1,5 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { extname } from 'node:path';
+import {
+  historySecretFindingKey,
+  REVIEWED_FINDINGS,
+} from './lib/history-secret-review-policy.mjs';
 
 const TEXT_EXTENSIONS = new Set([
   '', '.cjs', '.css', '.env', '.gd', '.html', '.ini', '.js', '.json', '.jsx',
@@ -15,13 +19,6 @@ const RULES = Object.freeze([
   ['password-assignment', /\b(?:admin[_-]?password|password|passwd)\s*[:=]\s*["']([^"'\r\n]{8,})["']/gi],
   ['secret-assignment', /\b(?:api[_-]?secret|client[_-]?secret|service[_-]?key)\s*[:=]\s*["']([^"'\r\n]{12,})["']/gi],
 ]);
-const REVIEWED_FINDINGS = new Map([
-  [
-    'password-assignment\u0000src/components/auth/AuthCard.tsx\u00001234f683712dc0ed7f6c7bde871065c09996117a',
-    'Multilingual UI labels named "password"; the three matched values are translations, not credentials.',
-  ],
-]);
-
 function git(args, input) {
   const result = spawnSync('git', args, {
     cwd: process.cwd(),
@@ -78,7 +75,9 @@ for (const check of checks) {
       const candidate = match[1] ?? match[0];
       if (!PLACEHOLDER.test(candidate)) {
         const finding = { rule, path: path || '(unknown path)', object: objectId };
-        const reviewedReason = REVIEWED_FINDINGS.get(`${rule}\0${finding.path}\0${objectId}`);
+        const reviewedReason = REVIEWED_FINDINGS.get(
+          historySecretFindingKey(rule, finding.path, objectId),
+        );
         if (reviewedReason) {
           reviewedFindings.push({ ...finding, reason: reviewedReason });
         } else {
