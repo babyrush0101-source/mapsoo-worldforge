@@ -131,7 +131,7 @@ jobs:
           rm -rf release/godot-pack-set/.alpha9-extracted
 
       - name: Preserve the verified release pack set for Godot jobs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.candidate-pack.outputs.artifact }}
           path: ${{ steps.candidate-pack.outputs.path }}
@@ -139,7 +139,7 @@ jobs:
           retention-days: 30
 
       - name: Preserve release bundle as a workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mapsoo-worldsmith-${{ github.ref_name }}
           path: release/${{ github.ref_name }}/
