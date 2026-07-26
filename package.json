@@ -106,6 +106,8 @@
     "pack10:fixture:verify": "node scripts/verify-pack10-public-fixture.mjs",
     "pack10:character-review:build": "vite-node scripts/build-pack10-character-review-candidate.ts",
     "pack10:production-review:build": "vite-node scripts/build-pack10-production-review-candidate.ts",
+    "pack10:production-review:fixture": "vite-node scripts/build-pack10-synthetic-production-run-set.ts",
+    "pack10:production-review:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-pack10-production-candidate-godot.ps1",
     "character:fixture:build": "vite-node scripts/build-character-reference-conformance-fixture.ts --write",
     "character:fixture:verify": "vite-node scripts/build-character-reference-conformance-fixture.ts",
     "production-art:model": "vite-node scripts/run-openai-production-art-source.ts",

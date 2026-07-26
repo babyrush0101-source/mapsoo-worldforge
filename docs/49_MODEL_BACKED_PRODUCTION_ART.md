@@ -313,6 +313,46 @@ rights, runtime and Raspberry Pi gates are all `pending`. The base preview and
 data-only world layout are not treated as proof that a real Godot render or
 physical Pi run has passed.
 
+## Reproducible synthetic Godot boundary check
+
+The repository includes an explicitly synthetic, public-neutral fixture
+generator for validating the complete operator path without a model call:
+
+```bash
+pnpm pack10:fixture:build
+pnpm pack10:production-review:fixture
+
+pnpm pack10:production-review:build -- \
+  --base-pack tests/fixtures/pack10-public/mapsoo-pack10-public-fixture.zip \
+  --runs-manifest docs/visual-qa/production-art/model-runs/synthetic-pack10-production-v1/layered-depth-run-set.json \
+  --out release/mapsoo-pack10-production-synthetic-review-v1.zip \
+  --pack-id neutral-production-runtime-review \
+  --title "Neutral Production Runtime Review" \
+  --version 1.0.0-review.3 \
+  --created-at 2026-07-27T21:00:00.000Z
+
+pnpm pack10:production-review:godot
+```
+
+The fixture writer reports `contains_real_model_output: false`. Its generated
+working files, evidence logs and ZIP remain ignored local artifacts. The
+complete local candidate is deterministic at SHA-256
+`8eb64508d34979881aefce2c77c555f0deb5732ec34f5842124753e5cad91b39`;
+its manifest is
+`ef2f6ba1d23cd8b21fe099a942ccea97980bd3590fe58c2e4b0fe5a6cafaadd8`.
+
+On 2026-07-27 the same candidate passed real headless imports with both local
+Godot 4.3 and 4.7. Each engine verified 8 planes, 7 atlases, 36 roles, 2
+characters, three centered pivot-baked structure placements, 16 player clips,
+8 NPC clips, a first `created` import and a byte-stable second `unchanged`
+import.
+
+This evidence validates the technical projection, archive and Godot importer
+boundary. It deliberately does **not** claim real model output, reference-image
+identity fidelity, human art approval, distribution rights or execution on a
+physical Raspberry Pi. The emitted verification record keeps
+`physical_raspberry_pi: not-tested`.
+
 ## Alpha policy
 
 GPT Image 2 currently does not support transparent output. For every task that
