@@ -104,6 +104,7 @@
     "production-art:verify": "node scripts/verify-production-art-directions.mjs && node scripts/build-side-platformer-character-atlas.mjs && node scripts/verify-side-platformer-character-atlas-v2.mjs && node scripts/build-side-platformer-terrain-atlas.mjs && node scripts/build-side-platformer-prop-atlas.mjs && node scripts/build-side-platformer-background-layers.mjs && node scripts/build-side-platformer-runtime-background-layers.mjs --target=1280x720 && node scripts/build-side-platformer-runtime-background-layers.mjs --target=640x360 && node scripts/build-side-platformer-production-preview.mjs && node scripts/verify-production-art-samples.mjs && pnpm production-art:topdown:verify && pnpm production-art:isometric:verify && pnpm production-art:layered:verify",
     "pack10:fixture:build": "node scripts/build-pack10-public-fixture.mjs",
     "pack10:fixture:verify": "node scripts/verify-pack10-public-fixture.mjs",
+    "pack10:character-review:build": "vite-node scripts/build-pack10-character-review-candidate.ts",
     "character:fixture:build": "vite-node scripts/build-character-reference-conformance-fixture.ts --write",
     "character:fixture:verify": "vite-node scripts/build-character-reference-conformance-fixture.ts",
     "production-art:model": "vite-node scripts/run-openai-production-art-source.ts",

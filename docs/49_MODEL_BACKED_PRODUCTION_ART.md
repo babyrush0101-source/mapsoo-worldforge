@@ -153,6 +153,43 @@ still written, together with `projection-rejection.json`; the command exits
 non-zero and reports a bounded rejection code. Passing projection still leaves
 `human_review: required` and does not approve the art for release.
 
+## Assemble the first complete Pack 1.0 review candidate
+
+After one passing player run and one passing NPC run, the local-only assembler
+can replace both character atlases in a complete Pack 1.0 base world:
+
+```bash
+pnpm pack10:fixture:build
+
+pnpm pack10:character-review:build -- \
+  --base-pack tests/fixtures/pack10-public/mapsoo-pack10-public-fixture.zip \
+  --player-run docs/visual-qa/production-art/model-runs/layered-depth-2d/character-character-player-atlas/<run> \
+  --npc-run docs/visual-qa/production-art/model-runs/layered-depth-2d/character-character-npc-atlas/<run> \
+  --out review-output/neutral-character-review.zip \
+  --pack-id neutral-character-review-world \
+  --title "Neutral Character Review World" \
+  --version 1.0.0-review.1 \
+  --created-at 2026-07-27T18:00:00.000Z
+```
+
+This command makes no remote request. It verifies the base ZIP's exact
+manifest/file inventory and every payload digest, then revalidates the player
+and NPC projection schemas, generation-evidence bindings, atlas hashes,
+dimensions, clip inventories, transparent padding, foot anchors, distinct
+frames and mirror rejection. The resulting ZIP is deterministic for identical
+inputs.
+
+Only the runtime atlases and source-free projection records enter the review
+ZIP. Model source PNGs, normalized working sheets, generation evidence, local
+paths, references, world brief, style bible, raw prompt and API key remain
+outside. One-way hashes bind the omitted normalized sources.
+
+The assembler always changes distribution to `internal-review`, license to
+`LicenseRef-UNRELEASED`, and resets `human_art`, `rights`, `runtime` and
+`raspberry_pi` to `pending`. This first candidate replaces characters over the
+chosen base environment; it is not evidence that the environment itself was
+model-generated or that a complete production-art world has passed review.
+
 ## Alpha policy
 
 GPT Image 2 currently does not support transparent output. For every task that

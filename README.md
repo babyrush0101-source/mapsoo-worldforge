@@ -45,8 +45,11 @@ a hash-bound internal-review PNG candidate and deterministic normalized output;
 it is dry-run by default and never stores the API key. Layered-depth player and
 NPC tasks now additionally project into exact Pack 1.0 `48 × 72` Godot atlases
 with complete two-frame clip records, rejecting empty, duplicate, mirrored and
-mis-anchored frames. This is still an internal-review candidate rather than a
-complete production pack. Character plans bind every required source cell to an
+mis-anchored frames. Two passing runs can now be assembled into a deterministic,
+non-redistributable Pack 1.0 review ZIP over a complete base world, with every
+human, rights, runtime and Raspberry Pi gate reset to pending. This is still an
+internal-review candidate rather than a complete production pack. Character
+plans bind every required source cell to an
 explicit action, direction, frame index and duration, while semantic identity
 and animation quality still require human review. See
 [Model-backed production art](docs/49_MODEL_BACKED_PRODUCTION_ART.md).
