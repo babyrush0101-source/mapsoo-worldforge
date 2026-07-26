@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for testing Mapsoo Worldsmith Alpha9.
 
-        Use the [Alpha9 10-minute guide](https://github.com/babyrush0101-source/mapsoo-kids/blob/main/docs/10_FIRST_GODOT_IMPORT.md) and download only from the [audited Alpha9 release](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.9). Both success and failure are useful. Do not include private paths, credentials, children's data, private STOYO content, or unlicensed assets.
+        Use the [Alpha9 10-minute guide](https://github.com/babyrush0101-source/mapsoo-kids/blob/main/docs/10_FIRST_GODOT_IMPORT.md) and download only from the [audited Alpha9 release](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.9). Both success and failure are useful. Do not include private paths, credentials, children's data, private External Host content, or unlicensed assets.
   - type: dropdown
     id: outcome
     attributes:
@@ -87,5 +87,5 @@ body:
     attributes:
       label: Data safety
       options:
-        - label: I removed credentials, children's data, private paths, private STOYO data, and unlicensed assets.
+        - label: I removed credentials, children's data, private paths, private External Host data, and unlicensed assets.
           required: true

@@ -6,7 +6,7 @@
 
 Alpha.5 已经为世界提供稳定的语义地点、便携 `runtime/places.json` 和 Godot `Marker2D` 锚点，但地点仍只有抽象图标。Alpha.6 的目标是在不改变已发布 Alpha.1–Alpha.5 任何字节、合同、fixture、tag 或摘要的前提下，为适合的语义地点派生**地点关联、确定性、透明背景的建筑外观素材**，使一个导出包同时具备浏览器可见的世界外观和 Godot 可查询、可渲染的结构节点。
 
-这里的 structure 只表示地图上的建筑外观（exterior structure）。它是 portable 世界美术资产，不是可进入的场景、玩法实体或 STOYO 专用对象。地点仍是语义身份真源；结构通过稳定 `placeId` 关联地点，不能另造一套互不相干的世界坐标身份。
+这里的 structure 只表示地图上的建筑外观（exterior structure）。它是 portable 世界美术资产，不是可进入的场景、玩法实体或 External Host 专用对象。地点仍是语义身份真源；结构通过稳定 `placeId` 关联地点，不能另造一套互不相干的世界坐标身份。
 
 ## 2. 四种公开原型
 
@@ -102,7 +102,7 @@ Alpha.6 不实现或承诺：
 - 建筑碰撞、物理形状、遮挡多边形或导航网格；
 - 自动寻路、道路可达性证明、NPC 行为或交通系统；
 - 商店经济、住宅、任务、战斗、资源生产、存档等玩法；
-- STOYO 专用运行时映射、生产接入、采用证明或私人内容推断；
+- External Host 专用运行时映射、生产接入、采用证明或私人内容推断；
 - AI 图像 Provider、第三方素材来源的笼统许可保证；
 - itch.io 登录、页面创建、上传或公开发布；
 - Godot Asset Library 上架、审核通过或外部采用证明；
@@ -126,7 +126,7 @@ Alpha.6 不实现或承诺：
 5. importer 不能拒绝被篡改 sidecar/atlas，不能复核解析结果，或安全重导入会覆盖用户文件；
 6. 四种原型中任一种缺少实际透明素材、完整元数据或跨浏览器/Godot 视觉验证；
 7. Linux/Windows × Godot 4.3/4.7 exact-pack 矩阵未通过，或 Alpha.1–Alpha.5 回归不再通过；
-8. 文档、截图或发布页需要把未完成切片、STOYO 计划或延后的 itch.io 上传包装成已交付能力。
+8. 文档、截图或发布页需要把未完成切片、External Host 计划或延后的 itch.io 上传包装成已交付能力。
 9. release 缺少可从 `addons/mapsoo_importer` 正确解压安装的 addon 归档，归档缺 README/LICENSE/icon，或首次使用向导未在全新 Godot 项目中按公开附件实测。
 
 上述停止条件均已在发布前解除；公开 [Alpha.6 prerelease](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.6) 及其 13 个附件现为不可变发布证据。任何后续合同变化必须推进新版本，不能改写 Alpha.6 tag、fixture 或摘要。

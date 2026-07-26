@@ -6,7 +6,7 @@ Thanks for helping make world-asset creation more open and useful to Godot creat
 
 1. Open or comment on an issue for changes that affect schemas, exported file structures, stable IDs, licenses, or Godot compatibility.
 2. Keep pull requests focused on one capability or fix.
-3. Do not add private STOYO data, production credentials, copyrighted characters, or assets without clear redistribution rights.
+3. Do not add private External Host data, production credentials, copyrighted characters, or assets without clear redistribution rights.
 4. Run the complete check:
 
 ```bash

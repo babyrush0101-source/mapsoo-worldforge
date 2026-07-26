@@ -83,7 +83,7 @@ Use the [structured first-import form](https://github.com/babyrush0101-source/ma
 - `created → unchanged`, or the complete error and last successful step;
 - one instruction or workflow detail that was confusing.
 
-成功和失败都是真实、有效的反馈。请勿提交凭证、儿童数据、私有本地路径、STOYO 私有内容或无权公开的素材。所有独立测试结果统一索引在 [issue #12](https://github.com/babyrush0101-source/mapsoo-kids/issues/12)。
+成功和失败都是真实、有效的反馈。请勿提交凭证、儿童数据、私有本地路径、External Host 私有内容或无权公开的素材。所有独立测试结果统一索引在 [issue #12](https://github.com/babyrush0101-source/mapsoo-kids/issues/12)。
 
 ## Troubleshooting / 排错
 
@@ -105,4 +105,4 @@ Mapsoo refuses to overwrite manually changed, missing, unexpected, or state-mism
 
 ## Scope boundary / 范围边界
 
-Alpha9 supports only `topdown-farm`. It is not evidence of external adoption, STOYO production integration, itch.io publication, or support for `side-platformer`, `isometric-action`, or `layered-depth-2d`.
+Alpha9 supports only `topdown-farm`. It is not evidence of external adoption, External Host production integration, itch.io publication, or support for `side-platformer`, `isometric-action`, or `layered-depth-2d`.

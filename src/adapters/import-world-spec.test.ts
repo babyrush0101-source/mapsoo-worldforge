@@ -98,19 +98,19 @@ describe('World Spec JSON import', () => {
   it('rejects prototype keys and deeply nested extension data', () => {
     for (const forbiddenKey of ['__proto__', 'constructor', 'prototype']) {
       const unsafeJson = JSON.stringify(DEFAULT_WORLD_SPEC).replace(
-        /}$/, `,"extensions":{"dev.stoyo":{"${forbiddenKey}":{"polluted":true}}}}`,
+        /}$/, `,"extensions":{"org.mapsoo.externalhost":{"${forbiddenKey}":{"polluted":true}}}}`,
       );
       expect(parseWorldSpecJson(unsafeJson)).toMatchObject({ ok: false, code: 'import.unsafe-key' });
     }
 
     let nested: unknown = 'leaf';
     for (let index = 0; index < 34; index += 1) nested = { child: nested };
-    const tooDeep = { ...DEFAULT_WORLD_SPEC, extensions: { 'dev.stoyo': nested } };
+    const tooDeep = { ...DEFAULT_WORLD_SPEC, extensions: { 'org.mapsoo.externalhost': nested } };
     expect(parseWorldSpecJson(JSON.stringify(tooDeep))).toMatchObject({ ok: false, code: 'import.too-deep' });
 
     const tooComplex = {
       ...DEFAULT_WORLD_SPEC,
-      extensions: { 'dev.stoyo': Array.from({ length: 10_001 }, () => 0) },
+      extensions: { 'org.mapsoo.externalhost': Array.from({ length: 10_001 }, () => 0) },
     };
     expect(parseWorldSpecJson(JSON.stringify(tooComplex))).toMatchObject({ ok: false, code: 'import.too-complex' });
   });
@@ -130,13 +130,13 @@ describe('World Spec JSON import', () => {
 
     const nonFinite = JSON.stringify(DEFAULT_WORLD_SPEC).replace(
       /}$/,
-      ',"extensions":{"dev.stoyo":{"value":1e400}}}',
+      ',"extensions":{"org.mapsoo.externalhost":{"value":1e400}}}',
     );
     expect(parseWorldSpecJson(nonFinite)).toMatchObject({ ok: false, code: 'import.non-finite-number' });
 
     const unsafeInteger = JSON.stringify(DEFAULT_WORLD_SPEC).replace(
       /}$/,
-      ',"extensions":{"dev.stoyo":{"value":9007199254740993}}}',
+      ',"extensions":{"org.mapsoo.externalhost":{"value":9007199254740993}}}',
     );
     expect(parseWorldSpecJson(unsafeInteger)).toMatchObject({ ok: false, code: 'import.unsafe-integer' });
   });
@@ -166,14 +166,14 @@ describe('World Spec JSON import', () => {
     const deeplyNestedValue = `${'['.repeat(40)}0${']'.repeat(40)}`;
     const shadowedDeepJson = JSON.stringify(DEFAULT_WORLD_SPEC).replace(
       /}$/,
-      `,"extensions":{"dev.stoyo":{"payload":${deeplyNestedValue},"payload":null}}}`,
+      `,"extensions":{"org.mapsoo.externalhost":{"payload":${deeplyNestedValue},"payload":null}}}`,
     );
     expect(parseWorldSpecJson(shadowedDeepJson)).toMatchObject({ ok: false, code: 'import.too-deep' });
 
     const complexValue = `[${Array.from({ length: 10_001 }, () => '0').join(',')}]`;
     const shadowedComplexJson = JSON.stringify(DEFAULT_WORLD_SPEC).replace(
       /}$/,
-      `,"extensions":{"dev.stoyo":{"payload":${complexValue},"payload":null}}}`,
+      `,"extensions":{"org.mapsoo.externalhost":{"payload":${complexValue},"payload":null}}}`,
     );
     expect(parseWorldSpecJson(shadowedComplexJson)).toMatchObject({ ok: false, code: 'import.too-complex' });
   });
@@ -181,24 +181,24 @@ describe('World Spec JSON import', () => {
   it('accepts the exact depth and node limits and rejects one value beyond them', () => {
     const exactDepth = {
       ...DEFAULT_WORLD_SPEC,
-      extensions: { 'dev.stoyo': nestedArrays(30) },
+      extensions: { 'org.mapsoo.externalhost': nestedArrays(30) },
     };
     const excessiveDepth = {
       ...DEFAULT_WORLD_SPEC,
-      extensions: { 'dev.stoyo': nestedArrays(31) },
+      extensions: { 'org.mapsoo.externalhost': nestedArrays(31) },
     };
     expect(parseWorldSpecJson(JSON.stringify(exactDepth))).toMatchObject({ ok: true });
     expect(parseWorldSpecJson(JSON.stringify(excessiveDepth))).toMatchObject({ ok: false, code: 'import.too-deep' });
 
-    const nodeShell = { ...DEFAULT_WORLD_SPEC, extensions: { 'dev.stoyo': [] as number[] } };
+    const nodeShell = { ...DEFAULT_WORLD_SPEC, extensions: { 'org.mapsoo.externalhost': [] as number[] } };
     const remainingNodes = 10_000 - countJsonNodes(nodeShell);
     const exactNodes = {
       ...DEFAULT_WORLD_SPEC,
-      extensions: { 'dev.stoyo': Array.from({ length: remainingNodes }, () => 0) },
+      extensions: { 'org.mapsoo.externalhost': Array.from({ length: remainingNodes }, () => 0) },
     };
     const excessiveNodes = {
       ...DEFAULT_WORLD_SPEC,
-      extensions: { 'dev.stoyo': Array.from({ length: remainingNodes + 1 }, () => 0) },
+      extensions: { 'org.mapsoo.externalhost': Array.from({ length: remainingNodes + 1 }, () => 0) },
     };
     expect(countJsonNodes(exactNodes)).toBe(10_000);
     expect(parseWorldSpecJson(JSON.stringify(exactNodes))).toMatchObject({ ok: true });

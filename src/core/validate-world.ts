@@ -589,7 +589,7 @@ export function validateWorldSpec(spec: unknown): ValidationIssue[] {
       issues.push({
         code: 'spec.extension-namespace',
         severity: 'error',
-        message: 'Every extension key must use a reverse-DNS namespace such as dev.stoyo.',
+        message: 'Every extension key must use a reverse-DNS namespace such as org.mapsoo.externalhost.',
       });
     }
   }

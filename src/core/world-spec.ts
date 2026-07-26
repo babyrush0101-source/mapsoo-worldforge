@@ -71,7 +71,7 @@ interface WorldSpecBase {
     targets: ['common', 'godot', 'itch'];
     assetLicense: 'CC0-1.0';
   };
-  /** Namespaced integration metadata, for example { "dev.stoyo": { ... } }. */
+  /** Namespaced integration metadata, for example { "org.mapsoo.externalhost": { ... } }. */
   extensions?: Record<string, unknown>;
 }
 

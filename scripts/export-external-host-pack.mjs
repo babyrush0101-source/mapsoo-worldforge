@@ -18,11 +18,11 @@ import { REPOSITORY_ROOT } from './release-config.mjs';
 
 const execFileAsync = promisify(execFile);
 const MAX_REQUEST_BYTES = 128 * 1024;
-const EXPORT_SCHEMA_VERSION = 'dev.stoyo.mapsoo-export-receipt/1.0.0';
+const EXPORT_SCHEMA_VERSION = 'org.mapsoo.externalhost.mapsoo-export-receipt/1.0.0';
 const PACK_VERSION = '0.1.0-alpha.7';
 const PACK_SCHEMA_VERSION = '0.5.0';
 const exportReceiptSchema = JSON.parse(await readFile(
-  join(REPOSITORY_ROOT, 'integrations', 'stoyo', 'stoyo-mapsoo-export-receipt.schema.json'),
+  join(REPOSITORY_ROOT, 'integrations', 'external-host', 'external-host-mapsoo-export-receipt.schema.json'),
   'utf8',
 ));
 const receiptAjv = new Ajv2020({ allErrors: true, strict: true });
@@ -86,9 +86,9 @@ function decodeHtml(value) {
 function decodeDom(dom) {
   const state = dom.match(/<html\b[^>]*\bdata-state="([^"]+)"/i)?.[1];
   const error = dom.match(/<pre\s+id="error"[^>]*>([\s\S]*?)<\/pre>/i)?.[1]?.trim();
-  if (state !== 'ready') fail(`STOYO browser export failed (state=${String(state)}${error ? `, error=${decodeHtml(error)}` : ''}).`);
+  if (state !== 'ready') fail(`External Host browser export failed (state=${String(state)}${error ? `, error=${decodeHtml(error)}` : ''}).`);
   const result = dom.match(/<pre\s+id="result"[^>]*>([\s\S]*?)<\/pre>/i)?.[1];
-  if (!result) fail('STOYO browser export returned no result.');
+  if (!result) fail('External Host browser export returned no result.');
   return JSON.parse(decodeHtml(result));
 }
 
@@ -122,7 +122,7 @@ async function readBoundedFile(handle, maxBytes) {
     offset += bytesRead;
   }
   if (offset > maxBytes) {
-    fail(`STOYO Asset Request must be a regular file between 1 byte and ${maxBytes} bytes.`);
+    fail(`External Host Asset Request must be a regular file between 1 byte and ${maxBytes} bytes.`);
   }
   return buffer.subarray(0, offset);
 }
@@ -185,7 +185,7 @@ async function verifyPack(packBytes, result, completedAt) {
     fail('Generated World Spec binding is invalid.');
   }
   const worldSpec = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(worldSpecBytes));
-  const extension = worldSpec.extensions?.['dev.stoyo.assetrequest.v1'];
+  const extension = worldSpec.extensions?.['org.mapsoo.externalhost.assetrequest.v1'];
   const extensionTags = extension?.requiredSceneTags;
   if (
     worldSpec.schemaVersion !== '0.3.0'
@@ -193,14 +193,14 @@ async function verifyPack(packBytes, result, completedAt) {
     || worldSpec.places !== undefined
     || worldSpec.structures !== undefined
     || extension?.assetRequestSha256 !== result.binding.assetRequestSha256
-    || extension?.stoyoWorldId !== result.binding.stoyoWorldId
-    || extension?.stoyoWorldVersion !== result.binding.stoyoWorldVersion
+    || extension?.externalHostWorldId !== result.binding.externalHostWorldId
+    || extension?.externalHostWorldVersion !== result.binding.externalHostWorldVersion
     || extension?.sceneId !== result.binding.sceneId
     || extension?.contentRating !== result.binding.contentRating
     || !Array.isArray(extensionTags)
     || JSON.stringify(extensionTags) !== JSON.stringify(result.binding.requiredSceneTags)
   ) {
-    fail('Generated pack does not preserve the STOYO request binding without invented semantics.');
+    fail('Generated pack does not preserve the External Host request binding without invented semantics.');
   }
 
   const generationReceiptPath = manifest.receipt?.path;
@@ -237,11 +237,11 @@ async function exportPack(options) {
   try {
     const info = await requestHandle.stat();
     if (!info.isFile() || info.size === 0 || info.size > MAX_REQUEST_BYTES) {
-      fail(`STOYO Asset Request must be a regular file between 1 byte and ${MAX_REQUEST_BYTES} bytes.`);
+      fail(`External Host Asset Request must be a regular file between 1 byte and ${MAX_REQUEST_BYTES} bytes.`);
     }
     requestBytes = await readBoundedFile(requestHandle, MAX_REQUEST_BYTES);
     if (requestBytes.byteLength !== info.size) {
-      fail('STOYO Asset Request changed while it was being read.');
+      fail('External Host Asset Request changed while it was being read.');
     }
   } finally {
     await requestHandle.close();
@@ -250,10 +250,10 @@ async function exportPack(options) {
   try {
     requestText = new TextDecoder('utf-8', { fatal: true }).decode(requestBytes);
   } catch {
-    fail('STOYO Asset Request must use valid UTF-8 encoding.');
+    fail('External Host Asset Request must use valid UTF-8 encoding.');
   }
 
-  const profile = await mkdtemp(join(tmpdir(), 'mapsoo-stoyo-export-'));
+  const profile = await mkdtemp(join(tmpdir(), 'mapsoo-external-host-export-'));
   let server;
   let httpServer;
   try {
@@ -266,10 +266,10 @@ async function exportPack(options) {
       logLevel: 'error',
       server: { middlewareMode: true },
       plugins: [{
-        name: 'mapsoo-stoyo-request',
+        name: 'mapsoo-external-host-request',
         configureServer(vite) {
           vite.middlewares.use((request, response, next) => {
-            if (request.url?.split('?')[0] !== '/__mapsoo_stoyo_request') return next();
+            if (request.url?.split('?')[0] !== '/__mapsoo_external_host_request') return next();
             response.statusCode = 200;
             response.setHeader('Content-Type', 'application/json; charset=utf-8');
             response.setHeader('Cache-Control', 'no-store');
@@ -286,9 +286,9 @@ async function exportPack(options) {
       httpServer.listen(0, '127.0.0.1', resolveListen);
     });
     const address = httpServer.address();
-    if (!address || typeof address === 'string') fail('STOYO export server did not bind a local TCP port.');
+    if (!address || typeof address === 'string') fail('External Host export server did not bind a local TCP port.');
     const port = address.port;
-    const url = `http://127.0.0.1:${port}/tests/browser/stoyo-export.html?completedAt=${encodeURIComponent(options.completedAt)}`;
+    const url = `http://127.0.0.1:${port}/tests/browser/external-host-export.html?completedAt=${encodeURIComponent(options.completedAt)}`;
     let browserDom = '';
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       const { stdout } = await execFileAsync(chromeExecutable(), [
@@ -304,36 +304,36 @@ async function exportPack(options) {
     }
     const result = decodeDom(browserDom);
     if (result.schemaVersion !== EXPORT_SCHEMA_VERSION || result.completedAt !== options.completedAt) {
-      fail('STOYO browser export envelope is inconsistent.');
+      fail('External Host browser export envelope is inconsistent.');
     }
     if (!result.binding || result.binding.packId !== result.pack?.filename?.match(/^mapsoo-(.+)-v0\.1\.0-alpha\.7\.zip$/)?.[1]) {
-      fail('STOYO browser export pack identity is inconsistent.');
+      fail('External Host browser export pack identity is inconsistent.');
     }
     if (
       typeof result.pack.bytes !== 'string'
       || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(result.pack.bytes)
     ) {
-      fail('STOYO browser export returned invalid base64.');
+      fail('External Host browser export returned invalid base64.');
     }
     const packBytes = Buffer.from(result.pack.bytes, 'base64');
     if (packBytes.byteLength === 0 || packBytes.toString('base64') !== result.pack.bytes) {
-      fail('STOYO browser export returned invalid pack bytes.');
+      fail('External Host browser export returned invalid pack bytes.');
     }
     const verified = await verifyPack(packBytes, result, options.completedAt);
 
     await ensureOutputDirectory(options.outDir);
     const packPath = join(options.outDir, basename(result.pack.filename));
-    const receiptName = `mapsoo-${result.binding.packId}-stoyo-export-receipt.json`;
+    const receiptName = `mapsoo-${result.binding.packId}-external-host-export-receipt.json`;
     const receiptPath = join(options.outDir, receiptName);
     const receipt = {
       schema_version: EXPORT_SCHEMA_VERSION,
       completed_at: options.completedAt,
       request: {
-        schema_version: 'dev.stoyo.asset-request/1.0.0',
+        schema_version: 'org.mapsoo.externalhost.asset-request/1.0.0',
         pack_id: result.binding.packId,
         asset_request_sha256: result.binding.assetRequestSha256,
-        stoyo_world_id: result.binding.stoyoWorldId,
-        stoyo_world_version: result.binding.stoyoWorldVersion,
+        external_host_world_id: result.binding.externalHostWorldId,
+        external_host_world_version: result.binding.externalHostWorldVersion,
         scene_id: result.binding.sceneId,
         required_scene_tags: result.binding.requiredSceneTags,
         content_rating: result.binding.contentRating,
@@ -353,10 +353,10 @@ async function exportPack(options) {
         manifest_sha256: verified.manifestSha256,
         generation_receipt_sha256: verified.generationReceiptSha256,
       },
-      tool: { id: 'mapsoo-stoyo-export', version: '0.1.0' },
+      tool: { id: 'mapsoo-external-host-export', version: '0.1.0' },
     };
     if (!validateExportReceipt(receipt)) {
-      fail(`Generated STOYO export receipt does not match its schema: ${receiptAjv.errorsText(validateExportReceipt.errors)}`);
+      fail(`Generated External Host export receipt does not match its schema: ${receiptAjv.errorsText(validateExportReceipt.errors)}`);
     }
     const receiptBytes = Buffer.from(`${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
     const packState = await outputState(packPath);
@@ -420,7 +420,7 @@ async function exportPack(options) {
 }
 
 function printHelp() {
-  console.log(`Usage:\n  pnpm stoyo:export -- --input <request.json> --out-dir <directory> --completed-at <UTC ISO timestamp>\n\nThe command validates the privacy-minimized STOYO Asset Request, exports an executable-free Alpha.7 Godot world pack in headless Chrome, and writes a machine-readable request-to-pack receipt. Existing outputs are never overwritten.`);
+  console.log(`Usage:\n  pnpm external-host:export -- --input <request.json> --out-dir <directory> --completed-at <UTC ISO timestamp>\n\nThe command validates the privacy-minimized External Host Asset Request, exports an executable-free Alpha.7 Godot world pack in headless Chrome, and writes a machine-readable request-to-pack receipt. Existing outputs are never overwritten.`);
 }
 
 try {

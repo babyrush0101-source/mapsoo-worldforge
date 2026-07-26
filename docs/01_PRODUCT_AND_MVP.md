@@ -18,7 +18,7 @@ Mapsoo Worldsmith 是一个面向独立游戏、Game Jam、教育游戏与叙事
 
 需要把课程、故事或主题世界快速变成可探索地图，同时控制内容边界和视觉表达。
 
-### STOYO 团队
+### External Host 团队
 
 需要从 World Engine 的主题、角色、任务和地点定义生成游戏场景、故事地图与可持续扩展的世界资产。
 
@@ -130,4 +130,4 @@ v0.1 不追求注册量，优先测量：
 
 `topdown-farm` 的完整结果不是单张合成图。发布包同时具备地形、水域、道路/田埂与围栏、作物阶段、建筑、道具、分层地图、可行走/阻挡数据、四方向角色 `idle/walk`、preview、严格 sidecar、manifest、receipt、许可与使用说明。下载前由版本化 completeness matrix 逐类证明文件、像素、动画、引用、摘要和权利信息完整；任何 error 阻止导出。
 
-参考图在本地执行字节、媒体签名、尺寸、预算和权利验证，不进入示例、ZIP、截图或公开日志；这不是人脸、OCR、商标或其他内容级净化。Alpha.9 只接受用户拥有且明确允许衍生、输出再分发和 CC0 dedication 的环境图与角色图，licensed 参考输入拒绝导出。公开发布不表示外部团队已经采用、STOYO 已生产接入或 itch.io 已上架。详细范围见 [`19_ALPHA9_REFERENCE_TO_FARM_WORLD.md`](19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)。
+参考图在本地执行字节、媒体签名、尺寸、预算和权利验证，不进入示例、ZIP、截图或公开日志；这不是人脸、OCR、商标或其他内容级净化。Alpha.9 只接受用户拥有且明确允许衍生、输出再分发和 CC0 dedication 的环境图与角色图，licensed 参考输入拒绝导出。公开发布不表示外部团队已经采用、External Host 已生产接入或 itch.io 已上架。详细范围见 [`19_ALPHA9_REFERENCE_TO_FARM_WORLD.md`](19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)。

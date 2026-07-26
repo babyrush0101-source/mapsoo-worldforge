@@ -74,7 +74,7 @@ Alpha.7 不实现或承诺：
 - 一个世界内部的多 biome 混合、边界过渡或自动地貌融合；
 - 建筑内部、门、碰撞、导航、角色、动画、任务、战斗或经济玩法；
 - AI 图像 Provider、付费 API、用户账号、云端存储或默认上传内容；
-- STOYO 专用运行时映射、生产接入或采用证明；
+- External Host 专用运行时映射、生产接入或采用证明；
 - itch.io 登录、页面创建、上传或公开发布；
 - Godot Asset Library 上架或外部采用证明；
 - 修改任何已发布 Alpha.1–Alpha.6 tag、fixture、附件或摘要。
@@ -88,4 +88,4 @@ Alpha.7 不实现或承诺：
 3. desert/snow 只换营销截图，没有独立可验证的 portable pack；
 4. 三个 pack 任一个不能逐字节复现或不能被 Godot exact-pack 矩阵导入；
 5. 为缩短矩阵而只验证 Sunny Meadow，却宣称三世界均受支持；
-6. 文档把候选、维护者测试、STOYO 计划、延后的 itch.io 页面或未知下载者写成公开采用。
+6. 文档把候选、维护者测试、External Host 计划、延后的 itch.io 页面或未知下载者写成公开采用。

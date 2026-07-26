@@ -32,5 +32,5 @@ body:
     attributes:
       label: Data safety
       options:
-        - label: I removed API keys, children's data, private STOYO data, and unlicensed assets.
+        - label: I removed API keys, children's data, private External Host data, and unlicensed assets.
           required: true

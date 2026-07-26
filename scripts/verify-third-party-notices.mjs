@@ -14,7 +14,7 @@ const EXPECTED_PRODUCTION_DEPENDENCIES = [
   ['ajv-formats', '3.0.1', 'MIT'],
   ['core-util-is', '1.0.3', 'MIT'],
   ['fast-deep-equal', '3.1.3', 'MIT'],
-  ['fast-uri', '3.1.3', 'BSD-3-Clause'],
+  ['fast-uri', '3.1.4', 'BSD-3-Clause'],
   ['immediate', '3.0.6', 'MIT'],
   ['inherits', '2.0.4', 'ISC'],
   ['isarray', '1.0.0', 'MIT'],

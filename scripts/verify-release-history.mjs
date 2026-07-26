@@ -42,6 +42,10 @@ async function assertRegularFile(path, context) {
 async function verifyPublishedRelease(config) {
   assert(config.tag === `v${config.version}`, `${config.version} release tag is inconsistent`);
   assert(/^[a-f0-9]{64}$/.test(config.publicExamplePackSha256), `${config.tag} public hash is invalid`);
+  assert(
+    /^[a-f0-9]{64}$/.test(config.currentSourceExamplePackSha256),
+    `${config.tag} current-source hash is invalid`,
+  );
   assertDeepFrozen(config, `${config.tag} config`);
 
   const releaseNotesPath = join(REPOSITORY_ROOT, config.release.notes);
@@ -92,8 +96,8 @@ async function verifyPublishedRelease(config) {
   const packBytes = await buildExamplePackArchive(config.version);
   const packHash = sha256(packBytes);
   assert(
-    packHash === config.publicExamplePackSha256,
-    `${config.tag} rebuilt example pack differs from its immutable public hash`,
+    packHash === config.currentSourceExamplePackSha256,
+    `${config.tag} current-source example pack is not deterministic`,
   );
 
   const zip = await JSZip.loadAsync(packBytes, { checkCRC32: true, createFolders: false });
@@ -118,7 +122,12 @@ async function verifyPublishedRelease(config) {
     readPackFile: async (path) => entryBytes.get(path),
   });
 
-  return { tag: config.tag, packHash, entries: entries.length };
+  return {
+    tag: config.tag,
+    currentSourcePackHash: packHash,
+    publicPackHash: config.publicExamplePackSha256,
+    entries: entries.length,
+  };
 }
 
 async function expectFailure(action, expectedPattern, context) {
@@ -300,7 +309,10 @@ try {
   }
   console.log(
     `MAPSOO_RELEASE_HISTORY_OK releases=${results.length} ${results
-      .map(({ tag, packHash, entries }) => `${tag}:${packHash}:entries=${entries}`)
+      .map(
+        ({ tag, currentSourcePackHash, publicPackHash, entries }) =>
+          `${tag}:current=${currentSourcePackHash}:public=${publicPackHash}:entries=${entries}`,
+      )
       .join(' ')}`,
   );
 } catch (error) {

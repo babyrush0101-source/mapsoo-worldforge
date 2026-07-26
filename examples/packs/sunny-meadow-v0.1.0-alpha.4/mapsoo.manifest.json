@@ -1543,8 +1543,8 @@
     {
       "path": "schema/mapsoo-world.schema.json",
       "media_type": "application/json",
-      "bytes": 2939,
-      "sha256": "ea4456e641fe956fee0d04703b326d48816c366caf31ae394341f7fb157ac7ed"
+      "bytes": 2953,
+      "sha256": "b0d38b85c117cf03f76e11ed883bef090eb22cb52b1555d47d0cf09015d3f5d9"
     },
     {
       "path": "schema/mapsoo-generation-receipt.schema.json",

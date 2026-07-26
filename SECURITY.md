@@ -20,4 +20,4 @@ Use GitHub's private vulnerability reporting feature for this repository when av
 - Malicious images or manifests causing denial of service.
 - Supply-chain and release artifact tampering.
 
-Do not include real API keys or children's/private STOYO data in a report. Use synthetic fixtures.
+Do not include real API keys or children's/private External Host data in a report. Use synthetic fixtures.

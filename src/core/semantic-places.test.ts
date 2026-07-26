@@ -97,7 +97,7 @@ describe('World Spec 0.2 semantic places', () => {
     const legacy: WorldSpecV010 = {
       ...currentWithoutPlaces,
       schemaVersion: LEGACY_WORLD_SCHEMA_VERSION,
-      extensions: { 'dev.stoyo': { values: ['kept'] } },
+      extensions: { 'org.mapsoo.externalhost': { values: ['kept'] } },
     };
 
     const migrated = migrateWorldSpecV010(legacy);

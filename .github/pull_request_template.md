@@ -20,4 +20,4 @@
 
 ## Safety
 
-- [ ] No credentials, children's/private STOYO data, private IP, or unlicensed assets are included
+- [ ] No credentials, children's/private External Host data, private IP, or unlicensed assets are included

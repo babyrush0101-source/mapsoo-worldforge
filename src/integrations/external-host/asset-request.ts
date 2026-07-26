@@ -1,8 +1,8 @@
 import type { WorldSpec } from '../../core/world-spec';
 import { validateWorldSpec } from '../../core/validate-world';
 
-export const STOYO_ASSET_REQUEST_SCHEMA_VERSION = 'dev.stoyo.asset-request/1.0.0' as const;
-export const STOYO_ASSET_REQUEST_EXTENSION = 'dev.stoyo.assetrequest.v1' as const;
+export const EXTERNAL_HOST_ASSET_REQUEST_SCHEMA_VERSION = 'org.mapsoo.externalhost.asset-request/1.0.0' as const;
+export const EXTERNAL_HOST_ASSET_REQUEST_EXTENSION = 'org.mapsoo.externalhost.assetrequest.v1' as const;
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SEMVER = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/;
@@ -11,8 +11,8 @@ const CONTROL_CHARACTER = /[\u0000-\u001F\u007F-\u009F]/;
 
 type JsonObject = Record<string, unknown>;
 
-export interface StoyoAssetRequest {
-  schemaVersion: typeof STOYO_ASSET_REQUEST_SCHEMA_VERSION;
+export interface ExternalHostAssetRequest {
+  schemaVersion: typeof EXTERNAL_HOST_ASSET_REQUEST_SCHEMA_VERSION;
   packId: string;
   world: {
     id: string;
@@ -31,25 +31,25 @@ export interface StoyoAssetRequest {
   output: WorldSpec['output'];
 }
 
-export interface StoyoAssetProjection {
+export interface ExternalHostAssetProjection {
   assetRequestSha256: string;
   worldSpec: WorldSpec;
 }
 
-export type StoyoAssetRequestErrorCode =
+export type ExternalHostAssetRequestErrorCode =
   | 'request.invalid-shape'
   | 'request.invalid-value'
   | 'request.invalid-world-spec';
 
-export class StoyoAssetRequestError extends Error {
-  constructor(readonly code: StoyoAssetRequestErrorCode, message: string) {
+export class ExternalHostAssetRequestError extends Error {
+  constructor(readonly code: ExternalHostAssetRequestErrorCode, message: string) {
     super(message);
-    this.name = 'StoyoAssetRequestError';
+    this.name = 'ExternalHostAssetRequestError';
   }
 }
 
-function fail(code: StoyoAssetRequestErrorCode, message: string): never {
-  throw new StoyoAssetRequestError(code, message);
+function fail(code: ExternalHostAssetRequestErrorCode, message: string): never {
+  throw new ExternalHostAssetRequestError(code, message);
 }
 
 function isRecord(value: unknown): value is JsonObject {
@@ -96,12 +96,12 @@ function integer(value: unknown, path: string, minimum: number, maximum: number)
   return value as number;
 }
 
-function normalizeRequest(input: unknown): StoyoAssetRequest {
+function normalizeRequest(input: unknown): ExternalHostAssetRequest {
   const root = record(input, 'request');
   exactKeys(root, ['schemaVersion', 'packId', 'world', 'scene', 'seed', 'visual', 'map', 'output'], 'request');
 
-  if (root.schemaVersion !== STOYO_ASSET_REQUEST_SCHEMA_VERSION) {
-    fail('request.invalid-value', `request.schemaVersion must be ${STOYO_ASSET_REQUEST_SCHEMA_VERSION}.`);
+  if (root.schemaVersion !== EXTERNAL_HOST_ASSET_REQUEST_SCHEMA_VERSION) {
+    fail('request.invalid-value', `request.schemaVersion must be ${EXTERNAL_HOST_ASSET_REQUEST_SCHEMA_VERSION}.`);
   }
 
   const world = record(root.world, 'request.world');
@@ -156,7 +156,7 @@ function normalizeRequest(input: unknown): StoyoAssetRequest {
   }
 
   return {
-    schemaVersion: STOYO_ASSET_REQUEST_SCHEMA_VERSION,
+    schemaVersion: EXTERNAL_HOST_ASSET_REQUEST_SCHEMA_VERSION,
     packId: id(root.packId, 'request.packId'),
     world: {
       id: id(world.id, 'request.world.id'),
@@ -203,11 +203,11 @@ async function sha256(textValue: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export function canonicalizeStoyoAssetRequest(input: unknown): string {
+export function canonicalizeExternalHostAssetRequest(input: unknown): string {
   return `${canonicalJson(normalizeRequest(input))}\n`;
 }
 
-export async function projectStoyoAssetRequest(input: unknown): Promise<StoyoAssetProjection> {
+export async function projectExternalHostAssetRequest(input: unknown): Promise<ExternalHostAssetProjection> {
   const normalized = normalizeRequest(input);
   const assetRequestSha256 = await sha256(`${canonicalJson(normalized)}\n`);
   const worldSpec: WorldSpec = {
@@ -226,11 +226,11 @@ export async function projectStoyoAssetRequest(input: unknown): Promise<StoyoAss
       assetLicense: 'CC0-1.0',
     },
     extensions: {
-      [STOYO_ASSET_REQUEST_EXTENSION]: {
-        schemaVersion: STOYO_ASSET_REQUEST_SCHEMA_VERSION,
+      [EXTERNAL_HOST_ASSET_REQUEST_EXTENSION]: {
+        schemaVersion: EXTERNAL_HOST_ASSET_REQUEST_SCHEMA_VERSION,
         assetRequestSha256,
-        stoyoWorldId: normalized.world.id,
-        stoyoWorldVersion: normalized.world.version,
+        externalHostWorldId: normalized.world.id,
+        externalHostWorldVersion: normalized.world.version,
         sceneId: normalized.scene.id,
         requiredSceneTags: [...normalized.scene.requiredSceneTags],
         contentRating: normalized.scene.contentRating,

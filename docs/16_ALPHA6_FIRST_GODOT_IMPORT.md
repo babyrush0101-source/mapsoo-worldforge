@@ -140,4 +140,4 @@ For a release review, record:
 - generated scene path and exact structure count (`2`);
 - structure IDs, `place_id` links, or the complete importer error.
 
-Do not submit credentials, private local paths, child data, private STOYO content, or unlicensed assets. Completing this procedure verifies a local import; it is not proof of external adoption or production use.
+Do not submit credentials, private local paths, child data, private External Host content, or unlicensed assets. Completing this procedure verifies a local import; it is not proof of external adoption or production use.

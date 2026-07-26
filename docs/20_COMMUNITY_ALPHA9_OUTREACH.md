@@ -85,7 +85,7 @@ For every independent report:
 5. ask the tester to verify only when a concrete fix exists;
 6. link the result from [issue #12](https://github.com/babyrush0101-source/mapsoo-kids/issues/12).
 
-Do not count repository-owner tests, CI downloads, release audits, bots, duplicate accounts, private STOYO work, or unverifiable direct messages as independent adoption.
+Do not count repository-owner tests, CI downloads, release audits, bots, duplicate accounts, private External Host work, or unverifiable direct messages as independent adoption.
 
 ## Evidence ledger / 证据台账
 

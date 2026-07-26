@@ -9,6 +9,18 @@ const packageJson = JSON.parse(await readFile(PACKAGE_JSON_PATH, 'utf8'));
 
 export const PACKAGE_VERSION = packageJson.version;
 
+const CURRENT_SOURCE_EXAMPLE_PACK_SHA256 = Object.freeze({
+  '0.1.0-alpha.1': 'bc221386971434a08f21c69f0537c0f93cc266d76d47bb08a7ccc834e5a64621',
+  '0.1.0-alpha.2': 'e139519ed8d3e6e6e8ed811e9da2761eb7f227a1a3ddd7206adff171b50aa0ca',
+  '0.1.0-alpha.3': 'c1acb8d61e72ccfcf609c02e37868fe3f20e0bd28b9f65aff71e25ac8b45d409',
+  '0.1.0-alpha.4': 'f815676485f08cac53783d99b7b6fbf2a1dcbdef5ac2fc501a26ccefba3fd127',
+  '0.1.0-alpha.5': '8d86124a4a37fa4a78487c4e91cb7f5024561f140814a5fd139c5b93fde54f36',
+  '0.1.0-alpha.6': '4563552187977b38cdba86c7d3cbf5429a67b7a0a6049e978c2ef2992ef3a054',
+  '0.1.0-alpha.7': '6113b30fec3615b72730d8d775919aa3c5552285c614b6916a109b887ab8012c',
+  '0.1.0-alpha.8': '6113b30fec3615b72730d8d775919aa3c5552285c614b6916a109b887ab8012c',
+  '0.1.0-alpha.9': '6113b30fec3615b72730d8d775919aa3c5552285c614b6916a109b887ab8012c',
+});
+
 function deepFreeze(value) {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     for (const child of Object.values(value)) {
@@ -25,7 +37,7 @@ function releaseFiles(tag, {
   placesSchema = false,
   structuresSchema = false,
   worldGallery = false,
-  stoyoBridge = false,
+  externalHostBridge = false,
   completeFarm = false,
 } = {}) {
   const files = {
@@ -52,10 +64,10 @@ function releaseFiles(tag, {
     files.dustwindWorldSpec = `dustwind-outpost-${tag}.world.json`;
     files.frostwatchWorldSpec = `frostwatch-vale-${tag}.world.json`;
   }
-  if (stoyoBridge) {
-    files.stoyoRequestSchema = `stoyo-asset-request.schema-${tag}.json`;
-    files.stoyoExportReceiptSchema = `stoyo-mapsoo-export-receipt.schema-${tag}.json`;
-    files.stoyoExampleRequest = `river-valley-asset-request-${tag}.json`;
+  if (externalHostBridge) {
+    files.externalHostRequestSchema = `external-host-asset-request.schema-${tag}.json`;
+    files.externalHostExportReceiptSchema = `external-host-mapsoo-export-receipt.schema-${tag}.json`;
+    files.externalHostExampleRequest = `river-valley-asset-request-${tag}.json`;
   }
   if (completeFarm) {
     files.completeFarmPack = `mapsoo-alpha9-godot-smoke-${tag}.zip`;
@@ -121,6 +133,11 @@ export function assertReceiptVerifierBinding(receiptVerifier, version) {
 
 function validateReleaseConfig(config) {
   config.packVersion ??= config.version;
+  config.publicAssetNamePolicy ??= 'exact';
+  config.currentSourceExamplePackSha256 =
+    config.lifecycle === 'published'
+      ? CURRENT_SOURCE_EXAMPLE_PACK_SHA256[config.version] ?? null
+      : null;
   assertConfig(config.tag === `v${config.version}`, `${config.version} tag is inconsistent`);
   assertConfig(
     typeof config.packVersion === 'string' && /^0\.1\.0-alpha\.[1-9][0-9]*$/.test(config.packVersion),
@@ -129,6 +146,10 @@ function validateReleaseConfig(config) {
   assertConfig(
     ['candidate', 'published'].includes(config.lifecycle),
     `${config.tag} lifecycle must be candidate or published`,
+  );
+  assertConfig(
+    ['exact', 'privacy-redacted'].includes(config.publicAssetNamePolicy),
+    `${config.tag} public asset name policy is invalid`,
   );
   assertConfig(
     config.expectedExamplePackSha256 === null
@@ -188,6 +209,10 @@ function validateReleaseConfig(config) {
       config.expectedExamplePackSha256 === config.publicExamplePackSha256,
       `${config.tag} expected and public example-pack hashes disagree`,
     );
+    assertConfig(
+      /^[a-f0-9]{64}$/.test(config.currentSourceExamplePackSha256),
+      `${config.tag} current-source example-pack hash is invalid`,
+    );
     for (const pack of config.release.additionalExamplePacks ?? []) {
       assertConfig(
         config.publicReleaseAssetSha256[config.release.files[pack.releaseFileKey]] === pack.expectedSha256,
@@ -202,6 +227,10 @@ function validateReleaseConfig(config) {
     assertConfig(
       config.publicExamplePackSha256 === null,
       `${config.tag} candidate must not claim a public example-pack hash`,
+    );
+    assertConfig(
+      config.currentSourceExamplePackSha256 === null,
+      `${config.tag} candidate must not pin a historical current-source example-pack hash`,
     );
   }
   assertRelativeConfigPath(config.release.notes, `${config.tag} release notes`);
@@ -867,7 +896,7 @@ const alpha8ReleaseFiles = {
     placesSchema: true,
     structuresSchema: true,
     worldGallery: true,
-    stoyoBridge: true,
+    externalHostBridge: true,
   }),
   // Alpha.8 is a toolchain/bridge release. Its audited compatibility assets
   // remain the byte-identical, explicitly named Alpha.7 packs.
@@ -881,6 +910,7 @@ const alpha8 = deepFreeze(validateReleaseConfig({
   tag: ALPHA_8_TAG,
   packVersion: ALPHA_7_VERSION,
   lifecycle: 'published',
+  publicAssetNamePolicy: 'privacy-redacted',
   receiptVerifier: 'builtin-world-gallery-alpha7-v0.2',
   expectedExamplePackSha256: '6113b30fec3615b72730d8d775919aa3c5552285c614b6916a109b887ab8012c',
   publicExamplePackSha256: '6113b30fec3615b72730d8d775919aa3c5552285c614b6916a109b887ab8012c',
@@ -902,9 +932,9 @@ const alpha8 = deepFreeze(validateReleaseConfig({
     [alpha8ReleaseFiles.web]: 'adb7a1182f296b6aebcec998d4c67e191a1a24c11cbb25292cf1252c3ff92426',
     [alpha8ReleaseFiles.manifest]: '349d0c202c0d57a432051a8a676709bd2d518728f077f074abc6a35f6d3194ae',
     [alpha8ReleaseFiles.checksums]: '70bb3bfea75c132cd8748dcd808d94c4fdf59ed31eeff7f06320de4f1ecb6467',
-    [alpha8ReleaseFiles.stoyoRequestSchema]: 'd3b7d6bb76c0f0b5b91f9a9b31eaa494b14b1ba6fa96567038bf388a6a09a7ba',
-    [alpha8ReleaseFiles.stoyoExportReceiptSchema]: '6d5d7bf6d022bea07527e9a0a12f5dae645bb75c51748b860c6f64b35e1811fd',
-    [alpha8ReleaseFiles.stoyoExampleRequest]: 'b17e92d74bd707031d60e851668ecf6279528eb2b6595b65c59b8bfcfb702682',
+    [alpha8ReleaseFiles.externalHostRequestSchema]: 'd3b7d6bb76c0f0b5b91f9a9b31eaa494b14b1ba6fa96567038bf388a6a09a7ba',
+    [alpha8ReleaseFiles.externalHostExportReceiptSchema]: '6d5d7bf6d022bea07527e9a0a12f5dae645bb75c51748b860c6f64b35e1811fd',
+    [alpha8ReleaseFiles.externalHostExampleRequest]: 'b17e92d74bd707031d60e851668ecf6279528eb2b6595b65c59b8bfcfb702682',
   },
   release: {
     verificationPolicy: 'world-gallery-semantic-structures-cc0-v7',
@@ -947,15 +977,15 @@ const alpha8 = deepFreeze(validateReleaseConfig({
       { releaseFileKey: 'receiptSchema', source: 'schemas/mapsoo-generation-receipt.schema.json', packPath: 'schema/mapsoo-generation-receipt.schema.json' },
     ],
     extraFiles: [
-      { releaseFileKey: 'stoyoRequestSchema', source: 'integrations/stoyo/stoyo-asset-request.schema.json' },
-      { releaseFileKey: 'stoyoExportReceiptSchema', source: 'integrations/stoyo/stoyo-mapsoo-export-receipt.schema.json' },
-      { releaseFileKey: 'stoyoExampleRequest', source: 'examples/integrations/stoyo/river-valley-asset-request.json' },
+      { releaseFileKey: 'externalHostRequestSchema', source: 'integrations/external-host/external-host-asset-request.schema.json' },
+      { releaseFileKey: 'externalHostExportReceiptSchema', source: 'integrations/external-host/external-host-mapsoo-export-receipt.schema.json' },
+      { releaseFileKey: 'externalHostExampleRequest', source: 'examples/integrations/external-host/river-valley-asset-request.json' },
     ],
   },
   itch: {
     verificationPolicy: 'world-gallery-semantic-structures-cc0-v7',
     sourceKitStatus: 'postponed',
-    shortDescription: 'Local-first STOYO request bridge for reproducible Alpha.7-compatible Godot world packs.',
+    shortDescription: 'Local-first External Host request bridge for reproducible Alpha.7-compatible Godot world packs.',
     feedbackUrl: 'https://github.com/babyrush0101-source/mapsoo-kids/issues/new?template=first-import-feedback.yml',
     sourceDirectory: `docs/itch-kit/${ALPHA_8_TAG}`,
     visualDirectory: `docs/media/${ALPHA_8_TAG}/itch`,
@@ -972,7 +1002,7 @@ const alpha9ReleaseFiles = {
     placesSchema: true,
     structuresSchema: true,
     worldGallery: true,
-    stoyoBridge: true,
+    externalHostBridge: true,
     completeFarm: true,
   }),
   // Preserve the exact Alpha.7 compatibility packs while adding Pack 0.6 as
@@ -1009,9 +1039,9 @@ const alpha9 = deepFreeze(validateReleaseConfig({
     [alpha9ReleaseFiles.web]: 'dc66870e7ff3c72a805597ec3a1ede808c3401b64e06d1b745d75f0bd6d9e10a',
     [alpha9ReleaseFiles.manifest]: 'fde8fa73be3e436a74161a8704e9fdd1af96ef884e62ee045963de8885b36830',
     [alpha9ReleaseFiles.checksums]: 'c99ed1cf8c225aeaf60163eca49907fc9d4062c4a7cf93d0e05049ca206d4443',
-    [alpha9ReleaseFiles.stoyoRequestSchema]: 'd3b7d6bb76c0f0b5b91f9a9b31eaa494b14b1ba6fa96567038bf388a6a09a7ba',
-    [alpha9ReleaseFiles.stoyoExportReceiptSchema]: '6d5d7bf6d022bea07527e9a0a12f5dae645bb75c51748b860c6f64b35e1811fd',
-    [alpha9ReleaseFiles.stoyoExampleRequest]: 'b17e92d74bd707031d60e851668ecf6279528eb2b6595b65c59b8bfcfb702682',
+    [alpha9ReleaseFiles.externalHostRequestSchema]: 'd3b7d6bb76c0f0b5b91f9a9b31eaa494b14b1ba6fa96567038bf388a6a09a7ba',
+    [alpha9ReleaseFiles.externalHostExportReceiptSchema]: '6d5d7bf6d022bea07527e9a0a12f5dae645bb75c51748b860c6f64b35e1811fd',
+    [alpha9ReleaseFiles.externalHostExampleRequest]: 'b17e92d74bd707031d60e851668ecf6279528eb2b6595b65c59b8bfcfb702682',
     [alpha9ReleaseFiles.completeFarmPack]: '10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c',
     [alpha9ReleaseFiles.completeFarmPackSchema]: '296d03c140d1f3759f66a023ecc555ea83d9e488e187723fc419bdaff1b0605d',
     [alpha9ReleaseFiles.generationRequestSchema]: '75576e35742cdbfad022d1fbd7abad34e93fc5e4ef45b2ae191bb4664c6f2615',
