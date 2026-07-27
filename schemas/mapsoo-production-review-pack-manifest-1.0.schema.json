@@ -65,6 +65,7 @@
     "characters": { "type": "array", "minItems": 1 },
     "runtime": { "type": "object" },
     "layout": { "$ref": "#/$defs/layoutBinding" },
+    "material_palette": { "$ref": "#/$defs/materialPaletteBinding" },
     "files": {
       "type": "array",
       "minItems": 1,
@@ -216,6 +217,26 @@
         "document_type": { "const": "world-layout-plan" },
         "plan_id": { "$ref": "#/$defs/id" },
         "path": { "const": "world-layout-plan.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "materialPaletteBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "document_type",
+        "palette_id",
+        "layout_plan_sha256",
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.0.0" },
+        "document_type": { "const": "world-material-palette" },
+        "palette_id": { "$ref": "#/$defs/id" },
+        "layout_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "path": { "const": "world-material-palette.json" },
         "sha256": { "$ref": "#/$defs/sha256" }
       }
     }

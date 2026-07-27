@@ -14,6 +14,9 @@ application fields.
   `src/core/world-layout-plan.ts`
 - Positive and negative conformance tests:
   `src/core/world-layout-plan.test.ts`
+- Logical-material to canonical terrain-role contract:
+  `schemas/mapsoo-world-material-palette-1.0.schema.json` and
+  `src/core/world-material-palette.ts`
 
 The builder accepts only a validated `ConfirmedWorldCreationIntake 1.0`.
 `source` binds the plan to:
@@ -82,7 +85,9 @@ candidate assembler, the packager:
 - includes the canonical plan at the pack root;
 - records the file and its exact-byte SHA-256 in the pack manifest;
 - binds the manifest to the plan ID and schema version;
-- rejects a plan whose profile or seed does not match the pack.
+- rejects a plan whose profile or seed does not match the pack;
+- creates `world-material-palette.json`, bound to the exact layout bytes, for
+  every newly exported layout-bearing Pack 0.6–1.0.
 
 The attachment is optional so existing packs remain compatible. When present,
 the Godot importer verifies the manifest binding, exact file bytes, profile,
@@ -103,10 +108,11 @@ internal runtime details in this repository.
 
 ## Current runtime boundary
 
-The Godot attachment is marked `profile-layout-v1`. After the exact plan and
-manifest binding pass validation, the importer deterministically creates:
+The geometry attachment is marked `profile-layout-v1`. After the exact plan,
+palette, and manifest bindings pass validation, the importer deterministically
+creates:
 
-- a hidden `TileMapLayer` containing the authoritative logical terrain cells;
+- an authoritative logical `TileMapLayer` containing every terrain cell;
 - profile-projected terrain polygons;
 - `StaticBody2D` collision for solid terrain, one-way terrain, and blocked
   regions;
@@ -121,12 +127,21 @@ and layered-depth plans use bounded linear projection; isometric action uses a
 diamond projection. The same plan produces the same scene semantics before and
 after `PackedScene` persistence.
 
-The logical TileMap is deliberately hidden. Existing production artwork remains
-the visible layer until a later art-mapping stage selects exact production
-TileSet cells for every logical material. Therefore `profile-layout-v1` proves
-runtime map semantics, collision, navigation, traversal, and endpoints; it does
-not claim final art-directed TileSet selection, profile gameplay completion, or
-physical Raspberry Pi performance.
+`WorldMaterialPalette 1.0` maps every distinct logical material exactly once to
+one canonical `terrain.*` role already validated by the pack. The shared Godot
+binder crops the role's validated atlas region, creates a deterministic
+`TileSetAtlasSource` per material, projects the `TileMapLayer` for the selected
+profile, makes it visible, and verifies the saved scene on reload. This is the
+same port for all four profiles and for built-in, model-backed, artist-authored,
+or optional third-party authoring adapters.
+
+The first rendering mode is deliberately `single-cell`: it proves exact asset
+selection, visible coverage, projection, persistence, and tamper rejection. It
+does not yet choose auto-terrain transitions, visual variants, animated tiles,
+or final art direction. Those remain replaceable authoring inputs; for example,
+a SpriteCook export can be converted to this neutral mapping without making
+SpriteCook a core or runtime dependency. Profile gameplay completion, human
+art approval, and physical Raspberry Pi performance remain separate gates.
 
 ## Fail-closed behavior
 
@@ -141,5 +156,5 @@ The materializer rejects:
 - mismatched spawn, exit, landmark, seed, checkpoint, or intake bindings;
 - incomplete navigation edge coverage.
 
-This makes a layout safe to materialize without claiming that the logical
-material IDs have already been mapped to final production artwork.
+This makes a layout safe to materialize and binds its logical material IDs to
+validated production-role artwork without claiming final human art approval.

@@ -8,6 +8,9 @@ const Pack10 = preload("res://addons/mapsoo_importer/mapsoo_pack_10.gd")
 const WorldLayoutAttachment = preload(
 	"res://addons/mapsoo_importer/mapsoo_world_layout_attachment.gd"
 )
+const WorldMaterialPaletteAttachment = preload(
+	"res://addons/mapsoo_importer/mapsoo_world_material_palette_attachment.gd"
+)
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd")
 
 const LEGACY_SCHEMA_VERSION := "0.1.0"
@@ -97,6 +100,15 @@ static func import_pack(
 		errors.append(layout_validation.error)
 		return _result(false, errors, warnings)
 	validation.world_layout = layout_validation.layout
+	var palette_validation := WorldMaterialPaletteAttachment.validate_optional(
+		manifest,
+		pack_root,
+		validation.world_layout
+	)
+	if not palette_validation.ok:
+		errors.append(palette_validation.error)
+		return _result(false, errors, warnings)
+	validation.world_material_palette = palette_validation.palette
 
 	var pack_id: String = validation.pack_id
 	var output_dir := "%s/%s" % [OUTPUT_ROOT, pack_id]
@@ -179,6 +191,18 @@ static func import_pack(
 		_cleanup_transaction_directory(staging_dir, warnings)
 		errors.append(layout_scene_binding.error)
 		return _result(false, errors, warnings)
+	var palette_scene_binding := WorldMaterialPaletteAttachment.bind_scene(
+		scene_build.root,
+		validation.world_layout,
+		validation.world_material_palette,
+		validation,
+		validation.schema_version
+	)
+	if not palette_scene_binding.ok:
+		scene_build.root.free()
+		_cleanup_transaction_directory(staging_dir, warnings)
+		errors.append(palette_scene_binding.error)
+		return _result(false, errors, warnings)
 	var packed_scene := PackedScene.new()
 	var pack_error := packed_scene.pack(scene_build.root)
 	if pack_error != OK:
@@ -224,7 +248,8 @@ static func import_pack(
 		validation.structures.size(),
 		_has_structures(validation.schema_version),
 		validation.schema_version,
-		validation.world_layout
+		validation.world_layout,
+		validation.world_material_palette
 	)
 	if not staged_validation.ok:
 		_cleanup_transaction_directory(staging_dir, warnings)
@@ -467,7 +492,7 @@ static func _importer_version_for_schema(
 		LAYERED_DEPTH_SCHEMA_VERSION,
 		CONTROLLED_SCHEMA_VERSION,
 	]:
-		return "%s-layout.2" % version
+		return "%s-layout.3" % version
 	return version
 
 
@@ -503,7 +528,8 @@ static func _validate_staged_resources(
 	expected_structures: int = 0,
 	expect_structures_container: bool = false,
 	schema_version: String = "",
-	expected_world_layout: Dictionary = {}
+	expected_world_layout: Dictionary = {},
+	expected_world_material_palette: Dictionary = {}
 ) -> Dictionary:
 	var tile_set := ResourceLoader.load(tileset_path, "TileSet", ResourceLoader.CACHE_MODE_IGNORE_DEEP) as TileSet
 	if tile_set == null:
@@ -519,6 +545,14 @@ static func _validate_staged_resources(
 	if not layout_validation.ok:
 		world.free()
 		return {"ok": false, "error": layout_validation.error}
+	var palette_validation := WorldMaterialPaletteAttachment.validate_bound_scene(
+		world,
+		expected_world_layout,
+		expected_world_material_palette
+	)
+	if not palette_validation.ok:
+		world.free()
+		return {"ok": false, "error": palette_validation.error}
 	if schema_version == COMPLETE_FARM_SCHEMA_VERSION:
 		var ground_layer := world.get_node_or_null("Ground") as TileMapLayer
 		var alpha9_valid := ground_layer != null and world.get_node_or_null("Water") is TileMapLayer and world.get_node_or_null("Paths") is TileMapLayer and world.get_node_or_null("Soil") is TileMapLayer
@@ -830,6 +864,7 @@ static func _validate_and_prepare(
 		"cell_count": 0,
 		"schema_version": "",
 		"world_layout": {},
+		"world_material_palette": {},
 	}
 
 	var schema_version_value: Variant = manifest.get("schema_version")

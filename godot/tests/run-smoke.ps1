@@ -36,12 +36,29 @@ function Remove-TestDirectory([string]$Target) {
     if (-not $resolvedTarget.StartsWith($resolvedGodot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing to delete test data outside godot/: $resolvedTarget"
     }
-    Remove-Item -LiteralPath $resolvedTarget -Recurse -Force
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        Remove-Item -LiteralPath $resolvedTarget -Recurse -Force -ErrorAction SilentlyContinue
+        if (-not (Test-Path -LiteralPath $resolvedTarget)) { return }
+        Start-Sleep -Milliseconds 100
+    }
+    # Windows PowerShell 5.1 may leave long Godot shader-cache paths behind.
+    if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+        [IO.Directory]::Delete("\\?\$resolvedTarget", $true)
+        if (-not (Test-Path -LiteralPath $resolvedTarget)) { return }
+    }
+    throw "Unable to remove transient Godot test data after three attempts: $resolvedTarget"
 }
 
 function Invoke-Godot([string]$Label, [string[]]$Arguments) {
-    $output = & $GodotConsole @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
+    $previousErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & $GodotConsole @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
     $output | ForEach-Object { Write-Host $_.ToString() }
     if ($exitCode -ne 0) {
         throw "$Label failed with exit code $exitCode"
@@ -81,6 +98,10 @@ try {
     Invoke-Godot "WorldLayoutPlan materializer smoke test" @(
         "--headless", "--path", $godotRoot,
         "--script", "res://tests/world_layout_materializer_smoke.gd"
+    )
+    Invoke-Godot "WorldMaterialPalette smoke test" @(
+        "--headless", "--path", $godotRoot,
+        "--script", "res://tests/world_material_palette_smoke.gd"
     )
 }
 finally {

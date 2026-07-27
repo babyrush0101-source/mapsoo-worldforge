@@ -9,6 +9,13 @@ non-public modes; reloads the generated scene; and rejects scripts, shaders,
 URLs, absolute paths, and traversal paths. CI runs it with Godot 4.3 and 4.7
 on Linux and Windows.
 
+`world_material_palette_smoke.gd` exercises the shared provider-neutral
+logical-material binder for side-platformer, top-down, isometric, and
+layered-depth worlds. It proves complete role coverage, visible projected
+`TileMapLayer` output, deterministic `TileSet` sources, saved-scene texture
+persistence, and fail-closed tamper handling. The Pack 1.0 controlled smoke
+also sends a real palette attachment through the complete importer transaction.
+
 1. generate a deterministic PNG/JSON/manifest fixture;
 2. let the editor import the new PNG resources;
 3. call `MapsooPackImporter.import_pack()` and validate the resulting resources.

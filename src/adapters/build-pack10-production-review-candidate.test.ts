@@ -580,6 +580,12 @@ describe('Pack 1.0 complete production-art review candidate builder', () => {
       plan_id: layoutPlan.plan_id,
       path: 'world-layout-plan.json',
     });
+    expect(candidate.manifest.material_palette).toMatchObject({
+      schema_version: '1.0.0',
+      document_type: 'world-material-palette',
+      layout_plan_sha256: candidate.manifest.layout?.sha256,
+      path: 'world-material-palette.json',
+    });
 
     const archive = await JSZip.loadAsync(candidate.bytes, { checkCRC32: true });
     const layoutBytes = await archive.file('world-layout-plan.json')!.async('uint8array');
@@ -597,6 +603,24 @@ describe('Pack 1.0 complete production-art review candidate builder', () => {
       sha256: await sha256(layoutBytes),
     });
     expect(candidate.manifest.layout?.sha256).toBe(await sha256(layoutBytes));
+    const paletteBytes = await archive.file('world-material-palette.json')!.async('uint8array');
+    const paletteRecord = candidate.manifest.files.find(
+      ({ path }) => path === 'world-material-palette.json',
+    );
+    expect(JSON.parse(new TextDecoder().decode(paletteBytes))).toMatchObject({
+      document_type: 'world-material-palette',
+      profile: 'layered-depth-2d',
+      layout: {
+        plan_id: layoutPlan.plan_id,
+        sha256: await sha256(layoutBytes),
+      },
+    });
+    expect(paletteRecord).toMatchObject({
+      media_type: 'application/json',
+      bytes: paletteBytes.byteLength,
+      sha256: await sha256(paletteBytes),
+    });
+    expect(candidate.manifest.material_palette?.sha256).toBe(await sha256(paletteBytes));
   }, PACK10_PRODUCTION_REVIEW_TEST_TIMEOUT_MS);
 
   it('rejects missing environment evidence and changed projected plane bytes', async () => {

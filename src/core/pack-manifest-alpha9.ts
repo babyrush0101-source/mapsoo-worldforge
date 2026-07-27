@@ -12,6 +12,10 @@ import {
   validateWorldLayoutPackBinding,
   type WorldLayoutPackBinding,
 } from './world-layout-pack-binding';
+import {
+  validateWorldMaterialPalettePackBinding,
+  type WorldMaterialPalettePackBinding,
+} from './world-material-palette';
 
 export const ALPHA9_PACK_SCHEMA_VERSION = '0.6.0' as const;
 export const ALPHA9_PACK_VERSION = '0.1.0-alpha.9' as const;
@@ -81,6 +85,7 @@ export interface Alpha9PackManifest {
     spawn: Readonly<{ x: number; y: number }>;
   }>;
   readonly layout?: Readonly<WorldLayoutPackBinding>;
+  readonly material_palette?: Readonly<WorldMaterialPalettePackBinding>;
   readonly files: readonly Alpha9FileRecord[];
   readonly license: Readonly<{
     output: Readonly<PackOutputLicense>;
@@ -160,6 +165,7 @@ export function validateAlpha9PackManifest(manifest: Alpha9PackManifest): Alpha9
     manifest.character.atlas, manifest.runtime.scene.path, manifest.runtime.collision.path,
     manifest.runtime.navigation.path, manifest.license.output.notice_path,
     ...(manifest.layout ? [manifest.layout.path] : []),
+    ...(manifest.material_palette ? [manifest.material_palette.path] : []),
   ];
   for (const path of referencedPaths) {
     if (!safePath(path) || !paths.has(path)) issues.push({ code: 'file.missing-reference', message: `Manifest path is absent from files: ${path}.` });
@@ -174,6 +180,11 @@ export function validateAlpha9PackManifest(manifest: Alpha9PackManifest): Alpha9
   if (!SAFE_ID.test(manifest.character.id) || !manifest.character.clips.every((clip) => clip.frames.length > 0 && clip.frames.every((frame) => Number.isSafeInteger(frame.x) && frame.x >= 0 && Number.isSafeInteger(frame.y) && frame.y >= 0))) issues.push({ code: 'character.geometry', message: 'Character identity and frame coordinates must be valid.' });
   if (!SAFE_ID.test(manifest.provenance.provider.id) || !manifest.provenance.provider.version.trim() || !manifest.provenance.seed.trim()) issues.push({ code: 'provenance.invalid', message: 'Provider identity, version, and public generation seed are required.' });
   issues.push(...validateWorldLayoutPackBinding(manifest.layout, manifest.files));
+  issues.push(...validateWorldMaterialPalettePackBinding(
+    manifest.material_palette,
+    manifest.layout,
+    manifest.files,
+  ));
   if (manifest.provenance.contains_generative_ai && (!manifest.provenance.model_provider?.trim() || !manifest.provenance.model?.trim())) issues.push({ code: 'provenance.model', message: 'Generative output must disclose model provider and model.' });
   for (const code of validatePackOutputAuthorization(manifest.license.output, manifest.provenance)) {
     issues.push({ code, message: 'Pack output license and provenance are not an authorized public or internal-review pair.' });

@@ -8,6 +8,10 @@ import {
   validateWorldLayoutPackBinding,
   type WorldLayoutPackBinding,
 } from './world-layout-pack-binding';
+import {
+  validateWorldMaterialPalettePackBinding,
+  type WorldMaterialPalettePackBinding,
+} from './world-material-palette';
 
 export const PACK_1_0_SCHEMA_VERSION = '1.0.0-draft.1' as const;
 export const PACK_1_0_PLANE_BINDINGS = Object.freeze([
@@ -111,6 +115,7 @@ export interface Pack10Manifest {
     spawn: Readonly<{ x: number; y: number }>;
   }>;
   readonly layout?: Readonly<WorldLayoutPackBinding>;
+  readonly material_palette?: Readonly<WorldMaterialPalettePackBinding>;
   readonly files: readonly Pack10FileRecord[];
   readonly license: Readonly<{
     output: Readonly<{
@@ -483,6 +488,11 @@ export function validatePack10Manifest(manifest: Pack10Manifest): Pack10Manifest
     }
   }
   issues.push(...validateWorldLayoutPackBinding(manifest.layout, manifest.files));
+  issues.push(...validateWorldMaterialPalettePackBinding(
+    manifest.material_palette,
+    manifest.layout,
+    manifest.files,
+  ));
   const previewBinding = roles.get('world.preview')?.binding;
   if (previewBinding?.kind !== 'file') {
     addIssue(issues, 'preview.role-binding', 'world.preview must bind a PNG file.');

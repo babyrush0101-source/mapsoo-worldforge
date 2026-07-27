@@ -112,6 +112,7 @@
     "character:fixture:verify": "vite-node scripts/build-character-reference-conformance-fixture.ts",
     "character:runtime:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-character-profile-runtime-godot.ps1",
     "world-layout:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-world-layout-materializer-godot.ps1",
+    "world-material-palette:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-world-material-palette-godot.ps1",
     "production-art:model": "vite-node scripts/run-openai-production-art-source.ts",
     "production-art:workflow": "vite-node scripts/run-production-art-workflow.ts",
     "production-art:workflow:verify": "node scripts/verify-production-art-workflow.mjs",

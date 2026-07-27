@@ -350,6 +350,11 @@ describe('three-profile production review pack builder', () => {
       document_type: 'world-layout-plan',
       path: 'world-layout-plan.json',
     });
+    expect(review.manifest.material_palette).toMatchObject({
+      document_type: 'world-material-palette',
+      path: 'world-material-palette.json',
+      layout_plan_sha256: review.manifest.layout?.sha256,
+    });
     const validatePack = new Ajv2020({
       strict: true,
       strictTypes: false,
@@ -362,6 +367,9 @@ describe('three-profile production review pack builder', () => {
     const layoutPath = Object.keys(archive.files).find((path) =>
       path.endsWith('/world-layout-plan.json'));
     expect(layoutPath).toBeTruthy();
+    const palettePath = Object.keys(archive.files).find((path) =>
+      path.endsWith('/world-material-palette.json'));
+    expect(palettePath).toBeTruthy();
   }, 15_000);
 
   it.each(cases)(

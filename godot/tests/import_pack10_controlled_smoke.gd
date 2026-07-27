@@ -69,7 +69,7 @@ func _run() -> void:
 	var layout_importer: Dictionary = layout_state.get("importer", {})
 	if not layout_result.ok or not _validate_scene(
 		layout_result.scene_path, "public", "CC0-1.0", "public", true,
-	) or layout_importer.get("version") != "1.0.0-layout.2":
+	) or layout_importer.get("version") != "1.0.0-layout.3":
 		_fail("WorldLayoutPlan-bound Pack 1.0 import failed: %s" % layout_result.errors)
 		return
 
@@ -227,6 +227,52 @@ func _materialize(
 			"plan_id": plan.plan_id,
 			"path": "world-layout-plan.json",
 			"sha256": layout_record.sha256,
+		}
+		var palette := {
+			"schema_version": "1.0.0",
+			"document_type": "world-material-palette",
+			"palette_id": "palette-neutral-layered-layout",
+			"profile": "layered-depth-2d",
+			"layout": {
+				"plan_id": plan.plan_id,
+				"sha256": layout_record.sha256,
+			},
+			"entries": [
+				{
+					"material": "earth",
+					"role": "terrain.ground",
+					"rendering": "single-cell",
+				},
+				{
+					"material": "grass",
+					"role": "terrain.path",
+					"rendering": "single-cell",
+				},
+				{
+					"material": "rock",
+					"role": "terrain.water",
+					"rendering": "single-cell",
+				},
+				{
+					"material": "stone",
+					"role": "terrain.edge",
+					"rendering": "single-cell",
+				},
+			],
+		}
+		if not _write_json(root.path_join("world-material-palette.json"), palette):
+			return ""
+		var palette_record := _file_record(
+			root, "world-material-palette.json", "application/json"
+		)
+		manifest.files.append(palette_record)
+		manifest.material_palette = {
+			"schema_version": "1.0.0",
+			"document_type": "world-material-palette",
+			"palette_id": palette.palette_id,
+			"layout_plan_sha256": layout_record.sha256,
+			"path": "world-material-palette.json",
+			"sha256": palette_record.sha256,
 		}
 	elif attack in ["script", "shader"]:
 		var extension := "gd" if attack == "script" else "gdshader"
@@ -646,6 +692,13 @@ func _validate_scene(
 				world.get_meta("mapsoo_layout_plan_id", "") == "neutral-layered-layout"
 				and world.get_meta("mapsoo_layout_materialization", "")
 					== "profile-layout-v1"
+				and world.get_meta("mapsoo_material_palette_status", "")
+					== "production-tiles-v1"
+				and (
+					world.get_node_or_null(
+						"MapsooLayoutMaterialization/Terrain/LogicalCells"
+					) as TileMapLayer
+				).visible
 				and world.get_node_or_null("WorldLayoutPlan/Spawn") is Marker2D
 				and world.get_node_or_null("WorldLayoutPlan/Exit") is Marker2D
 			)

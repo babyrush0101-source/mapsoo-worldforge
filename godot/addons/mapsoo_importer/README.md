@@ -54,12 +54,19 @@ exact-byte `layout` and `files` SHA-256 records.
 When valid, the generated scene contains a `WorldLayoutPlan` metadata node with
 logical `Spawn` and `Exit` markers. Regions, terrain, traversal,
 collision intent and navigation intent remain queryable as metadata. The scene
-is marked `profile-layout-v1` and adds an authoritative hidden logical
+is marked `profile-layout-v1` and adds an authoritative logical
 `TileMapLayer`, profile-projected terrain polygons, collision bodies,
 navigation regions/links, traversal and landmark markers, and a runtime-player
-spawn binding. Pack-authored artwork remains visible; exact logical-material to
-production-TileSet selection is a separate art-mapping stage. Packs without the
-optional binding retain their existing import behavior and bytes.
+spawn binding.
+
+New layout-bearing packs also include `world-material-palette.json`. Its exact
+layout hash and manifest file record are verified before mutation. The shared
+palette binder maps every logical material to one validated pack `terrain.*`
+role, crops the corresponding atlas region, creates a deterministic Godot
+`TileSet`, makes the logical `TileMapLayer` visible, and revalidates it after
+`PackedScene` persistence. The current `single-cell` rendering mode does not
+yet provide auto-terrain transitions or visual variants. Packs without the
+optional bindings retain their existing import behavior and bytes.
 
 ## Safe re-import contract (`alpha.7`)
 

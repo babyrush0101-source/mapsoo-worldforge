@@ -41,6 +41,7 @@ static func validate_and_prepare(manifest: Dictionary, pack_root: String, prepar
 	var errors: Array[String] = prepared.errors
 	var manifest_keys := ["schema_version", "pack", "profile", "completeness_policy", "compatibility", "layers", "atlases", "roles", "character", "runtime", "files", "license", "provenance"]
 	if manifest.has("layout"): manifest_keys.append("layout")
+	if manifest.has("material_palette"): manifest_keys.append("material_palette")
 	_require_keys(manifest, manifest_keys, "Pack 0.7 manifest", errors)
 	var pack := _dict(manifest.get("pack"), "pack", errors)
 	var compatibility := _dict(manifest.get("compatibility"), "compatibility", errors)

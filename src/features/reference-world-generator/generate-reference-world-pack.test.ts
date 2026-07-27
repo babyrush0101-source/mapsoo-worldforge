@@ -144,6 +144,14 @@ describe('reference-world profile router', () => {
         profile,
         source: { seed: intake.seed },
       });
+      const paletteEntry = Object.values(zip.files)
+        .find(({ name }) => name.endsWith('/world-material-palette.json'));
+      expect(paletteEntry).toBeDefined();
+      expect(JSON.parse(await paletteEntry!.async('text'))).toMatchObject({
+        document_type: 'world-material-palette',
+        profile,
+        layout: { plan_id: layoutPlan.plan_id },
+      });
       const manifestEntry = Object.values(zip.files)
         .find(({ name }) => name.endsWith('/mapsoo.manifest.json'));
       expect(manifestEntry).toBeDefined();
@@ -152,18 +160,31 @@ describe('reference-world profile router', () => {
           plan_id: layoutPlan.plan_id,
           path: 'world-layout-plan.json',
         },
+        material_palette: {
+          document_type: 'world-material-palette',
+          path: 'world-material-palette.json',
+        },
       });
       const schemaStem = generated.packSchemaVersion.split('.').slice(0, 2).join('.');
       const schemaEntry = Object.values(zip.files)
         .find(({ name }) => name.endsWith(`/schema/mapsoo-pack-${schemaStem}.schema.json`));
       expect(schemaEntry).toBeDefined();
       expect(JSON.parse(await schemaEntry!.async('text'))).toMatchObject({
-        properties: { layout: { $ref: '#/$defs/layoutBinding' } },
+        properties: {
+          layout: { $ref: '#/$defs/layoutBinding' },
+          material_palette: { $ref: '#/$defs/materialPaletteBinding' },
+        },
         $defs: {
           layoutBinding: {
             properties: {
               document_type: { const: 'world-layout-plan' },
               path: { const: 'world-layout-plan.json' },
+            },
+          },
+          materialPaletteBinding: {
+            properties: {
+              document_type: { const: 'world-material-palette' },
+              path: { const: 'world-material-palette.json' },
             },
           },
         },

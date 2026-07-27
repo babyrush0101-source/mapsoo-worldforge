@@ -30,6 +30,10 @@ import {
   WORLD_LAYOUT_PACK_PATH,
 } from '../core/world-layout-pack-binding';
 import type { WorldLayoutPlan } from '../core/world-layout-plan';
+import {
+  prepareWorldMaterialPalettePackEntry,
+  WORLD_MATERIAL_PALETTE_PATH,
+} from '../core/world-material-palette';
 
 const ZIP_DATE = new Date(Date.UTC(1980, 0, 1));
 const MANIFEST_PATH = 'mapsoo.manifest.json';
@@ -651,6 +655,16 @@ export async function buildPack10ProductionReviewCandidate(
   ]));
   const roles = Object.freeze(loaded.manifest.roles.map((binding) =>
     roleReplacements.get(binding.role) ?? binding));
+  const preparedPalette = preparedLayout === undefined
+    ? undefined
+    : await prepareWorldMaterialPalettePackEntry(
+      preparedLayout,
+      roles.map(({ role }) => role),
+    );
+  if (preparedPalette) {
+    payloads.set(WORLD_MATERIAL_PALETTE_PATH, Uint8Array.from(preparedPalette.bytes));
+    assertSafeText(WORLD_MATERIAL_PALETTE_PATH, preparedPalette.bytes);
+  }
   const previousFiles = new Map(loaded.manifest.files.map((file) => [file.path, file]));
   const files = await fileRecords(payloads, previousFiles);
   const providers = new Set([
@@ -674,6 +688,7 @@ export async function buildPack10ProductionReviewCandidate(
     atlases,
     roles,
     ...(preparedLayout ? { layout: preparedLayout.binding } : {}),
+    ...(preparedPalette ? { material_palette: preparedPalette.binding } : {}),
     files,
     provenance: Object.freeze({
       output_provenance: 'hybrid',

@@ -12,6 +12,10 @@ import {
   validateWorldLayoutPackBinding,
   type WorldLayoutPackBinding,
 } from './world-layout-pack-binding';
+import {
+  validateWorldMaterialPalettePackBinding,
+  type WorldMaterialPalettePackBinding,
+} from './world-material-palette';
 
 export const ALPHA10_PACK_SCHEMA_VERSION = '0.7.0' as const;
 export const ALPHA10_PACK_VERSION = '0.1.0-alpha.10' as const;
@@ -51,6 +55,7 @@ export interface Alpha10PackManifest {
   readonly character: Readonly<{ id: string; atlas: string; frame_size: readonly [number, number]; pivot: readonly [number, number]; clips: readonly Readonly<{ id: string; action: typeof SIDE_PLATFORMER_ACTIONS[number]; direction: typeof SIDE_PLATFORMER_DIRECTIONS[number]; fps: number; frames: readonly PixelPoint[] }>[] }>;
   readonly runtime: Readonly<{ scene: Readonly<{ path: string }>; collision: Readonly<{ path: string }>; navigation: Readonly<{ path: string }>; spawn: PixelPoint }>;
   readonly layout?: Readonly<WorldLayoutPackBinding>;
+  readonly material_palette?: Readonly<WorldMaterialPalettePackBinding>;
   readonly files: readonly Readonly<{ path: string; media_type: 'image/png' | 'application/json' | 'application/schema+json' | 'text/markdown'; bytes: number; sha256: string }>[];
   readonly license: Readonly<{ output: Readonly<PackOutputLicense> }>;
   readonly provenance: Readonly<{ provider: Readonly<{ id: string; version: string }>; output_provenance: 'procedural' | 'generative-ai' | 'hybrid'; contains_generative_ai: boolean; model_provider: string | null; model: string | null; seed: string; human_curated: boolean }>;
@@ -81,6 +86,11 @@ export function validateAlpha10PackManifest(manifest: Alpha10PackManifest): Alph
   const referenced = [...manifest.atlases.map((x) => x.path), ...manifest.roles.map((x) => x.path), manifest.character.atlas, manifest.runtime.scene.path, manifest.runtime.collision.path, manifest.runtime.navigation.path, manifest.license.output.notice_path, ...(manifest.layout ? [manifest.layout.path] : [])];
   if (referenced.some((path) => !known.has(path))) issues.push({ code: 'manifest.file-reference', message: 'Every referenced path must exist in files.' });
   issues.push(...validateWorldLayoutPackBinding(manifest.layout, manifest.files));
+  issues.push(...validateWorldMaterialPalettePackBinding(
+    manifest.material_palette,
+    manifest.layout,
+    manifest.files,
+  ));
   for (const code of validatePackOutputAuthorization(manifest.license.output, manifest.provenance)) {
     issues.push({ code, message: 'Pack output license and provenance are not an authorized public or internal-review pair.' });
   }
