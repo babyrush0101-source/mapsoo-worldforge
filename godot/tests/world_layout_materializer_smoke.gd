@@ -5,6 +5,21 @@ const LayoutMaterializer = preload(
 )
 const MATERIALIZATION_NODE := "MapsooLayoutMaterialization"
 const EXPECTED_STATUS := "profile-layout-v1"
+const PlayerController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd"
+)
+const IsometricPlayerController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_isometric_player_controller.gd"
+)
+const LayeredDepthPlayerController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd"
+)
+const LEGACY_RUNTIME_NODES := [
+	"WorldCollision",
+	"Hazards",
+	"WorldNavigation",
+	"WorldTraversal",
+]
 
 
 func _run() -> void:
@@ -56,6 +71,18 @@ func _run() -> void:
 			second.root.free()
 			_fail("%s materialization was not deterministic." % profile)
 			return
+		var controller_check := _assert_controller_uses_layout_exit(
+			second.root,
+			validated.layout.plan
+		)
+		if not controller_check.ok:
+			first.root.free()
+			second.root.free()
+			_fail("%s controller handoff failed: %s" % [
+				profile,
+				controller_check.error,
+			])
+			return
 
 		var persisted := _persist_and_reload(first.root, fixture.root, profile)
 		first.root.free()
@@ -88,7 +115,8 @@ func _run() -> void:
 	_remove_tree(ProjectSettings.globalize_path(TEST_ROOT))
 	print(
 		"MAPSOO_WORLD_LAYOUT_MATERIALIZER_OK " +
-		"profiles=4 deterministic=4 persisted=4 absent=1 tamper=2"
+		"profiles=4 deterministic=4 persisted=4 handoff=4 " +
+		"controller-exit=4 absent=1 tamper=2"
 	)
 	quit(0)
 
@@ -128,8 +156,16 @@ func _materialize_world(profile: String, attachment: Dictionary) -> Dictionary:
 	actor_root.owner = world
 	var runtime_player := CharacterBody2D.new()
 	runtime_player.name = "Player"
+	match profile:
+		"isometric-action":
+			runtime_player.set_script(IsometricPlayerController)
+		"layered-depth-2d":
+			runtime_player.set_script(LayeredDepthPlayerController)
+		_:
+			runtime_player.set_script(PlayerController)
 	actor_root.add_child(runtime_player)
 	runtime_player.owner = world
+	_add_legacy_runtime_geometry(world)
 	var binding := LayoutAttachment.bind_scene(world, attachment)
 	if not binding.ok or binding.status != "bound":
 		world.free()
@@ -157,6 +193,25 @@ func _materialize_world(profile: String, attachment: Dictionary) -> Dictionary:
 func _assert_materialized(world: Node, plan: Dictionary) -> Dictionary:
 	if world.get_meta("mapsoo_layout_materialization", "") != EXPECTED_STATUS:
 		return _check_failure("Scene does not declare profile-layout-v1 materialization.")
+	if (
+		world.get_meta("mapsoo_layout_runtime_geometry_authority", "")
+			!= EXPECTED_STATUS
+		or world.get_meta("mapsoo_layout_superseded_legacy_nodes", [])
+			!= LEGACY_RUNTIME_NODES
+	):
+		return _check_failure("Scene does not declare the layout runtime handoff.")
+	for legacy_name: String in LEGACY_RUNTIME_NODES:
+		var legacy := world.get_node_or_null(legacy_name)
+		if (
+			legacy == null
+			or legacy.get_meta("mapsoo_layout_superseded", false) != true
+			or legacy.process_mode != Node.PROCESS_MODE_DISABLED
+			or (legacy is CanvasItem and (legacy as CanvasItem).visible)
+			or not _legacy_runtime_node_is_disabled(legacy)
+		):
+			return _check_failure(
+				"Legacy runtime node %s remains active." % legacy_name
+			)
 	var materialization := world.get_node_or_null(MATERIALIZATION_NODE)
 	if materialization == null:
 		return _check_failure("Materialization root is missing.")
@@ -336,6 +391,117 @@ func _assert_materialized(world: Node, plan: Dictionary) -> Dictionary:
 	):
 		return _check_failure("Runtime PlayerSpawn/Player did not bind to the confirmed layout.")
 	return {"ok": true, "error": ""}
+
+
+func _assert_controller_uses_layout_exit(
+	world: Node,
+	plan: Dictionary
+) -> Dictionary:
+	var player := _find_player(world)
+	var layout_exit := world.get_node_or_null("WorldLayoutPlan/Exit") as Marker2D
+	if player == null or layout_exit == null:
+		return _check_failure("Controller handoff fixture is incomplete.")
+	player.call("_find_exit")
+	player.global_position = layout_exit.global_position
+	player.call("_check_exit")
+	if player.get_meta("mapsoo_exit_reached", "") != str(plan.exit.node_id):
+		return _check_failure(
+			"Controller did not prefer the WorldLayoutPlan exit."
+		)
+	return {"ok": true, "error": ""}
+
+
+func _add_legacy_runtime_geometry(world: Node2D) -> void:
+	var collision_root := Node2D.new()
+	collision_root.name = "WorldCollision"
+	world.add_child(collision_root)
+	collision_root.owner = world
+	var body := StaticBody2D.new()
+	body.name = "LegacyBody"
+	body.collision_layer = 1
+	body.collision_mask = 1
+	collision_root.add_child(body)
+	body.owner = world
+	var body_shape := CollisionShape2D.new()
+	body_shape.name = "CollisionShape2D"
+	body_shape.shape = RectangleShape2D.new()
+	body.add_child(body_shape)
+	body_shape.owner = world
+
+	var hazards := Node2D.new()
+	hazards.name = "Hazards"
+	world.add_child(hazards)
+	hazards.owner = world
+	var area := Area2D.new()
+	area.name = "LegacyHazard"
+	area.collision_layer = 2
+	area.collision_mask = 1
+	hazards.add_child(area)
+	area.owner = world
+	var area_shape := CollisionShape2D.new()
+	area_shape.name = "CollisionShape2D"
+	area_shape.shape = RectangleShape2D.new()
+	area.add_child(area_shape)
+	area_shape.owner = world
+
+	var navigation := NavigationRegion2D.new()
+	navigation.name = "WorldNavigation"
+	navigation.enabled = true
+	world.add_child(navigation)
+	navigation.owner = world
+
+	var traversal := Node2D.new()
+	traversal.name = "WorldTraversal"
+	traversal.set_meta("mapsoo_exit_node_id", "legacy-exit")
+	world.add_child(traversal)
+	traversal.owner = world
+	var legacy_exit := Marker2D.new()
+	legacy_exit.name = "LegacyExit"
+	legacy_exit.position = Vector2(-1000.0, -1000.0)
+	legacy_exit.set_meta("mapsoo_id", "legacy-exit")
+	traversal.add_child(legacy_exit)
+	legacy_exit.owner = world
+
+
+func _legacy_runtime_node_is_disabled(node: Node) -> bool:
+	if (
+		node is CollisionObject2D
+		and (
+			(node as CollisionObject2D).collision_layer != 0
+			or (node as CollisionObject2D).collision_mask != 0
+		)
+	):
+		return false
+	if (
+		node is Area2D
+		and (
+			(node as Area2D).monitoring
+			or (node as Area2D).monitorable
+		)
+	):
+		return false
+	if node is CollisionShape2D and not (node as CollisionShape2D).disabled:
+		return false
+	if node is CollisionPolygon2D and not (node as CollisionPolygon2D).disabled:
+		return false
+	if node is NavigationRegion2D and (node as NavigationRegion2D).enabled:
+		return false
+	if node is NavigationLink2D and (node as NavigationLink2D).enabled:
+		return false
+	for child: Node in node.get_children():
+		if not _legacy_runtime_node_is_disabled(child):
+			return false
+	return true
+
+
+func _find_player(root: Node) -> CharacterBody2D:
+	if root is CharacterBody2D and root.name == "Player":
+		return root
+	for child: Node in root.get_children():
+		var player := _find_player(child)
+		if player != null:
+			return player
+	return null
 
 
 func _assert_tamper_fail_closed() -> bool:

@@ -70,7 +70,7 @@ func _run() -> void:
 	var layout_importer: Dictionary = layout_state.get("importer", {})
 	if not layout_result.ok or not _validate_scene(
 		layout_result.scene_path, "public", "CC0-1.0", "public", true,
-	) or layout_importer.get("version") != "1.0.0-layout.3":
+	) or layout_importer.get("version") != "1.0.0-layout.4":
 		_fail("WorldLayoutPlan-bound Pack 1.0 import failed: %s" % layout_result.errors)
 		return
 	var autotile_attack_path := _materialize(
@@ -792,6 +792,9 @@ func _validate_scene(
 					== "terrain-autotiles-v1"
 				and world.get_meta("mapsoo_terrain_autotile_set_id", "")
 					== "autotiles-neutral-layered-layout"
+				and world.get_meta("mapsoo_layout_runtime_geometry_authority", "")
+					== "profile-layout-v1"
+				and _legacy_runtime_handoff_valid(world)
 				and (
 					world.get_node_or_null(
 						"MapsooLayoutMaterialization/Terrain/LogicalCells"
@@ -805,6 +808,59 @@ func _validate_scene(
 		)
 	world.free()
 	return valid
+
+
+func _legacy_runtime_handoff_valid(world: Node) -> bool:
+	var expected := [
+		"WorldCollision",
+		"Hazards",
+		"WorldNavigation",
+		"WorldTraversal",
+	]
+	if world.get_meta("mapsoo_layout_superseded_legacy_nodes", []) != expected:
+		return false
+	for node_name: String in expected:
+		var legacy := world.get_node_or_null(node_name)
+		if (
+			legacy == null
+			or legacy.get_meta("mapsoo_layout_superseded", false) != true
+			or legacy.process_mode != Node.PROCESS_MODE_DISABLED
+			or (legacy is CanvasItem and (legacy as CanvasItem).visible)
+			or not _legacy_runtime_node_is_disabled(legacy)
+		):
+			return false
+	return true
+
+
+func _legacy_runtime_node_is_disabled(node: Node) -> bool:
+	if (
+		node is CollisionObject2D
+		and (
+			(node as CollisionObject2D).collision_layer != 0
+			or (node as CollisionObject2D).collision_mask != 0
+		)
+	):
+		return false
+	if (
+		node is Area2D
+		and (
+			(node as Area2D).monitoring
+			or (node as Area2D).monitorable
+		)
+	):
+		return false
+	if node is CollisionShape2D and not (node as CollisionShape2D).disabled:
+		return false
+	if node is CollisionPolygon2D and not (node as CollisionPolygon2D).disabled:
+		return false
+	if node is NavigationRegion2D and (node as NavigationRegion2D).enabled:
+		return false
+	if node is NavigationLink2D and (node as NavigationLink2D).enabled:
+		return false
+	for child: Node in node.get_children():
+		if not _legacy_runtime_node_is_disabled(child):
+			return false
+	return true
 
 
 func _errors_contain(errors: Variant, needle: String) -> bool:

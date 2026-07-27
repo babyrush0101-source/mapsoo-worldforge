@@ -59,6 +59,15 @@ is marked `profile-layout-v1` and adds an authoritative logical
 navigation regions/links, traversal and landmark markers, and a runtime-player
 spawn binding.
 
+After successful materialization, the importer performs a fail-closed runtime
+handoff. Historical `WorldCollision`, `Hazards`, `WorldNavigation`, and
+`WorldTraversal` nodes are retained only as disabled compatibility records;
+they no longer collide, monitor, navigate, process, or render beside the
+layout geometry. Trusted player controllers use `WorldLayoutPlan/Exit` for
+layout-bearing scenes and keep the historical exit lookup for packs without
+the attachment. Layout-bearing managed imports use derived importer generation
+`layout.4`, forcing clean older layout imports to rebuild with this invariant.
+
 New layout-bearing packs also include `world-material-palette.json`. Its exact
 layout hash and manifest file record are verified before mutation. The shared
 palette binder maps every logical material to one validated pack `terrain.*`

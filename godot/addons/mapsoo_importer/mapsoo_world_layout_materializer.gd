@@ -14,6 +14,12 @@ const COLLISION_NODE := "Collision"
 const NAVIGATION_NODE := "Navigation"
 const TRAVERSAL_NODE := "Traversal"
 const LANDMARKS_NODE := "Landmarks"
+const LEGACY_RUNTIME_NODES := [
+	"WorldCollision",
+	"Hazards",
+	"WorldNavigation",
+	"WorldTraversal",
+]
 const SUPPORTED_PROFILES := [
 	"side-platformer",
 	"topdown-farm",
@@ -310,6 +316,7 @@ static func materialize(
 	root.add_child(materialization)
 	_set_owner_recursive(materialization, root)
 	_bind_runtime_player(root, spawn_position, pixel_bounds)
+	_supersede_legacy_runtime_geometry(root)
 	root.set_meta("mapsoo_layout_materialization", STATUS)
 	root.set_meta("mapsoo_layout_pixel_bounds", pixel_bounds)
 	root.set_meta("mapsoo_layout_spawn_world", spawn_position)
@@ -320,6 +327,9 @@ static func materialize(
 static func validate_scene(root: Node, plan: Dictionary) -> Dictionary:
 	if root == null or root.get_meta("mapsoo_layout_materialization", "") != STATUS:
 		return _failure("Scene does not declare WorldLayoutPlan runtime materialization.")
+	var legacy_handoff := _validate_legacy_runtime_handoff(root)
+	if not legacy_handoff.ok:
+		return legacy_handoff
 	var materialization := root.get_node_or_null(MATERIALIZATION_NODE)
 	if materialization == null:
 		return _failure("Scene lost its WorldLayoutPlan materialization root.")
@@ -573,6 +583,103 @@ static func _find_runtime_player(root: Node) -> CharacterBody2D:
 		if player != null:
 			return player
 	return null
+
+
+static func _supersede_legacy_runtime_geometry(root: Node) -> void:
+	var superseded: Array[String] = []
+	for node_name: String in LEGACY_RUNTIME_NODES:
+		var legacy := root.get_node_or_null(node_name)
+		if legacy == null:
+			continue
+		legacy.set_meta("mapsoo_layout_superseded", true)
+		legacy.process_mode = Node.PROCESS_MODE_DISABLED
+		if legacy is CanvasItem:
+			(legacy as CanvasItem).visible = false
+		_disable_legacy_runtime_node(legacy)
+		superseded.append(node_name)
+	root.set_meta("mapsoo_layout_runtime_geometry_authority", STATUS)
+	root.set_meta("mapsoo_layout_superseded_legacy_nodes", superseded)
+
+
+static func _disable_legacy_runtime_node(node: Node) -> void:
+	if node is CollisionObject2D:
+		(node as CollisionObject2D).collision_layer = 0
+		(node as CollisionObject2D).collision_mask = 0
+	if node is Area2D:
+		(node as Area2D).monitoring = false
+		(node as Area2D).monitorable = false
+	if node is CollisionShape2D:
+		(node as CollisionShape2D).disabled = true
+	if node is CollisionPolygon2D:
+		(node as CollisionPolygon2D).disabled = true
+	if node is NavigationRegion2D:
+		(node as NavigationRegion2D).enabled = false
+	if node is NavigationLink2D:
+		(node as NavigationLink2D).enabled = false
+	for child: Node in node.get_children():
+		_disable_legacy_runtime_node(child)
+
+
+static func _validate_legacy_runtime_handoff(root: Node) -> Dictionary:
+	if root.get_meta("mapsoo_layout_runtime_geometry_authority", "") != STATUS:
+		return _failure("Scene does not declare authoritative layout runtime geometry.")
+	var declared_value: Variant = root.get_meta(
+		"mapsoo_layout_superseded_legacy_nodes",
+		[]
+	)
+	if typeof(declared_value) != TYPE_ARRAY:
+		return _failure("Scene legacy runtime handoff metadata is invalid.")
+	var declared: Array = declared_value
+	var expected: Array[String] = []
+	for node_name: String in LEGACY_RUNTIME_NODES:
+		var legacy := root.get_node_or_null(node_name)
+		if legacy == null:
+			continue
+		expected.append(node_name)
+		if (
+			legacy.get_meta("mapsoo_layout_superseded", false) != true
+			or legacy.process_mode != Node.PROCESS_MODE_DISABLED
+			or (legacy is CanvasItem and (legacy as CanvasItem).visible)
+			or not _legacy_runtime_node_is_disabled(legacy)
+		):
+			return _failure(
+				"Legacy runtime node %s remains active beside WorldLayoutPlan." %
+				node_name
+			)
+	if declared != expected:
+		return _failure("Scene legacy runtime handoff inventory is inconsistent.")
+	return {"ok": true, "status": STATUS, "error": ""}
+
+
+static func _legacy_runtime_node_is_disabled(node: Node) -> bool:
+	if (
+		node is CollisionObject2D
+		and (
+			(node as CollisionObject2D).collision_layer != 0
+			or (node as CollisionObject2D).collision_mask != 0
+		)
+	):
+		return false
+	if (
+		node is Area2D
+		and (
+			(node as Area2D).monitoring
+			or (node as Area2D).monitorable
+		)
+	):
+		return false
+	if node is CollisionShape2D and not (node as CollisionShape2D).disabled:
+		return false
+	if node is CollisionPolygon2D and not (node as CollisionPolygon2D).disabled:
+		return false
+	if node is NavigationRegion2D and (node as NavigationRegion2D).enabled:
+		return false
+	if node is NavigationLink2D and (node as NavigationLink2D).enabled:
+		return false
+	for child: Node in node.get_children():
+		if not _legacy_runtime_node_is_disabled(child):
+			return false
+	return true
 
 
 static func _set_owner_recursive(node: Node, owner: Node) -> void:

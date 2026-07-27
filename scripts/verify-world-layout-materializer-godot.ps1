@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $godotRoot = Join-Path $repoRoot 'godot'
-$sentinel = 'MAPSOO_WORLD_LAYOUT_MATERIALIZER_OK profiles=4 deterministic=4 persisted=4 absent=1 tamper=2'
+$sentinel = 'MAPSOO_WORLD_LAYOUT_MATERIALIZER_OK profiles=4 deterministic=4 persisted=4 handoff=4 controller-exit=4 absent=1 tamper=2'
 
 if ($GodotConsoles.Count -eq 0) {
     $candidates = @(
@@ -65,6 +65,8 @@ foreach ($consolePath in $GodotConsoles) {
         profiles = 4
         deterministic_replays = 4
         persisted_scenes = 4
+        legacy_runtime_handoffs = 4
+        layout_exit_controller_bindings = 4
         absent_compatibility = 1
         tamper_cases = 2
         status = 'profile-layout-v1-pass'
@@ -82,6 +84,8 @@ foreach ($consolePath in $GodotConsoles) {
         'NavigationRegion2D polygons and NavigationLink2D traversal'
         'profile-specific logical-to-world coordinate projection'
         'runtime PlayerSpawn and Player binding'
+        'layout-only active collision, navigation, hazard and traversal semantics'
+        'all profile controllers prefer the bound WorldLayoutPlan exit'
         'deterministic persisted scene structure'
         'no-layout backward compatibility'
         'post-validation tamper rejection before scene mutation'

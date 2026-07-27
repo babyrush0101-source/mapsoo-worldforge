@@ -122,6 +122,21 @@ creates:
 - a binding that moves the generated `PlayerSpawn` and player body to the
   confirmed spawn when the scene contains a runtime player.
 
+Layout-bearing imports perform an explicit runtime handoff after the new
+geometry has been built successfully. Legacy `WorldCollision`, `Hazards`,
+`WorldNavigation`, and `WorldTraversal` nodes remain in the derived scene only
+for pack-schema compatibility checks, but are hidden, process-disabled, and
+have all collision, monitoring, and navigation participation disabled. The
+layout materialization is therefore the only active runtime geometry. The
+three trusted player controllers prefer the exact `WorldLayoutPlan/Exit`
+marker and fall back to historical `WorldTraversal` only for packs without a
+layout attachment.
+
+This handoff advances layout-bearing derived import state to the `layout.4`
+generation so a clean older managed import is rebuilt instead of being
+incorrectly reported as unchanged. It does not alter the bytes or behavior of
+packs without `world-layout-plan.json`.
+
 The projection uses the generated scene's pixel bounds. Top-down, platformer,
 and layered-depth plans use bounded linear projection; isometric action uses a
 diamond projection. The same plan produces the same scene semantics before and
@@ -156,6 +171,14 @@ variants beyond neighbor topology, animated tiles, final art direction,
 profile gameplay completion, human art approval, and physical Raspberry Pi
 performance remain separate gates. See
 [`55_WORLD_TERRAIN_AUTOTILES.md`](55_WORLD_TERRAIN_AUTOTILES.md).
+
+The canonical layout builder is still a deterministic profile template:
+confirmed seed values change bounded node positions and confirmed landmark
+text supplies the first two labels, but the remaining terrain, geography,
+culture, and traversal prose does not yet compile into a world-specific
+topology. A typed layout-constraint compiler and profile solver are the next
+required step; the runtime handoff above prevents the old fixed map from
+silently overriding that future plan.
 
 ## Fail-closed behavior
 

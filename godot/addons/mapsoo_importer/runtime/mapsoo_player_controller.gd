@@ -120,23 +120,54 @@ func respawn(reason := "manual") -> void:
 
 
 func _find_exit() -> void:
-	var traversal := get_node_or_null("../WorldTraversal")
+	var resolved := _resolve_exit()
+	_exit_marker = resolved.get("marker") as Marker2D
+	_exit_id = str(resolved.get("id", ""))
+
+
+func _resolve_exit() -> Dictionary:
+	var world := _world_root()
+	if world == null:
+		return {}
+	var layout_exit := world.get_node_or_null("WorldLayoutPlan/Exit") as Marker2D
+	if layout_exit != null:
+		var layout_exit_id := str(layout_exit.get_meta("mapsoo_node_id", ""))
+		if not layout_exit_id.is_empty():
+			return {"marker": layout_exit, "id": layout_exit_id}
+	var traversal := world.get_node_or_null("WorldTraversal")
 	if traversal == null:
-		return
+		return {}
 	var expected_id := str(traversal.get_meta("mapsoo_exit_node_id", ""))
 	for child: Node in traversal.get_children():
 		if child is Marker2D and str(child.get_meta("mapsoo_id", "")) == expected_id:
-			_exit_marker = child as Marker2D
-			_exit_id = expected_id
-			return
+			return {"marker": child as Marker2D, "id": expected_id}
+	return {}
+
+
+func _world_root() -> Node:
+	var candidate: Node = self
+	while candidate != null \
+			and candidate.name != "MapsooWorld" \
+			and not candidate.has_meta("mapsoo_profile"):
+		candidate = candidate.get_parent()
+	return candidate
 
 
 func _check_exit() -> void:
-	if _exit_marker == null or has_meta("mapsoo_exit_reached"):
+	if has_meta("mapsoo_exit_reached"):
 		return
-	if global_position.distance_to(_exit_marker.global_position) <= exit_radius:
-		set_meta("mapsoo_exit_reached", _exit_id)
-		world_exit_reached.emit(_exit_id)
+	var resolved := _resolve_exit()
+	var marker := resolved.get("marker") as Marker2D
+	var exit_id := str(resolved.get("id", ""))
+	if (
+		marker != null
+		and not exit_id.is_empty()
+		and global_position.distance_to(marker.global_position) <= exit_radius
+	):
+		_exit_marker = marker
+		_exit_id = exit_id
+		set_meta("mapsoo_exit_reached", exit_id)
+		world_exit_reached.emit(exit_id)
 
 
 func _keep_inside_world() -> void:

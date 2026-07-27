@@ -95,9 +95,18 @@ func _run() -> void:
 		return
 	player.position = exit_marker.position
 	player.velocity = Vector2.ZERO
-	await physics_frame
+	for _frame in 3:
+		await physics_frame
 	if player.get_meta("mapsoo_exit_reached", "") != str(exit_marker.get_meta("mapsoo_id", "")):
-		_fail("Side player did not report the generated world exit.")
+		_fail(
+			"Side player did not report the generated world exit " +
+			"(bound=%s expected=%s reached=%s marker=%s)." % [
+				player.get("_exit_id"),
+				exit_marker.get_meta("mapsoo_id", ""),
+				player.get_meta("mapsoo_exit_reached", ""),
+				player.get("_exit_marker"),
+			]
+		)
 		return
 
 	var camera := player.get_node_or_null("Camera2D") as Camera2D
