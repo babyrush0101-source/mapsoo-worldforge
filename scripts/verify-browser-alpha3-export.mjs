@@ -125,20 +125,29 @@ async function verify() {
 
   try {
     await waitForServer(harnessUrl, vite);
-    const { stdout } = await execFileAsync(chromeExecutable(), [
-      '--headless=new',
-      '--no-sandbox',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-      '--disable-background-networking',
-      '--disable-component-update',
-      '--no-first-run',
-      `--user-data-dir=${profile}`,
-      '--virtual-time-budget=15000',
-      '--dump-dom',
-      harnessUrl,
-    ], { maxBuffer: 8 * 1024 * 1024, timeout: 60_000, windowsHide: true });
-    const exported = decodeHarnessDom(stdout);
+    let browserDom = '';
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const { stdout } = await execFileAsync(chromeExecutable(), [
+        '--headless=new',
+        '--no-sandbox',
+        '--disable-gpu',
+        '--disable-dev-shm-usage',
+        '--disable-background-networking',
+        '--disable-component-update',
+        '--no-first-run',
+        `--user-data-dir=${join(profile, `attempt-${attempt}`)}`,
+        '--virtual-time-budget=60000',
+        '--dump-dom',
+        harnessUrl,
+      ], { maxBuffer: 8 * 1024 * 1024, timeout: 90_000, windowsHide: true });
+      browserDom = stdout;
+      // Cold CI runners can dump the page while the asynchronous Vite module
+      // graph is still settling. Retry only that pre-result state. A harness
+      // error, malformed result or archive/hash mismatch remains immediately
+      // fatal below.
+      if (!/<html\b[^>]*\bdata-state="(?:pending|loading)"/i.test(browserDom)) break;
+    }
+    const exported = decodeHarnessDom(browserDom);
     assert(exported.filename === browserReleaseConfig.release.files.examplePack, 'Browser export filename differs from the release registry.');
     assert(exported.version === browserReleaseConfig.version, 'Browser export version differs from the release registry.');
     assert(
