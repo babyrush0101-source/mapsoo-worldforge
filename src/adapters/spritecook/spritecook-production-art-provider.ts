@@ -12,6 +12,9 @@ import {
 import {
   compileProductionArtPrompt,
 } from '../../core/production-art-prompt';
+import type {
+  ReferenceImageDescriptor,
+} from '../../core/reference-image';
 import {
   decodeReferenceImageRgba,
 } from '../decode-reference-image-rgba';
@@ -53,6 +56,26 @@ export interface SpriteCookProductionArtProviderOptions {
   readonly quality?: SpriteCookProductionArtQuality;
   readonly resolution?: SpriteCookProductionArtResolution;
   readonly fetchImpl?: typeof fetch;
+  readonly referenceAssetCache?: SpriteCookReferenceAssetCache;
+  readonly onExecutionStats?: (
+    stats: SpriteCookProductionArtExecutionStats,
+  ) => void;
+}
+
+export interface SpriteCookReferenceAssetCache {
+  resolve(
+    descriptor: ReferenceImageDescriptor,
+    importAsset: () => Promise<string>,
+  ): Promise<{
+    readonly assetId: string;
+    readonly source: 'cache' | 'import';
+  }>;
+}
+
+export interface SpriteCookProductionArtExecutionStats {
+  readonly httpRequests: number;
+  readonly importedReferenceIds: readonly string[];
+  readonly reusedReferenceIds: readonly string[];
 }
 
 interface ImportedReference {
@@ -321,6 +344,8 @@ export function createSpriteCookProductionArtProvider(
   const quality = options.quality ?? 'medium';
   const resolution = options.resolution ?? '2K';
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  const referenceAssetCache = options.referenceAssetCache;
+  const onExecutionStats = options.onExecutionStats;
   if (!MODEL_ID.test(model)) invalidMetadata('SpriteCook model id is invalid.');
   if (!['low', 'medium', 'high'].includes(quality)) {
     invalidMetadata('SpriteCook quality is unsupported.');
@@ -330,6 +355,22 @@ export function createSpriteCookProductionArtProvider(
   }
   if (typeof fetchImpl !== 'function') {
     invalidMetadata('This server runtime does not provide fetch.');
+  }
+  if (
+    referenceAssetCache !== undefined
+    && (
+      typeof referenceAssetCache !== 'object'
+      || referenceAssetCache === null
+      || typeof referenceAssetCache.resolve !== 'function'
+    )
+  ) {
+    invalidMetadata('SpriteCook reference asset cache is invalid.');
+  }
+  if (
+    onExecutionStats !== undefined
+    && typeof onExecutionStats !== 'function'
+  ) {
+    invalidMetadata('SpriteCook execution observer is invalid.');
   }
 
   return Object.freeze({
@@ -367,46 +408,97 @@ export function createSpriteCookProductionArtProvider(
       const credential = validateCredential(generateOptions.credential);
       const authorizationHeader = { Authorization: `Bearer ${credential}` };
       const imported: ImportedReference[] = [];
-
-      for (const reference of job.references) {
-        let response: Response;
-        try {
-          response = await fetchImpl(SPRITECOOK_IMPORT_ENDPOINT, {
-            method: 'POST',
-            headers: {
-              ...authorizationHeader,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              image: `data:${reference.descriptor.mediaType};base64,${base64(reference.readBytes())}`,
-              pixel: true,
-              display_name: reference.descriptor.id,
-            }),
-            signal: generateOptions.signal,
-          });
-        } catch {
-          if (generateOptions.signal?.aborted) {
-            throw new ProductionArtProviderError(
-              'production-provider.aborted',
-              'SpriteCook reference import was aborted.',
-            );
-          }
-          executionFailed('SpriteCook reference import endpoint could not be reached.');
-        }
-        if (!response.ok) {
+      const importedReferenceIds: string[] = [];
+      const reusedReferenceIds: string[] = [];
+      let httpRequests = 0;
+      const startHttpRequest = (): void => {
+        if (httpRequests >= 4) {
           executionFailed(
-            `SpriteCook reference import returned HTTP ${response.status}.`,
+            'SpriteCook task exceeded its exact four-request authorization.',
           );
         }
-        const record = await readJson(
-          response,
-          'SpriteCook reference import response',
-        );
+        httpRequests += 1;
+      };
+
+      for (const reference of job.references) {
+        const importAsset = async (): Promise<string> => {
+          let response: Response;
+          try {
+            startHttpRequest();
+            response = await fetchImpl(SPRITECOOK_IMPORT_ENDPOINT, {
+              method: 'POST',
+              headers: {
+                ...authorizationHeader,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                image: `data:${reference.descriptor.mediaType};base64,${base64(reference.readBytes())}`,
+                pixel: true,
+                display_name: reference.descriptor.id,
+              }),
+              signal: generateOptions.signal,
+            });
+          } catch {
+            if (generateOptions.signal?.aborted) {
+              throw new ProductionArtProviderError(
+                'production-provider.aborted',
+                'SpriteCook reference import was aborted.',
+              );
+            }
+            executionFailed('SpriteCook reference import endpoint could not be reached.');
+          }
+          if (!response.ok) {
+            executionFailed(
+              `SpriteCook reference import returned HTTP ${response.status}.`,
+            );
+          }
+          const record = await readJson(
+            response,
+            'SpriteCook reference import response',
+          );
+          return safeAssetId(record.id, 'SpriteCook reference import');
+        };
+        let resolution: {
+          readonly assetId: string;
+          readonly source: 'cache' | 'import';
+        };
+        if (referenceAssetCache) {
+          try {
+            resolution = await referenceAssetCache.resolve(
+              reference.descriptor,
+              importAsset,
+            );
+          } catch (error) {
+            if (error instanceof ProductionArtProviderError) throw error;
+            executionFailed(
+              'SpriteCook private reference cache could not resolve an asset safely.',
+            );
+          }
+        } else {
+          resolution = Object.freeze({
+            assetId: await importAsset(),
+            source: 'import' as const,
+          });
+        }
+        if (
+          !isRecord(resolution)
+          || !['cache', 'import'].includes(resolution.source)
+        ) {
+          executionFailed(
+            'SpriteCook private reference cache returned invalid resolution evidence.',
+          );
+        }
         imported.push(Object.freeze({
           referenceId: reference.descriptor.id,
           role: reference.descriptor.role,
-          assetId: safeAssetId(record.id, 'SpriteCook reference import'),
+          assetId: safeAssetId(
+            resolution.assetId,
+            'SpriteCook private reference cache',
+          ),
         }));
+        (resolution.source === 'cache'
+          ? reusedReferenceIds
+          : importedReferenceIds).push(reference.descriptor.id);
       }
 
       const primary = imported.find(({ role }) => role === 'character')
@@ -419,6 +511,7 @@ export function createSpriteCookProductionArtProvider(
       const colors = palette(job);
       let generationResponse: Response;
       try {
+        startHttpRequest();
         generationResponse = await fetchImpl(SPRITECOOK_GENERATE_ENDPOINT, {
           method: 'POST',
           headers: {
@@ -481,6 +574,7 @@ export function createSpriteCookProductionArtProvider(
       const assetUrl = safeDownloadUrl(generation.assets[0].url);
       let download: Response;
       try {
+        startHttpRequest();
         download = await fetchImpl(assetUrl, {
           method: 'GET',
           headers: assetUrl.hostname === 'api.spritecook.ai'
@@ -512,6 +606,17 @@ export function createSpriteCookProductionArtProvider(
       } catch (error) {
         if (error instanceof ProductionArtProviderError) throw error;
         executionFailed('SpriteCook asset was not a supported PNG.');
+      }
+      if (onExecutionStats) {
+        try {
+          onExecutionStats(Object.freeze({
+            httpRequests,
+            importedReferenceIds: Object.freeze([...importedReferenceIds]),
+            reusedReferenceIds: Object.freeze([...reusedReferenceIds]),
+          }));
+        } catch {
+          // Observability must not turn a completed paid task into a retry.
+        }
       }
       return Object.freeze({
         sourcePngBytes,

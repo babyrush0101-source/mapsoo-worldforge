@@ -746,6 +746,17 @@ function taskArguments(
   if (job.provider === 'spritecook') {
     if (job.model) values.push('--model', job.model);
     values.push('--resolution', job.resolution ?? '2K');
+    if (job.private_output_root) {
+      values.push(
+        '--spritecook-asset-cache-root',
+        resolve(
+          job.private_output_root,
+          'provider-cache',
+          'spritecook',
+          'v1',
+        ),
+      );
+    }
   }
   if (task.task_id === 'scene-direction') {
     values.push(
@@ -806,9 +817,30 @@ async function runTaskProcess(
 }> {
   const viteNode = resolve('node_modules/vite-node/vite-node.mjs');
   const runner = resolve('scripts/run-production-art-source.ts');
+  const selectedProvider = workflowProvider(job);
+  const childEnvironment: NodeJS.ProcessEnv = {};
+  for (const name of [
+    'PATH',
+    'Path',
+    'SystemRoot',
+    'WINDIR',
+    'TEMP',
+    'TMP',
+    'TMPDIR',
+    'NODE_ENV',
+    'NODE_OPTIONS',
+    'NO_COLOR',
+    'FORCE_COLOR',
+  ]) {
+    if (process.env[name] !== undefined) {
+      childEnvironment[name] = process.env[name];
+    }
+  }
+  childEnvironment[selectedProvider.credentialName] =
+    process.env[selectedProvider.credentialName];
   const child = spawn(process.execPath, [viteNode, runner, ...taskArguments(job, task)], {
     cwd: process.cwd(),
-    env: process.env,
+    env: childEnvironment,
     shell: false,
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],

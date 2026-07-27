@@ -115,6 +115,17 @@ retries it automatically. Existing permission to adapt or redistribute a
 reference image does **not** imply permission to upload it to a third-party
 model service.
 
+When the SpriteCook workflow uses an external `private_output_root`, reference
+imports are reused from
+`<private_output_root>/provider-cache/spritecook/v1/`. The account-scoped HMAC
+cache contains only opaque provider asset IDs and cannot cross credentials; it
+contains no key, path, reference name, prompt, URL, or raw input digest. A full
+hit uses two HTTP calls, a mixed hit three, and a full miss four. Cache damage,
+an unresolved per-key lock, or a deleted remote asset fails closed without an
+automatic re-import. The single-task summary reports the actual transport
+count, while `request_budget` deliberately remains the number of potentially
+billed generation attempts.
+
 ## Resumable, cost-bounded complete workflow
 
 The workflow CLI schedules the existing single-task runner; it does not weaken
@@ -148,10 +159,12 @@ clearly labelled `procedural-placeholder` with final art required.
 
 The generated model-art job declares an absolute `private_output_root` outside
 this repository. The workflow writes its append-only states under
-`<private_output-root>/workflows/` and all source/normalized candidates under
-`<private_output-root>/model-runs/`. The job parser rejects an in-repository
-private output root. The legacy ignored repository paths remain available only
-for the repository's own public visual-QA fixtures.
+`<private-output-root>/workflows/` and all source/normalized candidates under
+`<private-output-root>/model-runs/`. SpriteCook reference IDs stay under
+`<private-output-root>/provider-cache/` and never enter state, run-set,
+evidence, output, stdout, or Pack data. The job parser rejects an
+in-repository private output root. The legacy ignored repository paths remain
+available only for the repository's own public visual-QA fixtures.
 
 Inspect or initialize the workflow without a credential, upload, or model call:
 

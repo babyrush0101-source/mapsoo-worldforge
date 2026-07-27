@@ -4,6 +4,12 @@ import {
   it,
   vi,
 } from 'vitest';
+import {
+  mkdtemp,
+  rm,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 
 import {
   createProductionArtPlan,
@@ -24,11 +30,15 @@ import {
   encodeRgbaPng,
 } from '../canvas/encode-png';
 import {
+  createPrivateSpriteCookReferenceCache,
+} from './private-spritecook-reference-cache';
+import {
   createSpriteCookProductionArtProvider,
   selectSpriteCookIntentSize,
   SPRITECOOK_GENERATE_ENDPOINT,
   SPRITECOOK_IMPORT_ENDPOINT,
   SPRITECOOK_PRODUCTION_ART_PROVIDER_ID,
+  type SpriteCookProductionArtExecutionStats,
 } from './spritecook-production-art-provider';
 
 async function sha256(bytes: Uint8Array): Promise<string> {
@@ -191,11 +201,15 @@ describe('SpriteCook production art source adapter', () => {
         headers: { 'content-type': 'image/png' },
       });
     }) as unknown as typeof fetch;
+    let executionStats: SpriteCookProductionArtExecutionStats | undefined;
     const provider = createSpriteCookProductionArtProvider({
       fetchImpl,
       model: 'gemini-3.1-flash-image',
       quality: 'medium',
       resolution: '2K',
+      onExecutionStats: (stats) => {
+        executionStats = stats;
+      },
     });
 
     const result = await provider.generate(
@@ -249,6 +263,236 @@ describe('SpriteCook production art source adapter', () => {
     expect(view.getUint32(16)).toBe(1_536);
     expect(view.getUint32(20)).toBe(1_024);
     expect(JSON.stringify(result)).not.toContain('sc_test_runtime_only');
+    expect(executionStats).toEqual({
+      httpRequests: 4,
+      importedReferenceIds: [
+        'environment-reference',
+        'character-reference',
+      ],
+      reusedReferenceIds: [],
+    });
+  });
+
+  it('uses two requests when both account-scoped references are cached', async () => {
+    const requests: string[] = [];
+    const fetchImpl = vi.fn(async (
+      input: string | URL | Request,
+    ) => {
+      const url = input.toString();
+      requests.push(url);
+      if (url === SPRITECOOK_GENERATE_ENDPOINT) {
+        return new Response(JSON.stringify({
+          job_id: 'job-cache-hit',
+          status: 'succeeded',
+          assets: [{
+            id: 'asset-generated-cache-hit',
+            url: 'https://api.spritecook.ai/v1/assets/asset-generated-cache-hit/content',
+          }],
+        }), { status: 200 });
+      }
+      return new Response(Uint8Array.from(sourcePng()).buffer, {
+        status: 200,
+        headers: { 'content-type': 'image/png' },
+      });
+    }) as unknown as typeof fetch;
+    let executionStats: SpriteCookProductionArtExecutionStats | undefined;
+    const provider = createSpriteCookProductionArtProvider({
+      fetchImpl,
+      referenceAssetCache: {
+        resolve: async (descriptor) => ({
+          assetId: descriptor.role === 'character'
+            ? 'asset-character-cached'
+            : 'asset-environment-cached',
+          source: 'cache',
+        }),
+      },
+      onExecutionStats: (stats) => {
+        executionStats = stats;
+      },
+    });
+
+    await provider.generate(
+      await job(),
+      { credential: 'sc_test_runtime_only' },
+    );
+
+    expect(requests).toEqual([
+      SPRITECOOK_GENERATE_ENDPOINT,
+      'https://api.spritecook.ai/v1/assets/asset-generated-cache-hit/content',
+    ]);
+    expect(executionStats).toEqual({
+      httpRequests: 2,
+      importedReferenceIds: [],
+      reusedReferenceIds: [
+        'environment-reference',
+        'character-reference',
+      ],
+    });
+  });
+
+  it('imports only a cache miss and reports three actual requests', async () => {
+    const requests: string[] = [];
+    const fetchImpl = vi.fn(async (
+      input: string | URL | Request,
+    ) => {
+      const url = input.toString();
+      requests.push(url);
+      if (url === SPRITECOOK_IMPORT_ENDPOINT) {
+        return new Response(JSON.stringify({
+          id: 'asset-character-imported-once',
+        }), { status: 200 });
+      }
+      if (url === SPRITECOOK_GENERATE_ENDPOINT) {
+        return new Response(JSON.stringify({
+          job_id: 'job-cache-mixed',
+          status: 'succeeded',
+          assets: [{
+            id: 'asset-generated-cache-mixed',
+            url: 'https://api.spritecook.ai/v1/assets/asset-generated-cache-mixed/content',
+          }],
+        }), { status: 200 });
+      }
+      return new Response(Uint8Array.from(sourcePng()).buffer, {
+        status: 200,
+        headers: { 'content-type': 'image/png' },
+      });
+    }) as unknown as typeof fetch;
+    let executionStats: SpriteCookProductionArtExecutionStats | undefined;
+    const provider = createSpriteCookProductionArtProvider({
+      fetchImpl,
+      referenceAssetCache: {
+        resolve: async (descriptor, importAsset) => descriptor.role === 'character'
+          ? {
+            assetId: await importAsset(),
+            source: 'import',
+          }
+          : {
+            assetId: 'asset-environment-cached',
+            source: 'cache',
+          },
+      },
+      onExecutionStats: (stats) => {
+        executionStats = stats;
+      },
+    });
+
+    await provider.generate(
+      await job(),
+      { credential: 'sc_test_runtime_only' },
+    );
+
+    expect(requests).toHaveLength(3);
+    expect(requests[0]).toBe(SPRITECOOK_IMPORT_ENDPOINT);
+    expect(requests[1]).toBe(SPRITECOOK_GENERATE_ENDPOINT);
+    expect(executionStats).toEqual({
+      httpRequests: 3,
+      importedReferenceIds: ['character-reference'],
+      reusedReferenceIds: ['environment-reference'],
+    });
+  });
+
+  it('reuses one persisted private cache across two complete provider tasks', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'mapsoo-spritecook-provider-cache-'));
+    try {
+      const requests: string[] = [];
+      let importCount = 0;
+      let generationCount = 0;
+      const fetchImpl = vi.fn(async (
+        input: string | URL | Request,
+      ) => {
+        const url = input.toString();
+        requests.push(url);
+        if (url === SPRITECOOK_IMPORT_ENDPOINT) {
+          importCount += 1;
+          return new Response(JSON.stringify({
+            id: `asset-persisted-reference-${importCount}`,
+          }), { status: 200 });
+        }
+        if (url === SPRITECOOK_GENERATE_ENDPOINT) {
+          generationCount += 1;
+          return new Response(JSON.stringify({
+            job_id: `job-persisted-cache-${generationCount}`,
+            status: 'succeeded',
+            assets: [{
+              id: `asset-generated-persisted-${generationCount}`,
+              url: `https://api.spritecook.ai/v1/assets/generated-persisted-${generationCount}/content`,
+            }],
+          }), { status: 200 });
+        }
+        return new Response(Uint8Array.from(sourcePng()).buffer, {
+          status: 200,
+          headers: { 'content-type': 'image/png' },
+        });
+      }) as unknown as typeof fetch;
+      const stats: SpriteCookProductionArtExecutionStats[] = [];
+      const makeProvider = () => createSpriteCookProductionArtProvider({
+        fetchImpl,
+        referenceAssetCache: createPrivateSpriteCookReferenceCache({
+          rootDirectory: root,
+          credential: 'sc_test_runtime_only',
+        }),
+        onExecutionStats: (value) => {
+          stats.push(value);
+        },
+      });
+
+      await makeProvider().generate(
+        await job(),
+        { credential: 'sc_test_runtime_only' },
+      );
+      await makeProvider().generate(
+        await job(),
+        { credential: 'sc_test_runtime_only' },
+      );
+
+      expect(requests.filter((url) => url === SPRITECOOK_IMPORT_ENDPOINT))
+        .toHaveLength(2);
+      expect(requests.filter((url) => url === SPRITECOOK_GENERATE_ENDPOINT))
+        .toHaveLength(2);
+      expect(requests).toHaveLength(6);
+      expect(stats.map(({ httpRequests }) => httpRequests)).toEqual([4, 2]);
+      expect(stats[1]).toMatchObject({
+        importedReferenceIds: [],
+        reusedReferenceIds: [
+          'environment-reference',
+          'character-reference',
+        ],
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('does not silently re-import cached references after a stale-asset failure', async () => {
+    const fetchImpl = vi.fn(async (
+      input: string | URL | Request,
+    ) => {
+      if (input.toString() !== SPRITECOOK_GENERATE_ENDPOINT) {
+        throw new Error('No fallback request is allowed.');
+      }
+      return new Response(JSON.stringify({
+        error: 'asset_not_found',
+      }), { status: 404 });
+    }) as unknown as typeof fetch;
+    const provider = createSpriteCookProductionArtProvider({
+      fetchImpl,
+      referenceAssetCache: {
+        resolve: async (descriptor) => ({
+          assetId: descriptor.role === 'character'
+            ? 'asset-character-stale'
+            : 'asset-environment-stale',
+          source: 'cache',
+        }),
+      },
+    });
+
+    await expect(provider.generate(
+      await job(),
+      { credential: 'sc_test_runtime_only' },
+    )).rejects.toMatchObject({
+      code: 'production-provider.execution-failed',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('requires provider-bound four-request authorization before any upload', async () => {

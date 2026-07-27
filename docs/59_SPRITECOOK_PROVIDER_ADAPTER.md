@@ -1,7 +1,7 @@
 # SpriteCook production adapter
 
-Status: **implemented and tested with mocked HTTP; zero live requests made;
-internal-review only**
+Status: **implemented with private cross-task reference reuse and tested with
+mocked HTTP; zero live requests made; internal-review only**
 
 ## Purpose
 
@@ -21,12 +21,13 @@ Official references:
 
 ## Implemented request boundary
 
-One WorldForge production task uses at most four bounded HTTP requests:
+One WorldForge production task uses two to four bounded HTTP requests:
 
 ```text
 authorized environment reference ─┐
-                                  ├─> owned SpriteCook asset ids
-authorized character reference ───┘
+                                  ├─> private account-scoped id cache
+authorized character reference ───┘                 │
+                                      cache miss ───┴─> owned SpriteCook id
                                       |
 shared ProductionArtPrompt + ids ─────┴─> generate-sync
                                                |
@@ -63,6 +64,48 @@ delete those external assets automatically. A real execution therefore needs
 explicit reference-upload consent even when the user already owns the source
 images.
 
+## Private reference reuse
+
+Jobs prepared through `world-delivery:workspace` use an absolute
+`private_output_root` outside the repository. The workflow derives this cache
+location without adding it to public state or Pack data:
+
+```text
+<private_output_root>/provider-cache/spritecook/v1/
+```
+
+The cache remains an adapter concern:
+
+- it stores one opaque SpriteCook `asset_id` per entry;
+- its filename and key are HMAC-SHA-256 bindings over the runtime credential,
+  provider, reference role, media type, dimensions, byte count, and exact
+  reference digest;
+- it stores no credential, credential digest, local path, reference id,
+  filename, prompt, URL, original reference digest, or private consumer data;
+- renamed local references with the same exact bytes are reused, while a
+  different SpriteCook credential cannot reuse the entry;
+- a per-key exclusive lock covers the remote import and an fsynced temporary
+  file is atomically promoted, preventing deliberate duplicate concurrent
+  imports across workflows;
+- a normal import failure releases only its owned lock. A process crash may
+  leave an exact `.lock`; it is never deleted automatically. Inspect and
+  remove only that lock after confirming no workflow is active;
+- malformed, oversized, symlinked, tampered, or unsafe-ID entries fail closed;
+- if SpriteCook no longer accepts a cached ID, the task fails without silently
+  re-importing or spending an unapproved extra request.
+
+With two cached references a task makes two HTTP requests (generate and
+download). One miss makes three; two misses make four. Authorization remains a
+hard maximum of four and the execution summary reports the actual count. The
+resumable workflow continues to count one potentially billed generation
+**task attempt**, not free import/download transport calls.
+
+The standalone runner enables caching only through an explicit
+`--spritecook-asset-cache-root` outside the repository. The complete private
+workflow adds it automatically. Its child process receives only the selected
+provider credential and a small system-variable allowlist instead of the
+parent's full environment.
+
 ## Zero-request use
 
 Inspect a task without a key, upload, or credit use:
@@ -94,22 +137,31 @@ Both commands make zero remote requests. Real execution additionally requires
 Never put the key in JSON, a command argument, chat, Pack, receipt, issue, or
 committed environment file.
 
-## What remains separate
+## Character animation compatibility decision
 
-The first adapter deliberately uses the small generic `generate-sync` surface.
-It does not yet claim that SpriteCook's dedicated character workflow has been
-mapped into WorldForge's exact multi-action atlas contract, or that its
-top-down/platformer TileSet export can bypass WorldForge review. Those are
-useful next adapters:
+SpriteCook now documents `/v1/api/characters`, batched character animation
+runs, and `animate-sync`. These are useful, but they are not silently selected:
 
-1. cache imported `asset_id` values in the private workspace so later tasks do
-   not upload the same references again;
-2. map the dedicated base-character and animation run into exact profile pose
-   cells, retaining the shared semantic identity gate;
-3. admit top-down/platformer terrain exports through the existing neutral
+1. `/characters` generates a new 64 × 64 base from text. WorldForge starts
+   from an arbitrary user-owned character image plus human-confirmed identity
+   semantics, so replacing it with a newly invented base would break the
+   identity requirement.
+2. `animate-sync` produces one motion from one owned asset. Mapping every
+   WorldForge action/direction clip separately would multiply paid calls and
+   still require deterministic atlas assembly and identity review.
+3. The batched character endpoint becomes eligible only after mocked and then
+   explicitly authorized live evidence proves that an imported arbitrary
+   character can be its canonical base and that returned preset IDs cover the
+   exact WorldForge pose inventory.
+
+Until those conditions are proved, the provider-neutral full-sheet task
+remains the honest default and does not claim model-native temporal animation.
+Other useful next adapters are:
+
+1. admit top-down/platformer terrain exports through the existing neutral
    terrain-mask importer;
-4. keep isometric output atlas-only, as SpriteCook itself documents;
-5. compare a real candidate set against the OpenAI path through the same human
+2. keep isometric output atlas-only, as SpriteCook itself documents;
+3. compare a real candidate set against the OpenAI path through the same human
    art, rights, Godot, and physical-device gates.
 
 No live SpriteCook output, credit balance, account connection, human art pass,

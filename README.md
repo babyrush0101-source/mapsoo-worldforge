@@ -172,7 +172,12 @@ implements that same neutral port for all four profiles. Its default is a
 zero-request dry-run; an execution imports at most two authorized references,
 submits one synchronous generation, downloads one allowlisted PNG, and then
 hands the candidate to the existing provider-independent normalization and
-review path. No live SpriteCook request or account connection is claimed.
+review path. Complete private workflows reuse imported IDs through an
+account-scoped HMAC cache outside the repository, reducing later tasks from
+four HTTP calls to two without persisting keys, paths, prompts, reference
+names, or raw digests. Concurrent imports use per-reference locks and atomic
+publication; invalid or stale cache data fails without a silent paid retry.
+No live SpriteCook request or account connection is claimed.
 
 A separately labelled **synthetic technical fixture** now exercises that full
 path without a model call. Its deterministic candidate passed real headless

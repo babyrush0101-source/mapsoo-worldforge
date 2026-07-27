@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { relative, resolve, sep } from 'node:path';
+import {
+  isAbsolute,
+  relative,
+  resolve,
+  sep,
+} from 'node:path';
 
 import { normalizeProductionArtPng } from '../src/adapters/normalize-production-art-png';
 import {
@@ -26,8 +31,12 @@ import {
   selectSpriteCookIntentSize,
   SPRITECOOK_DEFAULT_MODEL,
   SPRITECOOK_PRODUCTION_ART_PROVIDER_ID,
+  type SpriteCookProductionArtExecutionStats,
   type SpriteCookProductionArtResolution,
 } from '../src/adapters/spritecook/spritecook-production-art-provider';
+import {
+  createPrivateSpriteCookReferenceCache,
+} from '../src/adapters/spritecook/private-spritecook-reference-cache';
 import {
   createProductionArtPlan,
   type ProductionArtTask,
@@ -66,6 +75,7 @@ const VALUE_FLAGS = new Set([
   '--provider',
   '--model',
   '--resolution',
+  '--spritecook-asset-cache-root',
   '--profile',
   '--task',
   '--quality',
@@ -94,6 +104,7 @@ interface Arguments {
   readonly provider: ProductionArtProviderChoice;
   readonly model?: string;
   readonly resolution: SpriteCookProductionArtResolution;
+  readonly spriteCookAssetCacheRoot?: string;
   readonly profile: WorldAssetProfile;
   readonly taskId: string;
   readonly quality: OpenAiProductionArtQuality;
@@ -140,6 +151,7 @@ function usage(): string {
     '  - Non-scene tasks require --approved-direction from the accepted scene-direction round.',
     '  - Player animation tasks require a portable --character-id; it is not a private display name.',
     '  - OpenAI makes one request; SpriteCook makes at most four bounded requests including imports and download.',
+    '  - --spritecook-asset-cache-root enables account-scoped reference reuse only in an explicit private directory outside the repository.',
     `  - Candidate files default to ignored ${DEFAULT_OUTPUT_ROOT}/ until human review.`,
     '  - --output-root can keep all candidate bytes in a private workspace outside the repository.',
   ].join('\n');
@@ -178,8 +190,17 @@ function parseArguments(argv: readonly string[]): Arguments {
   if (!['1K', '2K', '4K'].includes(resolution)) {
     throw new Error(`Unsupported SpriteCook resolution: ${resolution}.`);
   }
-  if (provider === 'openai' && (values.has('--model') || values.has('--resolution'))) {
-    throw new Error('--model and --resolution are accepted only with --provider spritecook.');
+  if (
+    provider === 'openai'
+    && (
+      values.has('--model')
+      || values.has('--resolution')
+      || values.has('--spritecook-asset-cache-root')
+    )
+  ) {
+    throw new Error(
+      '--model, --resolution, and --spritecook-asset-cache-root are accepted only with --provider spritecook.',
+    );
   }
   return Object.freeze({
     execute: booleans.has('--execute'),
@@ -188,6 +209,13 @@ function parseArguments(argv: readonly string[]): Arguments {
     provider: provider as ProductionArtProviderChoice,
     ...(values.has('--model') ? { model: values.get('--model') } : {}),
     resolution: resolution as SpriteCookProductionArtResolution,
+    ...(values.has('--spritecook-asset-cache-root')
+      ? {
+        spriteCookAssetCacheRoot: resolve(
+          values.get('--spritecook-asset-cache-root')!,
+        ),
+      }
+      : {}),
     profile: profile as WorldAssetProfile,
     taskId: values.get('--task') ?? 'scene-direction',
     quality: quality as OpenAiProductionArtQuality,
@@ -309,6 +337,25 @@ function assertExecutionArguments(args: Arguments, task: ProductionArtTask): voi
     throw new Error(
       '--character-identity-digest-sha256 is accepted only for a player animation task.',
     );
+  }
+  if (args.spriteCookAssetCacheRoot) {
+    const repositoryRoot = resolve(process.cwd());
+    const cacheRelativePath = relative(
+      repositoryRoot,
+      args.spriteCookAssetCacheRoot,
+    );
+    if (
+      cacheRelativePath === ''
+      || (
+        cacheRelativePath !== '..'
+        && !cacheRelativePath.startsWith(`..${sep}`)
+        && !isAbsolute(cacheRelativePath)
+      )
+    ) {
+      throw new Error(
+        '--spritecook-asset-cache-root must resolve outside the repository.',
+      );
+    }
   }
 }
 
@@ -447,7 +494,9 @@ function dryRunSummary(args: Arguments, task: ProductionArtTask): object {
       ? {
         resolution: args.resolution,
         maximum_http_requests: 4,
-        reference_import_policy: 'per-task-private-upload',
+        reference_import_policy: args.spriteCookAssetCacheRoot
+          ? 'private-account-scoped-cache'
+          : 'per-task-private-upload',
       }
       : { maximum_http_requests: 1 }),
     required_reference_roles: task.reference_roles,
@@ -523,12 +572,25 @@ async function main(): Promise<void> {
     allow_prompt_upload: true,
     max_requests: args.provider === 'openai' ? 1 : 4,
   });
+  let spriteCookExecutionStats:
+    SpriteCookProductionArtExecutionStats | undefined;
   const provider = args.provider === 'openai'
     ? createOpenAiProductionArtProvider({ quality: args.quality })
     : createSpriteCookProductionArtProvider({
       quality: args.quality,
       resolution: args.resolution,
       ...(args.model ? { model: args.model } : {}),
+      ...(args.spriteCookAssetCacheRoot
+        ? {
+          referenceAssetCache: createPrivateSpriteCookReferenceCache({
+            rootDirectory: args.spriteCookAssetCacheRoot,
+            credential,
+          }),
+        }
+        : {}),
+      onExecutionStats: (stats) => {
+        spriteCookExecutionStats = stats;
+      },
     });
   const trusted = await runProductionArtProvider(provider, {
     plan,
@@ -644,7 +706,20 @@ async function main(): Promise<void> {
       : 'candidate-written',
     remote_request_count: args.provider === 'openai'
       ? 1
-      : references.length + 2,
+      : spriteCookExecutionStats?.httpRequests ?? references.length + 2,
+    ...(args.provider === 'spritecook'
+      ? {
+        reference_cache: args.spriteCookAssetCacheRoot
+          ? {
+            status: 'enabled-private',
+            imported_reference_count:
+              spriteCookExecutionStats?.importedReferenceIds.length ?? 0,
+            reused_reference_count:
+              spriteCookExecutionStats?.reusedReferenceIds.length ?? 0,
+          }
+          : { status: 'disabled' },
+      }
+      : {}),
     profile: args.profile,
     task_id: task.task_id,
     source_sha256: normalized.evidence.source.sha256,
