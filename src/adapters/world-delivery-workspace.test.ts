@@ -332,6 +332,12 @@ describe('World Runner delivery finalization', () => {
       world_id: 'mist-harbor-world',
       pack_sha256: 'a'.repeat(64),
       runtime_artifact_sha256: 'b'.repeat(64),
+      character_binding: {
+        status: 'bound',
+        profile_revision_id: 'test-character',
+        revision_sha256: 'c'.repeat(64),
+        atlas_sha256: 'd'.repeat(64),
+      },
     };
     expect(validate(valid)).toBe(true);
     expect(validate({ ...valid, private_product_id: 'must-not-cross' })).toBe(false);
@@ -356,6 +362,7 @@ describe('World Runner delivery finalization', () => {
         .fill(255),
     );
     const revision = characterRevision('topdown-farm', atlas);
+    const revisionBytes = serializeCharacterProfileRevisionCanonical(revision);
     const contract = runtimeContract('topdown-farm', sha(pack));
     const report = {
       schema_version: '1.0.0',
@@ -365,6 +372,12 @@ describe('World Runner delivery finalization', () => {
       world_id: contract.world.world_id,
       pack_sha256: sha(pack),
       runtime_artifact_sha256: sha(pck),
+      character_binding: {
+        status: 'bound',
+        profile_revision_id: revision.profile_revision_id,
+        revision_sha256: sha(revisionBytes),
+        atlas_sha256: sha(atlas),
+      },
     };
     await Promise.all([
       writeFile(resolve(bundle, 'packs/world.zip'), pack),
@@ -372,7 +385,7 @@ describe('World Runner delivery finalization', () => {
       writeFile(resolve(bundle, 'runtime/contract.json'), `${JSON.stringify(contract)}\n`),
       writeFile(
         resolve(bundle, 'characters/revision.json'),
-        serializeCharacterProfileRevisionCanonical(revision),
+        revisionBytes,
       ),
       writeFile(resolve(bundle, revision.atlas.path), atlas),
       writeFile(resolve(bundle, 'evidence/smoke.json'), `${JSON.stringify(report)}\n`),

@@ -449,6 +449,83 @@ async function copyTrustedProject(stagingRoot, managed, importedWorldDir, worldI
   return records;
 }
 
+async function inspectCharacterBinding(bundleRoot, revisionInput, atlasInput, profile) {
+  if (!revisionInput && !atlasInput) return null;
+  if (!revisionInput || !atlasInput) {
+    throw new Error('Character revision and atlas must be provided together.');
+  }
+  const revisionPath = await realFileInside(
+    bundleRoot,
+    revisionInput,
+    'Character revision',
+  );
+  const atlasPath = await realFileInside(
+    bundleRoot,
+    atlasInput,
+    'Character atlas',
+  );
+  const revisionBytes = Uint8Array.from(await readFile(revisionPath));
+  const atlasBytes = Uint8Array.from(await readFile(atlasPath));
+  let revision;
+  try {
+    revision = JSON.parse(strictUtf8(revisionBytes, 'Character revision'));
+  } catch (error) {
+    throw new Error(`Character revision is not valid JSON: ${error.message}`);
+  }
+  exactKeys(revision, [
+    'schema_version',
+    'document_type',
+    'profile_revision_id',
+    'character_id',
+    'profile',
+    'atlas',
+    'frame_geometry',
+    'pivot',
+    'clips',
+    'source_identity',
+    'rights',
+  ], 'Character revision');
+  if (revision.schema_version !== '1.0.0'
+      || revision.document_type !== 'character-profile-revision'
+      || revision.profile !== profile
+      || !SAFE_ID.test(revision.profile_revision_id ?? '')
+      || revision.profile_revision_id.length > 80) {
+    throw new Error('Character revision identity or profile does not match the world.');
+  }
+  if (!revision.atlas || typeof revision.atlas !== 'object' || Array.isArray(revision.atlas)
+      || !Number.isSafeInteger(revision.atlas.bytes)
+      || revision.atlas.bytes !== atlasBytes.byteLength
+      || !SHA256.test(revision.atlas.sha256 ?? '')
+      || revision.atlas.sha256 !== sha256Bytes(atlasBytes)) {
+    throw new Error('Character atlas bytes do not match the revision descriptor.');
+  }
+  return Object.freeze({
+    revisionPath,
+    atlasPath,
+    profileRevisionId: revision.profile_revision_id,
+    revisionBytes,
+    revisionSha256: sha256Bytes(revisionBytes),
+    atlasBytes,
+    atlasSha256: sha256Bytes(atlasBytes),
+  });
+}
+
+async function copyCharacterBinding(stagingRoot, binding, records) {
+  if (!binding) return;
+  const root = `mapsoo_characters/${binding.profileRevisionId}`;
+  for (const [source, name] of [
+    [binding.revisionPath, 'character-profile-revision.json'],
+    [binding.atlasPath, 'character-profile-atlas.png'],
+  ]) {
+    const target = `${root}/${name}`;
+    const path = join(stagingRoot, ...target.split('/'));
+    await mkdir(dirname(path), { recursive: true });
+    await copyFile(source, path);
+    records.push({ source: path, target: `res://${target}` });
+  }
+  records.sort((left, right) => left.target.localeCompare(right.target, 'en'));
+}
+
 export async function inspectWorldRunnerPckInput(input) {
   const worldId = String(input.worldId ?? '');
   if (!SAFE_ID.test(worldId) || worldId.length > 80) {
@@ -468,6 +545,12 @@ export async function inspectWorldRunnerPckInput(input) {
   const packBytes = Uint8Array.from(await readFile(worldPackPath));
   const manifest = await manifestRecordFromPack(packBytes, worldId);
   const managed = await verifyManagedImport(importedWorldDir, worldId, manifest);
+  const characterBinding = await inspectCharacterBinding(
+    bundleRoot,
+    input.characterRevisionPath,
+    input.characterAtlasPath,
+    manifest.profile,
+  );
   return Object.freeze({
     bundleRoot,
     worldId,
@@ -478,6 +561,7 @@ export async function inspectWorldRunnerPckInput(input) {
     manifestSha256: manifest.sha256,
     godotSerialization: managed.state.godot_serialization,
     managed,
+    characterBinding,
   });
 }
 
@@ -513,6 +597,7 @@ export async function buildWorldRunnerPck(input) {
       inspected.importedWorldDir,
       inspected.worldId,
     );
+    await copyCharacterBinding(stagingRoot, inspected.characterBinding, inventory);
     const inventoryPath = join(temporary, 'inventory.json');
     await writeFile(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`, { flag: 'wx' });
     const buildRun = await runGodot(godotBin, [
@@ -529,19 +614,35 @@ export async function buildWorldRunnerPck(input) {
     const pckBytes = Uint8Array.from(await readFile(temporaryPck));
     if (pckBytes.byteLength < 64) throw new Error('Generated PCK is unexpectedly small.');
     const runtimeArtifactSha256 = sha256Bytes(pckBytes);
+    const characterArguments = inspected.characterBinding
+      ? [
+        `--character-revision-id=${inspected.characterBinding.profileRevisionId}`,
+        `--character-revision-sha256=${inspected.characterBinding.revisionSha256}`,
+      ]
+      : [];
     const smokeRun = await runGodot(godotBin, [
       '--headless',
       '--main-pack', temporaryPck,
       '--',
       `--world-id=${inspected.worldId}`,
       `--pack-sha256=${inspected.packSha256}`,
+      ...characterArguments,
+      '--delivery-smoke=true',
     ], 'Packaged world headless smoke');
+    const characterMarker = inspected.characterBinding
+      ? [
+        'character_binding=bound',
+        `character_revision_id=${inspected.characterBinding.profileRevisionId}`,
+        `character_revision_sha256=${inspected.characterBinding.revisionSha256}`,
+      ].join(' ')
+      : 'character_binding=not-requested';
     const expectedMarker = [
       'MAPSOO_WORLD_RUNNER_PCK_OK',
       `world_id=${inspected.worldId}`,
       `pack_sha256=${inspected.packSha256}`,
       `profile=${inspected.profile}`,
       `scene=res://mapsoo_imports/${inspected.worldId}/${inspected.worldId}.world.tscn`,
+      characterMarker,
       'physical_raspberry_pi=not-tested',
     ].join(' ');
     if (!smokeRun.output.split(/\r?\n/u).includes(expectedMarker)) {
@@ -555,6 +656,14 @@ export async function buildWorldRunnerPck(input) {
       world_id: inspected.worldId,
       pack_sha256: inspected.packSha256,
       runtime_artifact_sha256: runtimeArtifactSha256,
+      character_binding: inspected.characterBinding
+        ? {
+          status: 'bound',
+          profile_revision_id: inspected.characterBinding.profileRevisionId,
+          revision_sha256: inspected.characterBinding.revisionSha256,
+          atlas_sha256: inspected.characterBinding.atlasSha256,
+        }
+        : { status: 'not-requested' },
     };
     const receipt = {
       schema_version: '1.0.0',
@@ -574,6 +683,16 @@ export async function buildWorldRunnerPck(input) {
         platform: process.platform,
         architecture: process.arch,
       },
+      character_binding: inspected.characterBinding
+        ? {
+          embedded: true,
+          profile_revision_id: inspected.characterBinding.profileRevisionId,
+          revision_bytes: inspected.characterBinding.revisionBytes.byteLength,
+          revision_sha256: inspected.characterBinding.revisionSha256,
+          atlas_bytes: inspected.characterBinding.atlasBytes.byteLength,
+          atlas_sha256: inspected.characterBinding.atlasSha256,
+        }
+        : { embedded: false },
       physical_raspberry_pi_tested: false,
     };
     await writeExclusiveOrIdentical(pckPath, pckBytes, 'PCK');

@@ -147,24 +147,58 @@ The shortest controlled path is:
 4. prepare the exact importer-managed scene, TileSet and integrity state with
    the same pinned Godot version used by the runtime;
 5. run `pnpm world-runner:pck:build -- ...` against the frozen Pack and that
-   exact three-file directory;
+   exact three-file directory, with the approved character revision and atlas
+   when the delivery must enter the world as that character;
 6. retain the generated PCK, headless smoke report and build receipt, all bound
    to the exact Pack SHA-256;
 7. combine the target-neutral PCK with the separately verified Linux ARM64
    Godot executable, stage both on the Pi and launch with
-   `godot --main-pack <verified-pck>`.
+   `godot --main-pack <verified-pck> -- --world-id=<id>
+   --pack-sha256=<sha256> --character-revision-id=<id>
+   --character-revision-sha256=<sha256>`.
 
 The PCK is Godot content, not an ARM64 executable. `arm64` identifies the
 runtime target in the delivery. The build receipt separately records the
 actual build-host platform and does not turn a desktop smoke into physical Pi
 evidence.
 
-The launcher accepts only bundled safe world IDs and always resolves the exact generated scene path. Pack data cannot supply scripts, shaders, URLs or arbitrary target scenes.
+The launcher accepts only bundled safe world and character revision IDs and
+lowercase SHA-256 digests. It resolves the exact generated scene and fixed
+embedded character paths itself. Pack data cannot supply scripts, shaders,
+URLs or arbitrary target scenes.
 
-Character staging is a separate transaction: validate the
-`CharacterProfileRevision`, copy its two source-free artifacts under the
-fixed character root, and provide the trusted revision hash at launch. Do not
-merge an internal-review/private character into a public world archive.
+The reusable multi-world shell can still stage a character as a separate
+transaction. The one-click dynamic PCK path instead embeds the exact reviewed
+`CharacterProfileRevision` and atlas under the same fixed character root, then
+smoke-binds them before delivery. In either mode, do not merge an
+internal-review/private character into a public world archive or release.
+
+## Physical acceptance receipt
+
+After staging a PCK that embeds the reviewed character pair, run this command
+on the physical Pi 4B, not on the build workstation:
+
+```bash
+pnpm pi4:physical:accept -- \
+  --pck <verified-world.pck> \
+  --build-receipt <pck-build-receipt.json> \
+  --godot-bin <linux-arm64-godot> \
+  --observation-seconds 600 \
+  --out <pi4-physical-acceptance.json>
+```
+
+The command refuses non-Pi-4B hardware, non-ARM64 Node.js, changed PCK bytes,
+a world-only PCK, or missing exact character evidence. Godot must report both
+the exact world readiness and character binding, remain active for the whole
+observation, then provide frame samples and peak static memory. Acceptance
+also requires average FPS of at least 24, P95 frame time no more than
+66.667 ms, peak static memory and peak process RSS each no more than 1.5 GiB,
+startup no more than 30 seconds and temperature no more than 85 °C.
+
+The resulting `mapsoo-pi4-physical-acceptance-1.0` receipt contains no
+hostname, IP address, serial number or local path. The earlier PCK build
+receipt deliberately remains `physical_raspberry_pi_tested: false`; physical
+evidence is a separate immutable document.
 
 ## What is and is not verified
 

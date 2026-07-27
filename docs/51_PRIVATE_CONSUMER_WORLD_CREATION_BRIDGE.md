@@ -101,6 +101,8 @@ pnpm world-runner:pck:build -- \
   --world-pack packs/world.zip \
   --imported-world imported/<world-id> \
   --world-id <world-id> \
+  --character-revision characters/revision.json \
+  --character-atlas characters/atlas.png \
   --godot-bin <trusted-godot-4.3+-binary> \
   --out runtime/world.pck \
   --report evidence/smoke.json \
@@ -108,10 +110,12 @@ pnpm world-runner:pck:build -- \
 ```
 
 The builder accepts exactly the importer-managed scene, TileSet and integrity
-state. It verifies the Pack manifest hash, state integrity, generated-file
-hashes, world/profile metadata, bundle containment and trusted runtime-script
-references before calling Godot's `PCKPacker`. It then starts Godot from the
-new PCK and requires an exact world ID, Pack SHA-256, profile and scene marker.
+state plus an optional exact character revision/atlas pair. It verifies the
+Pack manifest hash, state integrity, generated-file hashes, world/profile
+metadata, character profile, atlas bytes, bundle containment and trusted
+runtime-script references before calling Godot's `PCKPacker`. It then starts
+Godot from the new PCK and requires exact world, Pack, profile, scene and
+character-binding markers.
 Only after that launch succeeds does it write
 `mapsoo-godot-headless-smoke-report-1.0` and the build receipt.
 
@@ -119,6 +123,16 @@ The `.pck` contains platform-neutral Godot content; it is not an ARM64
 executable. The delivery binds that content to the separately verified Godot
 Linux ARM64 runtime used by the Raspberry Pi. The receipt records the actual
 build host and always says `physical_raspberry_pi_tested: false`.
+When a character pair is supplied, the receipt also binds the embedded
+revision bytes and atlas hashes. The same PCK can then launch interactively
+with only portable world/character IDs and trusted SHA-256 arguments; it does
+not need a source project or an arbitrary private filesystem path.
+
+Physical Pi admission is intentionally later and separate. Run
+`pnpm pi4:physical:accept` on the device to obtain a privacy-minimized receipt
+that binds that exact PCK and embedded character to world-entered,
+character-bound and performance evidence. A desktop build/smoke report cannot
+be promoted into this receipt.
 
 Finally, finalize the handoff:
 
@@ -272,8 +286,11 @@ Implemented in this repository:
 - strict World Runner delivery materializer and JSON Schema;
 - exact-byte delivery finalizer plus strict Godot headless-smoke report schema;
 - enforced PCK fast path for Raspberry Pi 4B;
-- real Godot `PCKPacker` build, launch-from-PCK smoke, build receipt,
+- real Godot `PCKPacker` build, exact embedded-character bind,
+  launch-from-PCK smoke, persistent interactive readiness, build receipt,
   negative input tests, and byte-for-byte reproducibility test;
+- separate fail-closed physical Pi 4B acceptance contract and device-only
+  collector for startup, frames, memory and temperature;
 - deterministic three-profile production review-pack projection plus the
   existing layered-depth Pack 1.0 path.
 

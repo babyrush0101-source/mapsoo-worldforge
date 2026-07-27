@@ -77,6 +77,12 @@ export interface GodotHeadlessSmokeReport {
   readonly world_id: string;
   readonly pack_sha256: string;
   readonly runtime_artifact_sha256: string;
+  readonly character_binding?: Readonly<{
+    status: 'bound';
+    profile_revision_id: string;
+    revision_sha256: string;
+    atlas_sha256: string;
+  }>;
 }
 
 export interface PrepareWorldDeliveryWorkspaceInput {
@@ -403,6 +409,7 @@ function materializeVerificationReport(value: unknown): GodotHeadlessSmokeReport
     'world_id',
     'pack_sha256',
     'runtime_artifact_sha256',
+    ...('character_binding' in value ? ['character_binding'] : []),
   ], 'Godot headless smoke report');
   if (
     value.schema_version !== '1.0.0'
@@ -418,6 +425,28 @@ function materializeVerificationReport(value: unknown): GodotHeadlessSmokeReport
     || !/^[a-f0-9]{64}$/.test(value.runtime_artifact_sha256)
   ) {
     throw new Error('Godot headless smoke report values are invalid.');
+  }
+  if ('character_binding' in value) {
+    if (!isRecord(value.character_binding)) {
+      throw new Error('Godot headless smoke character binding must be an object.');
+    }
+    exactKeys(value.character_binding, [
+      'status',
+      'profile_revision_id',
+      'revision_sha256',
+      'atlas_sha256',
+    ], 'Godot headless smoke character binding');
+    if (
+      value.character_binding.status !== 'bound'
+      || typeof value.character_binding.profile_revision_id !== 'string'
+      || !SAFE_ID.test(value.character_binding.profile_revision_id)
+      || typeof value.character_binding.revision_sha256 !== 'string'
+      || !/^[a-f0-9]{64}$/.test(value.character_binding.revision_sha256)
+      || typeof value.character_binding.atlas_sha256 !== 'string'
+      || !/^[a-f0-9]{64}$/.test(value.character_binding.atlas_sha256)
+    ) {
+      throw new Error('Godot headless smoke character binding values are invalid.');
+    }
   }
   return value as unknown as GodotHeadlessSmokeReport;
 }
@@ -507,6 +536,16 @@ export async function finalizeWorldRunnerDelivery(
     || atlas.sha256 !== revision.atlas.sha256
   ) {
     throw new Error('Character atlas does not match the canonical character revision.');
+  }
+  if (
+    report.character_binding
+    && (
+      report.character_binding.profile_revision_id !== revision.profile_revision_id
+      || report.character_binding.revision_sha256 !== sha256Bytes(storedRevisionBytes)
+      || report.character_binding.atlas_sha256 !== atlas.sha256
+    )
+  ) {
+    throw new Error('Headless smoke report did not bind the exact character revision and atlas.');
   }
   if (
     revision.profile !== intake.profile

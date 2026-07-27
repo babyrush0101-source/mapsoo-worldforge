@@ -9,6 +9,19 @@ const FLAGS = new Set([
   '--world-pack',
   '--imported-world',
   '--world-id',
+  '--character-revision',
+  '--character-atlas',
+  '--godot-bin',
+  '--out',
+  '--report',
+  '--receipt',
+]);
+
+const REQUIRED_FLAGS = new Set([
+  '--bundle-root',
+  '--world-pack',
+  '--imported-world',
+  '--world-id',
   '--godot-bin',
   '--out',
   '--report',
@@ -24,6 +37,8 @@ function usage() {
     '  --world-pack <path-inside-bundle> \\',
     '  --imported-world <directory-inside-bundle> \\',
     '  --world-id <lowercase-kebab-id> \\',
+    '  [--character-revision <path-inside-bundle> \\',
+    '   --character-atlas <path-inside-bundle>] \\',
     '  --godot-bin <trusted-godot-4.3+-binary> \\',
     '  --out <pck-path-inside-bundle> \\',
     '  --report <json-path-inside-bundle> \\',
@@ -44,7 +59,7 @@ function flags(argv) {
     if (result.has(flag)) throw new Error(`Duplicate flag: ${flag}.`);
     result.set(flag, value);
   }
-  for (const flag of FLAGS) {
+  for (const flag of REQUIRED_FLAGS) {
     if (!result.has(flag)) throw new Error(`${flag} is required.`);
   }
   return result;
@@ -62,6 +77,12 @@ async function main() {
     worldPackPath: resolve(bundleRoot, values.get('--world-pack')),
     importedWorldDir: resolve(bundleRoot, values.get('--imported-world')),
     worldId: values.get('--world-id'),
+    characterRevisionPath: values.has('--character-revision')
+      ? resolve(bundleRoot, values.get('--character-revision'))
+      : undefined,
+    characterAtlasPath: values.has('--character-atlas')
+      ? resolve(bundleRoot, values.get('--character-atlas'))
+      : undefined,
     godotBin: resolve(values.get('--godot-bin')),
     pckPath: resolve(bundleRoot, values.get('--out')),
     reportPath: resolve(bundleRoot, values.get('--report')),
@@ -71,6 +92,7 @@ async function main() {
     status: 'world-runner-pck-built',
     world_id: result.report.world_id,
     runtime_artifact_sha256: result.report.runtime_artifact_sha256,
+    character_binding: result.report.character_binding,
     physical_raspberry_pi_tested: false,
     output: result.pckPath,
     report: result.reportPath,

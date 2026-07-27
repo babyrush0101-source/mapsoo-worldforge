@@ -13,6 +13,7 @@
     "manifest_sha256",
     "runtime_artifact",
     "build_host",
+    "character_binding",
     "physical_raspberry_pi_tested"
   ],
   "properties": {
@@ -57,6 +58,46 @@
         "platform": { "type": "string", "minLength": 1, "maxLength": 32 },
         "architecture": { "type": "string", "minLength": 1, "maxLength": 32 }
       }
+    },
+    "character_binding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["embedded"],
+          "properties": {
+            "embedded": { "const": false }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "embedded",
+            "profile_revision_id",
+            "revision_bytes",
+            "revision_sha256",
+            "atlas_bytes",
+            "atlas_sha256"
+          ],
+          "properties": {
+            "embedded": { "const": true },
+            "profile_revision_id": { "$ref": "#/$defs/id" },
+            "revision_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1048576
+            },
+            "revision_sha256": { "$ref": "#/$defs/sha256" },
+            "atlas_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 536870912
+            },
+            "atlas_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
     },
     "physical_raspberry_pi_tested": { "const": false }
   },

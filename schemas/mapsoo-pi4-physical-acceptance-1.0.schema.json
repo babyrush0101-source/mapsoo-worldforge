@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-pi4-physical-acceptance-1.0.schema.json",
+  "title": "Mapsoo Raspberry Pi 4B physical acceptance receipt 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "tested_at",
+    "world_id",
+    "profile",
+    "pack_sha256",
+    "runtime_artifact",
+    "character_binding",
+    "device",
+    "runtime",
+    "thresholds",
+    "checks",
+    "runtime_log_sha256",
+    "physical_raspberry_pi_tested",
+    "verdict"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "pi4-physical-acceptance-receipt" },
+    "tested_at": { "type": "string", "format": "date-time" },
+    "world_id": { "$ref": "#/$defs/id" },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "pack_sha256": { "$ref": "#/$defs/sha256" },
+    "runtime_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "bytes", "sha256"],
+      "properties": {
+        "kind": { "const": "godot-pck" },
+        "bytes": { "type": "integer", "minimum": 64, "maximum": 2147483647 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "character_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_revision_id",
+        "revision_sha256",
+        "atlas_sha256"
+      ],
+      "properties": {
+        "profile_revision_id": { "$ref": "#/$defs/id" },
+        "revision_sha256": { "$ref": "#/$defs/sha256" },
+        "atlas_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "architecture", "os_id", "os_version_id"],
+      "properties": {
+        "model": { "const": "Raspberry Pi 4 Model B" },
+        "architecture": { "const": "arm64" },
+        "os_id": { "$ref": "#/$defs/platform_value" },
+        "os_version_id": { "$ref": "#/$defs/platform_value" }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "godot_version",
+        "renderer",
+        "observation_ms",
+        "startup_ms",
+        "frames",
+        "average_fps",
+        "p95_frame_ms",
+        "peak_static_memory_bytes",
+        "peak_rss_bytes",
+        "temperature_start_c",
+        "temperature_end_c",
+        "temperature_peak_c"
+      ],
+      "properties": {
+        "godot_version": { "$ref": "#/$defs/godot_version" },
+        "renderer": { "const": "gl_compatibility" },
+        "observation_ms": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 900000
+        },
+        "startup_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000
+        },
+        "frames": { "type": "integer", "minimum": 1, "maximum": 5400000 },
+        "average_fps": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "p95_frame_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "peak_static_memory_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967296
+        },
+        "peak_rss_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967296
+        },
+        "temperature_start_c": { "$ref": "#/$defs/temperature" },
+        "temperature_end_c": { "$ref": "#/$defs/temperature" },
+        "temperature_peak_c": { "$ref": "#/$defs/temperature" }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_average_fps",
+        "maximum_p95_frame_ms",
+        "maximum_peak_static_memory_bytes",
+        "maximum_peak_rss_bytes",
+        "maximum_temperature_c",
+        "maximum_startup_ms"
+      ],
+      "properties": {
+        "minimum_average_fps": { "const": 24 },
+        "maximum_p95_frame_ms": { "const": 66.667 },
+        "maximum_peak_static_memory_bytes": { "const": 1610612736 },
+        "maximum_peak_rss_bytes": { "const": 1610612736 },
+        "maximum_temperature_c": { "const": 85 },
+        "maximum_startup_ms": { "const": 30000 }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "device_model_verified",
+        "arm64_verified",
+        "pck_digest_verified",
+        "world_entered",
+        "character_bound",
+        "performance_passed"
+      ],
+      "properties": {
+        "device_model_verified": { "const": true },
+        "arm64_verified": { "const": true },
+        "pck_digest_verified": { "const": true },
+        "world_entered": { "const": true },
+        "character_bound": { "const": true },
+        "performance_passed": { "const": true }
+      }
+    },
+    "runtime_log_sha256": { "$ref": "#/$defs/sha256" },
+    "physical_raspberry_pi_tested": { "const": true },
+    "verdict": { "const": "passed" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "platform_value": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9._+-]+$"
+    },
+    "godot_version": {
+      "type": "string",
+      "pattern": "^(?:4|[5-9]|[1-9][0-9]+)\\.(?:0|[1-9][0-9]*)(?:\\.(?:0|[1-9][0-9]*))?(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "temperature": {
+      "type": "number",
+      "minimum": -20,
+      "maximum": 120
+    }
+  }
+}

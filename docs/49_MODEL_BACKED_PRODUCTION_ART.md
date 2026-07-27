@@ -664,9 +664,10 @@ This source adapter is a real provider implementation, but the following work is
 still required before claiming “a few dialogue rounds create one complete
 production world”:
 
-- connect confirmed dialogue/model runs to automatic character staging; the
-  provider-neutral revision, neutral player slot and reusable runtime-shell
-  binding now work across all four profiles without rebuilding a world;
+- exercise the now-connected automatic character staging path with reviewed
+  real model outputs; the provider-neutral revision, neutral player slot,
+  embedded one-click PCK binding and reusable-shell mode are implemented
+  across all four profiles;
 - connect accepted layered-depth player, NPC and environment outputs to the
   full `WorldAssetProvider` bundle builder rather than only the review
   assembler;

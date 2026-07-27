@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import {
   copyFile,
   mkdir,
@@ -11,14 +12,33 @@ import {
 } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+import Ajv2020 from 'ajv/dist/2020.js';
 
 import {
   buildWorldRunnerPck,
   inspectWorldRunnerPckInput,
 } from './lib/world-runner-pck.mjs';
+import { parsePi4Metrics } from './lib/pi4-physical-acceptance.mjs';
 
 const WORLD_ID = 'ci-world';
 const PROFILE = 'side-platformer';
+const REPOSITORY_ROOT = fileURLToPath(new URL('../', import.meta.url));
+const CHARACTER_REVISION_SOURCE = join(
+  REPOSITORY_ROOT,
+  'docs',
+  'visual-qa',
+  'production-art',
+  'side-platformer-character-profile-revision-v2.json',
+);
+const CHARACTER_ATLAS_SOURCE = join(
+  REPOSITORY_ROOT,
+  'docs',
+  'visual-qa',
+  'production-art',
+  'side-platformer-character-atlas-v2.png',
+);
 const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
   let value = index;
   for (let bit = 0; bit < 8; bit += 1) {
@@ -114,7 +134,10 @@ async function writeFixture(root, options = {}) {
     `[gd_scene format=3]${extraResource}\n`
       + '[node name="World" type="Node2D"]\n'
       + `metadata/mapsoo_pack_id = "${WORLD_ID}"\n`
-      + `metadata/mapsoo_profile = "${PROFILE}"\n`,
+      + `metadata/mapsoo_profile = "${PROFILE}"\n\n`
+      + '[node name="Player" type="Node2D" parent="."]\n\n'
+      + '[node name="Visual" type="AnimatedSprite2D" parent="Player"]\n'
+      + 'metadata/mapsoo_runtime_slot_id = "player"\n',
     'utf8',
   );
   const tilesetBytes = Buffer.from('[gd_resource type="TileSet" format=3]\n', 'utf8');
@@ -145,7 +168,27 @@ async function writeFixture(root, options = {}) {
       `${JSON.stringify(state, null, 2)}\n`,
     ),
   ]);
-  return { bundle, imported, pack: join(bundle, 'world.zip') };
+  if (options.character) {
+    const character = join(bundle, 'character');
+    await mkdir(character, { recursive: true });
+    await Promise.all([
+      copyFile(
+        CHARACTER_REVISION_SOURCE,
+        join(character, 'character-profile-revision.json'),
+      ),
+      copyFile(
+        CHARACTER_ATLAS_SOURCE,
+        join(character, 'character-profile-atlas.png'),
+      ),
+    ]);
+  }
+  return {
+    bundle,
+    imported,
+    pack: join(bundle, 'world.zip'),
+    characterRevision: join(bundle, 'character', 'character-profile-revision.json'),
+    characterAtlas: join(bundle, 'character', 'character-profile-atlas.png'),
+  };
 }
 
 async function rejects(action, expected) {
@@ -158,10 +201,95 @@ async function rejects(action, expected) {
   throw new Error(`Expected rejection containing: ${expected}`);
 }
 
+async function verifyInteractiveReady(godotBin, pckPath, arguments_, expectedMarker) {
+  await new Promise((resolvePromise, reject) => {
+    const child = spawn(godotBin, [
+      '--headless',
+      '--main-pack', pckPath,
+      '--',
+      ...arguments_,
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    let output = '';
+    let ready = false;
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new Error(`Interactive World Runner readiness timed out: ${output}`));
+    }, 15_000);
+    const consume = (chunk) => {
+      output += chunk.toString('utf8');
+      if (ready || !output.split(/\r?\n/u).includes(expectedMarker)) return;
+      ready = true;
+      setTimeout(() => {
+        if (child.exitCode !== null) {
+          clearTimeout(timeout);
+          reject(new Error('Interactive World Runner exited after its readiness marker.'));
+          return;
+        }
+        child.kill();
+        clearTimeout(timeout);
+        resolvePromise();
+      }, 250);
+    };
+    child.stdout.on('data', consume);
+    child.stderr.on('data', consume);
+    child.on('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.on('exit', (code) => {
+      if (ready) return;
+      clearTimeout(timeout);
+      reject(new Error(`Interactive World Runner exited before readiness (${code}): ${output}`));
+    });
+  });
+}
+
+async function verifyMetricsProbe(godotBin, pckPath, arguments_) {
+  const output = await new Promise((resolvePromise, reject) => {
+    const child = spawn(godotBin, [
+      '--headless',
+      '--main-pack', pckPath,
+      '--',
+      ...arguments_,
+      '--physical-acceptance-seconds=30',
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    let combined = '';
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new Error('Desktop metrics-probe exercise timed out.'));
+    }, 45_000);
+    const consume = (chunk) => {
+      combined += chunk.toString('utf8');
+    };
+    child.stdout.on('data', consume);
+    child.stderr.on('data', consume);
+    child.on('error', reject);
+    child.on('exit', (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) {
+        reject(new Error(`Desktop metrics-probe exercise exited ${code}: ${combined}`));
+        return;
+      }
+      resolvePromise(combined);
+    });
+  });
+  const metrics = parsePi4Metrics(output);
+  if (metrics.observation_ms < 30_000 || metrics.frames < 1) {
+    throw new Error('Desktop metrics-probe exercise did not cover its observation window.');
+  }
+  return metrics;
+}
+
 async function main() {
   const root = await mkdtemp(join(tmpdir(), 'mapsoo-world-runner-pck-'));
   try {
-    const valid = await writeFixture(root, { name: 'valid' });
+    const valid = await writeFixture(root, { name: 'valid', character: true });
     const inspected = await inspectWorldRunnerPckInput({
       bundleRoot: valid.bundle,
       worldPackPath: valid.pack,
@@ -188,6 +316,26 @@ async function main() {
       importedWorldDir: wrongPack.imported,
       worldId: WORLD_ID,
     }), 'manifest does not match');
+    const wrongCharacter = await writeFixture(root, {
+      name: 'wrong-character',
+      character: true,
+    });
+    const changedRevision = JSON.parse(
+      await readFile(wrongCharacter.characterRevision, 'utf8'),
+    );
+    changedRevision.profile = 'topdown-farm';
+    await writeFile(
+      wrongCharacter.characterRevision,
+      `${JSON.stringify(changedRevision, null, 2)}\n`,
+    );
+    await rejects(() => inspectWorldRunnerPckInput({
+      bundleRoot: wrongCharacter.bundle,
+      worldPackPath: wrongCharacter.pack,
+      importedWorldDir: wrongCharacter.imported,
+      worldId: WORLD_ID,
+      characterRevisionPath: wrongCharacter.characterRevision,
+      characterAtlasPath: wrongCharacter.characterAtlas,
+    }), 'does not match the world');
     const outside = join(root, 'outside.zip');
     await copyFile(valid.pack, outside);
     await rejects(() => inspectWorldRunnerPckInput({
@@ -213,6 +361,8 @@ async function main() {
         worldPackPath: valid.pack,
         importedWorldDir: valid.imported,
         worldId: WORLD_ID,
+        characterRevisionPath: valid.characterRevision,
+        characterAtlasPath: valid.characterAtlas,
         godotBin,
         pckPath: join(valid.bundle, 'runtime', `${id}.pck`),
         reportPath: join(valid.bundle, 'reports', `${id}.json`),
@@ -220,18 +370,77 @@ async function main() {
       });
       builds.push(result);
     }
+    const ajv = new Ajv2020({ strict: true, allErrors: true });
+    const [receiptSchema, reportSchema] = await Promise.all([
+      readFile(
+        join(REPOSITORY_ROOT, 'schemas', 'mapsoo-world-runner-pck-build-receipt-1.0.schema.json'),
+        'utf8',
+      ).then(JSON.parse),
+      readFile(
+        join(REPOSITORY_ROOT, 'schemas', 'mapsoo-godot-headless-smoke-report-1.0.schema.json'),
+        'utf8',
+      ).then(JSON.parse),
+    ]);
+    const validateReceipt = ajv.compile(receiptSchema);
+    const validateReport = ajv.compile(reportSchema);
+    for (const build of builds) {
+      if (!validateReceipt(build.receipt)) {
+        throw new Error(`PCK build receipt failed schema: ${ajv.errorsText(validateReceipt.errors)}`);
+      }
+      if (!validateReport(build.report)) {
+        throw new Error(`PCK smoke report failed schema: ${ajv.errorsText(validateReport.errors)}`);
+      }
+    }
     const firstBytes = await readFile(builds[0].pckPath);
     const secondBytes = await readFile(builds[1].pckPath);
     if (sha256(firstBytes) !== sha256(secondBytes)
         || builds[0].report.runtime_artifact_sha256 !== sha256(firstBytes)
         || builds[0].receipt.runtime_artifact.target_runtime_architecture !== 'arm64'
+        || builds[0].receipt.character_binding.embedded !== true
+        || builds[0].report.character_binding.status !== 'bound'
         || builds[0].receipt.physical_raspberry_pi_tested !== false) {
       throw new Error('PCK reproducibility or evidence binding failed.');
     }
+    const binding = builds[0].receipt.character_binding;
+    await verifyInteractiveReady(
+      godotBin,
+      builds[0].pckPath,
+      [
+        `--world-id=${WORLD_ID}`,
+        `--pack-sha256=${inspected.packSha256}`,
+        `--character-revision-id=${binding.profile_revision_id}`,
+        `--character-revision-sha256=${binding.revision_sha256}`,
+      ],
+      [
+        'MAPSOO_WORLD_RUNNER_READY',
+        `world_id=${WORLD_ID}`,
+        `pack_sha256=${inspected.packSha256}`,
+        `profile=${PROFILE}`,
+        `scene=res://mapsoo_imports/${WORLD_ID}/${WORLD_ID}.world.tscn`,
+        'character_binding=bound',
+        `character_revision_id=${binding.profile_revision_id}`,
+        `character_revision_sha256=${binding.revision_sha256}`,
+        'physical_raspberry_pi=not-tested',
+      ].join(' '),
+    );
+    const exercisedMetrics = process.argv.includes('--exercise-metrics')
+      ? await verifyMetricsProbe(
+        godotBin,
+        builds[0].pckPath,
+        [
+          `--world-id=${WORLD_ID}`,
+          `--pack-sha256=${inspected.packSha256}`,
+          `--character-revision-id=${binding.profile_revision_id}`,
+          `--character-revision-sha256=${binding.revision_sha256}`,
+        ],
+      )
+      : null;
     process.stdout.write(
       `MAPSOO_WORLD_RUNNER_PCK_GODOT_OK version=${builds[0].report.godot_version}`
       + ` bytes=${firstBytes.byteLength} sha256=${sha256(firstBytes)}`
-      + ' reproducible=true target_runtime=arm64 physical_raspberry_pi=false\n',
+      + ' reproducible=true character_binding=bound interactive_ready=true'
+      + ` metrics_probe=${exercisedMetrics ? 'exercised-on-build-host' : 'not-requested'}`
+      + ' target_runtime=arm64 physical_raspberry_pi=false\n',
     );
   } finally {
     await rm(root, { recursive: true, force: true });

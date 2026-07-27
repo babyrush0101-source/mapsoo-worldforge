@@ -33,6 +33,33 @@
     "runtime_artifact_sha256": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
+    },
+    "character_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "profile_revision_id",
+        "revision_sha256",
+        "atlas_sha256"
+      ],
+      "properties": {
+        "status": { "const": "bound" },
+        "profile_revision_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "revision_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "atlas_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
     }
   }
 }
