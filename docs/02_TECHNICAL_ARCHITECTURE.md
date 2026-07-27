@@ -280,6 +280,13 @@ confirmed world
 
 SpriteCook 适合作为可选 adapter，复用其参考图驱动的 Sprite、动画和 TileSet 工作流；WorldForge 仍负责把这些候选组织成已确认世界的完整资产角色、地图计划和 Godot 可加载包。集成采用用户自带账号/授权，不复制其产品 UI，不把第三方 API 转售为 WorldForge 自有 API，并保留离线 provider 与其他 adapter 的同等入口。
 
+SpriteCook 只允许两种薄接入方式，不成为运行时依赖：
+
+1. 公开 API 通过现有 `ProductionArtProvider` port 返回 PNG 候选；凭据、资产 ID、轮询和计费信息停留在 server-only adapter。
+2. 用户主动导出的 Godot 资源作为 authoring input；adapter 只提取 atlas、动画帧和 terrain 信息，再转换为 WorldForge 的逻辑材质映射并重新校验。Top-down/platformer 可复用其 auto-tile terrain，isometric 只按 atlas 输入处理。
+
+核心不调用 SpriteCook MCP、不加载其插件，也不把第三方 `.tres` 直接当作可信 pack 内容。四类 profile 共用同一套候选和逻辑材质端口，不为每个供应商或 profile 复制一套 importer。
+
 新增依赖前使用四个判断：
 
 1. 是否属于上述 WorldForge 核心；若是，维护稳定的内部契约。
