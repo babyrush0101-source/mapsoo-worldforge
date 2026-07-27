@@ -195,6 +195,82 @@ try {
     throw new Error('Credential preflight consumed remote request budget.');
   }
 
+  const unpairedStateGuard = await run([
+    '--job',
+    jobPath,
+    '--execute',
+    '--allow-remote-upload',
+    '--expected-state-revision',
+    '0',
+  ], { OPENAI_API_KEY: '' });
+  if (
+    unpairedStateGuard.exitCode === 0
+    || !unpairedStateGuard.stderr.includes(
+      '--expected-state-revision and --expected-next-task must be supplied together',
+    )
+  ) {
+    throw new Error('Remote execution accepted a partial consent state guard.');
+  }
+
+  const staleStateGuard = await run([
+    '--job',
+    jobPath,
+    '--execute',
+    '--allow-remote-upload',
+    '--expected-state-revision',
+    '1',
+    '--expected-next-task',
+    'scene-direction',
+  ], { OPENAI_API_KEY: '' });
+  if (
+    staleStateGuard.exitCode === 0
+    || !staleStateGuard.stderr.includes(
+      'Workflow state changed after consent; no remote request was started',
+    )
+  ) {
+    throw new Error('A stale consent state revision did not fail before credential use.');
+  }
+
+  const wrongTaskGuard = await run([
+    '--job',
+    jobPath,
+    '--execute',
+    '--allow-remote-upload',
+    '--expected-state-revision',
+    '0',
+    '--expected-next-task',
+    'terrain-sheet',
+  ], { OPENAI_API_KEY: '' });
+  if (
+    wrongTaskGuard.exitCode === 0
+    || !wrongTaskGuard.stderr.includes(
+      'Workflow state changed after consent; no remote request was started',
+    )
+  ) {
+    throw new Error('Consent for a different next task did not fail closed.');
+  }
+
+  const guardedNoCredential = await run([
+    '--job',
+    jobPath,
+    '--execute',
+    '--allow-remote-upload',
+    '--expected-state-revision',
+    '0',
+    '--expected-next-task',
+    'scene-direction',
+  ], { OPENAI_API_KEY: '' });
+  if (
+    guardedNoCredential.exitCode === 0
+    || !guardedNoCredential.stderr.includes('OPENAI_API_KEY is required')
+  ) {
+    throw new Error('A current consent state guard did not reach credential preflight.');
+  }
+  const afterStateGuards = JSON.parse(await readFile(statePath, 'utf8'));
+  if (afterStateGuards.requests_started !== 0) {
+    throw new Error('Consent state-guard checks consumed remote request budget.');
+  }
+
   const lockPath = resolve(workflowDirectory, '.workflow.lock');
   await mkdir(workflowDirectory, { recursive: true });
   await writeFile(lockPath, '{"pid":0}\n', { encoding: 'utf8', flag: 'wx' });
@@ -210,7 +286,7 @@ try {
   console.log(
     'MAPSOO_PRODUCTION_ART_WORKFLOW_OK dry_run=true private_state=true '
     + 'duplicate_keys=true immutable_inputs=true budget_preflight=true lock=true '
-    + 'progress_contract=true',
+    + 'progress_contract=true consent_state_guard=true',
   );
 } finally {
   await rm(workflowDirectory, { recursive: true, force: true });

@@ -157,7 +157,9 @@ pnpm production-art:workflow -- \
   --job private/workflow.json \
   --execute \
   --allow-remote-upload \
-  --max-requests 1
+  --max-requests 1 \
+  --expected-state-revision <revision-from-progress> \
+  --expected-next-task <next-task-id-from-progress>
 ```
 
 The first task is always `scene-direction`. Review its generated
@@ -203,6 +205,13 @@ Any rejected or uncertain asset task blocks selection of all later paid tasks
 until that exact task is reconciled or explicitly retried. The workflow does
 not spend requests on later sheets while an earlier mandatory role remains
 unresolved.
+
+The expected revision and task flags are checked while the workflow lock is
+held and before credential preflight or request accounting. A UI or companion
+can therefore bind one upload-consent decision to exactly what the user saw.
+If another worker advances the workflow first, the command fails without
+starting a remote request. Omitting these guards is still supported for direct
+operator use, but consumer integrations should always provide both.
 
 The journal stores one combined private-input binding, not source contents,
 paths, filenames, individual reference digests, prompts, or credentials.

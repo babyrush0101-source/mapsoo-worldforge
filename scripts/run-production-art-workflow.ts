@@ -65,6 +65,8 @@ const MAX_CHILD_OUTPUT_BYTES = 1024 * 1024;
 const VALUE_FLAGS = new Set([
   '--job',
   '--max-requests',
+  '--expected-state-revision',
+  '--expected-next-task',
   '--retry-task',
   '--reconcile-task',
   '--run-directory',
@@ -83,6 +85,8 @@ interface Arguments {
   readonly acknowledgeDuplicateCostRisk: boolean;
   readonly job?: string;
   readonly maxRequests: number;
+  readonly expectedStateRevision?: number;
+  readonly expectedNextTask?: string;
   readonly retryTask?: string;
   readonly reconcileTask?: string;
   readonly runDirectory?: string;
@@ -125,7 +129,8 @@ function usage(): string {
     '',
     'Run at most one new paid task:',
     '  pnpm production-art:workflow -- --job <private-workflow.json> \\',
-    '    --execute --allow-remote-upload --max-requests 1',
+    '    --execute --allow-remote-upload --max-requests 1 \\',
+    '    --expected-state-revision <integer> --expected-next-task <task-id>',
     '',
     'Explicitly retry one rejected/uncertain task:',
     '  pnpm production-art:workflow -- --job <private-workflow.json> \\',
@@ -168,6 +173,26 @@ function parseArguments(argv: readonly string[]): Arguments {
   if (!/^[1-4]$/.test(maxRequestsValue)) {
     throw new Error('--max-requests must be an integer from 1 to 4.');
   }
+  const expectedStateRevisionValue = values.get('--expected-state-revision');
+  if (
+    expectedStateRevisionValue !== undefined
+    && (
+      !/^(?:0|[1-9]\d*)$/.test(expectedStateRevisionValue)
+      || !Number.isSafeInteger(Number(expectedStateRevisionValue))
+    )
+  ) {
+    throw new Error('--expected-state-revision must be a safe non-negative integer.');
+  }
+  const expectedNextTaskValue = values.get('--expected-next-task');
+  if (
+    expectedNextTaskValue !== undefined
+    && (
+      expectedNextTaskValue.length > 100
+      || !SAFE_ID.test(expectedNextTaskValue)
+    )
+  ) {
+    throw new Error('--expected-next-task must be a safe task id.');
+  }
   const args: Arguments = {
     help: booleans.has('--help'),
     execute: booleans.has('--execute'),
@@ -175,6 +200,12 @@ function parseArguments(argv: readonly string[]): Arguments {
     acknowledgeDuplicateCostRisk:
       booleans.has('--acknowledge-duplicate-cost-risk'),
     maxRequests: Number(maxRequestsValue),
+    ...(expectedStateRevisionValue !== undefined
+      ? { expectedStateRevision: Number(expectedStateRevisionValue) }
+      : {}),
+    ...(expectedNextTaskValue !== undefined
+      ? { expectedNextTask: expectedNextTaskValue }
+      : {}),
     ...(values.has('--job') ? { job: values.get('--job') } : {}),
     ...(values.has('--retry-task') ? { retryTask: values.get('--retry-task') } : {}),
     ...(values.has('--reconcile-task')
@@ -188,6 +219,17 @@ function parseArguments(argv: readonly string[]): Arguments {
   if (!args.job) throw new Error('--job is required.');
   if (args.execute !== args.allowRemoteUpload) {
     throw new Error('--execute and --allow-remote-upload must be supplied together.');
+  }
+  if (
+    (args.expectedStateRevision === undefined)
+    !== (args.expectedNextTask === undefined)
+  ) {
+    throw new Error(
+      '--expected-state-revision and --expected-next-task must be supplied together.',
+    );
+  }
+  if (args.expectedStateRevision !== undefined && !args.execute) {
+    throw new Error('Expected workflow state guards require --execute.');
   }
   if (args.retryTask && !args.execute) {
     throw new Error('--retry-task requires --execute.');
@@ -963,6 +1005,23 @@ async function main(): Promise<void> {
         errorCode: 'task.process-interrupted',
       });
       await persistState(directory, state);
+    }
+
+    if (args.execute && args.expectedStateRevision !== undefined) {
+      const guardedTaskId = args.retryTask
+        ?? selectNextProductionArtWorkflowTask(
+          state,
+          plan,
+          approvedDirectionSha256,
+        ).task_id;
+      if (
+        state.state_revision !== args.expectedStateRevision
+        || guardedTaskId !== args.expectedNextTask
+      ) {
+        throw new Error(
+          'Workflow state changed after consent; no remote request was started.',
+        );
+      }
     }
 
     if (args.reconcileTask && args.runDirectory) {

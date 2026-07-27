@@ -74,8 +74,23 @@ pnpm production-art:workflow -- \
 ```
 
 That invocation is dry-run by default. A real image request still requires the
-separate `--execute --allow-remote-upload` authorization, one reviewed task at
-a time. Scene direction and every later asset remain human-review gates.
+separate `--execute --allow-remote-upload` authorization. Consumer integrations
+also bind that authorization to the exact `state_revision` and `next_task_id`
+returned by progress:
+
+```bash
+pnpm production-art:workflow -- \
+  --job <private-workspace>/production-art-workflow-job.json \
+  --execute --allow-remote-upload --max-requests 1 \
+  --expected-state-revision <revision-from-progress> \
+  --expected-next-task <next-task-id-from-progress>
+```
+
+The guarded values are checked under the workflow lock before a credential is
+used or request budget is consumed. Scene direction requires its own reviewed
+request and exact-byte approval before later asset tasks can start. A private
+companion may authorize up to four already-unlocked canonical tasks in one
+invocation, but rejected or uncertain output always stops the batch.
 
 The returned `progress` object is the only public workflow status intended for
 a consumer UI or Agent. It lists missing roles and the next action without
