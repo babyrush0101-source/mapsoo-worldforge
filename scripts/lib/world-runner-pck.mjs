@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createReadStream } from 'node:fs';
+import { inflateRawSync } from 'node:zlib';
 import {
   copyFile,
   lstat,
@@ -24,10 +25,8 @@ import {
 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import JSZip from 'jszip';
-
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const SHELL_ROOT = join(REPOSITORY_ROOT, 'godot', 'world_runner_shell');
+const SHELL_ROOT = join(REPOSITORY_ROOT, 'runtime', 'world_runner_shell');
 const PACKER_SCRIPT = join(REPOSITORY_ROOT, 'godot', 'tests', 'build_world_runner_pck.gd');
 const RUNTIME_ROOT = join(REPOSITORY_ROOT, 'godot', 'addons', 'mapsoo_importer', 'runtime');
 const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -57,9 +56,27 @@ const STATE_KEYS = [
   'schema_version',
 ];
 const MAX_TEXT_BYTES = 16 * 1024 * 1024;
+const ZIP_EOCD = 0x06054b50;
+const ZIP_CENTRAL = 0x02014b50;
+const ZIP_LOCAL = 0x04034b50;
+const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = (value & 1) === 1 ? (value >>> 1) ^ 0xedb88320 : value >>> 1;
+  }
+  return value >>> 0;
+});
 
 function sha256Bytes(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+function crc32(bytes) {
+  let value = 0xffffffff;
+  for (const byte of bytes) {
+    value = CRC_TABLE[(value ^ byte) & 0xff] ^ (value >>> 8);
+  }
+  return (value ^ 0xffffffff) >>> 0;
 }
 
 async function sha256File(path) {
@@ -136,24 +153,130 @@ async function manifestRecordFromPack(packBytes, worldId) {
   if (packBytes.byteLength < 64 || packBytes.byteLength > 2_147_483_647) {
     throw new Error('World pack is outside its byte limit.');
   }
-  let archive;
-  try {
-    archive = await JSZip.loadAsync(packBytes, { checkCRC32: true });
-  } catch {
-    throw new Error('World pack must be a valid ZIP archive.');
+  const archive = Buffer.from(
+    packBytes.buffer,
+    packBytes.byteOffset,
+    packBytes.byteLength,
+  );
+  const minimumEocd = Math.max(0, archive.byteLength - 65_557);
+  let eocdOffset = -1;
+  for (let offset = archive.byteLength - 22; offset >= minimumEocd; offset -= 1) {
+    if (archive.readUInt32LE(offset) === ZIP_EOCD) {
+      eocdOffset = offset;
+      break;
+    }
   }
-  const manifestEntries = Object.values(archive.files).filter((entry) =>
-    !entry.dir && basename(entry.name) === 'mapsoo.manifest.json');
+  if (eocdOffset < 0
+      || archive.readUInt16LE(eocdOffset + 4) !== 0
+      || archive.readUInt16LE(eocdOffset + 6) !== 0
+      || archive.readUInt16LE(eocdOffset + 8) !== archive.readUInt16LE(eocdOffset + 10)
+      || archive.readUInt16LE(eocdOffset + 20) !== archive.byteLength - eocdOffset - 22) {
+    throw new Error('World pack must be a single-disk ZIP without trailing bytes.');
+  }
+  const entryCount = archive.readUInt16LE(eocdOffset + 10);
+  const centralBytes = archive.readUInt32LE(eocdOffset + 12);
+  const centralOffset = archive.readUInt32LE(eocdOffset + 16);
+  if (entryCount < 1 || entryCount > 4096
+      || centralOffset + centralBytes !== eocdOffset) {
+    throw new Error('World pack ZIP directory is invalid or outside its entry budget.');
+  }
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const manifestEntries = [];
+  let cursor = centralOffset;
+  for (let index = 0; index < entryCount; index += 1) {
+    if (cursor + 46 > eocdOffset || archive.readUInt32LE(cursor) !== ZIP_CENTRAL) {
+      throw new Error('World pack ZIP central directory is malformed.');
+    }
+    const flags = archive.readUInt16LE(cursor + 8);
+    const method = archive.readUInt16LE(cursor + 10);
+    const checksum = archive.readUInt32LE(cursor + 16);
+    const compressedBytes = archive.readUInt32LE(cursor + 20);
+    const uncompressedBytes = archive.readUInt32LE(cursor + 24);
+    const nameBytes = archive.readUInt16LE(cursor + 28);
+    const extraBytes = archive.readUInt16LE(cursor + 30);
+    const commentBytes = archive.readUInt16LE(cursor + 32);
+    const diskStart = archive.readUInt16LE(cursor + 34);
+    const localOffset = archive.readUInt32LE(cursor + 42);
+    const next = cursor + 46 + nameBytes + extraBytes + commentBytes;
+    if (next > eocdOffset || diskStart !== 0 || (flags & 0x0001) !== 0
+        || ![0, 8].includes(method)) {
+      throw new Error('World pack ZIP entry is encrypted, unsupported, or truncated.');
+    }
+    let name;
+    try {
+      name = decoder.decode(archive.subarray(cursor + 46, cursor + 46 + nameBytes));
+    } catch {
+      throw new Error('World pack ZIP entry name is not strict UTF-8.');
+    }
+    if (name.includes('\\') || name.startsWith('/') || name.split('/').includes('..')) {
+      throw new Error('World pack ZIP entry path is unsafe.');
+    }
+    if (!name.endsWith('/') && basename(name) === 'mapsoo.manifest.json') {
+      manifestEntries.push({
+        name,
+        flags,
+        method,
+        checksum,
+        compressedBytes,
+        uncompressedBytes,
+        localOffset,
+      });
+    }
+    cursor = next;
+  }
+  if (cursor !== eocdOffset) {
+    throw new Error('World pack ZIP central directory length is inconsistent.');
+  }
   if (manifestEntries.length !== 1) {
     throw new Error('World pack must contain exactly one mapsoo.manifest.json.');
   }
-  const advertisedManifestBytes = manifestEntries[0]?._data?.uncompressedSize;
+  const manifestEntry = manifestEntries[0];
+  const advertisedManifestBytes = manifestEntry.uncompressedBytes;
   if (!Number.isSafeInteger(advertisedManifestBytes)
       || advertisedManifestBytes < 2
       || advertisedManifestBytes > MAX_TEXT_BYTES) {
     throw new Error('World pack manifest is outside its advertised byte limit.');
   }
-  const manifestBytes = await manifestEntries[0].async('uint8array');
+  const localOffset = manifestEntry.localOffset;
+  if (localOffset + 30 > centralOffset
+      || archive.readUInt32LE(localOffset) !== ZIP_LOCAL) {
+    throw new Error('World pack manifest local ZIP header is invalid.');
+  }
+  const localFlags = archive.readUInt16LE(localOffset + 6);
+  const localMethod = archive.readUInt16LE(localOffset + 8);
+  const localNameBytes = archive.readUInt16LE(localOffset + 26);
+  const localExtraBytes = archive.readUInt16LE(localOffset + 28);
+  const dataOffset = localOffset + 30 + localNameBytes + localExtraBytes;
+  const dataEnd = dataOffset + manifestEntry.compressedBytes;
+  let localName;
+  try {
+    localName = decoder.decode(
+      archive.subarray(localOffset + 30, localOffset + 30 + localNameBytes),
+    );
+  } catch {
+    throw new Error('World pack manifest local name is not strict UTF-8.');
+  }
+  if (localFlags !== manifestEntry.flags || localMethod !== manifestEntry.method
+      || localName !== manifestEntry.name || dataEnd > centralOffset) {
+    throw new Error('World pack manifest ZIP headers do not agree.');
+  }
+  const compressed = archive.subarray(dataOffset, dataEnd);
+  let manifestBytes;
+  try {
+    manifestBytes = manifestEntry.method === 0
+      ? Uint8Array.from(compressed)
+      : Uint8Array.from(inflateRawSync(compressed, {
+        maxOutputLength: advertisedManifestBytes,
+      }));
+  } catch {
+    throw new Error('World pack manifest decompression failed.');
+  }
+  if (manifestBytes.byteLength !== advertisedManifestBytes) {
+    throw new Error('World pack manifest decompressed size is inconsistent.');
+  }
+  if (crc32(manifestBytes) !== manifestEntry.checksum) {
+    throw new Error('World pack manifest CRC-32 is invalid.');
+  }
   const manifest = parseJson(manifestBytes, 'World pack manifest');
   const manifestWorldId = manifest?.pack?.id ?? manifest?.id;
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)

@@ -12,8 +12,6 @@ import {
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import JSZip from 'jszip';
-
 import {
   buildWorldRunnerPck,
   inspectWorldRunnerPckInput,
@@ -21,7 +19,13 @@ import {
 
 const WORLD_ID = 'ci-world';
 const PROFILE = 'side-platformer';
-const ZIP_DATE = new Date('2020-01-01T00:00:00.000Z');
+const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = (value & 1) === 1 ? (value >>> 1) ^ 0xedb88320 : value >>> 1;
+  }
+  return value >>> 0;
+});
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -35,6 +39,53 @@ function canonical(value) {
     );
   }
   return value;
+}
+
+function crc32(bytes) {
+  let value = 0xffffffff;
+  for (const byte of bytes) {
+    value = CRC_TABLE[(value ^ byte) & 0xff] ^ (value >>> 8);
+  }
+  return (value ^ 0xffffffff) >>> 0;
+}
+
+function singleFileZip(name, bytes) {
+  const nameBytes = Buffer.from(name, 'utf8');
+  const checksum = crc32(bytes);
+  const local = Buffer.alloc(30 + nameBytes.byteLength);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(20, 4);
+  local.writeUInt16LE(0x0800, 6);
+  local.writeUInt16LE(0, 8);
+  local.writeUInt16LE(0, 10);
+  local.writeUInt16LE(0, 12);
+  local.writeUInt32LE(checksum, 14);
+  local.writeUInt32LE(bytes.byteLength, 18);
+  local.writeUInt32LE(bytes.byteLength, 22);
+  local.writeUInt16LE(nameBytes.byteLength, 26);
+  nameBytes.copy(local, 30);
+  const central = Buffer.alloc(46 + nameBytes.byteLength);
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE(0x0314, 4);
+  central.writeUInt16LE(20, 6);
+  central.writeUInt16LE(0x0800, 8);
+  central.writeUInt16LE(0, 10);
+  central.writeUInt16LE(0, 12);
+  central.writeUInt16LE(0, 14);
+  central.writeUInt32LE(checksum, 16);
+  central.writeUInt32LE(bytes.byteLength, 20);
+  central.writeUInt32LE(bytes.byteLength, 24);
+  central.writeUInt16LE(nameBytes.byteLength, 28);
+  central.writeUInt32LE((0o100644 * 0x10000) >>> 0, 38);
+  central.writeUInt32LE(0, 42);
+  nameBytes.copy(central, 46);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(1, 8);
+  eocd.writeUInt16LE(1, 10);
+  eocd.writeUInt32LE(central.byteLength, 12);
+  eocd.writeUInt32LE(local.byteLength + bytes.byteLength, 16);
+  return Buffer.concat([local, bytes, central, eocd]);
 }
 
 async function writeFixture(root, options = {}) {
@@ -51,17 +102,10 @@ async function writeFixture(root, options = {}) {
     profile: PROFILE,
   };
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-  const archive = new JSZip();
-  archive.file(`${WORLD_ID}/mapsoo.manifest.json`, manifestBytes, {
-    date: ZIP_DATE,
-    unixPermissions: 0o100644,
-  });
-  const packBytes = await archive.generateAsync({
-    type: 'nodebuffer',
-    compression: 'DEFLATE',
-    compressionOptions: { level: 9 },
-    platform: 'UNIX',
-  });
+  const packBytes = singleFileZip(
+    `${WORLD_ID}/mapsoo.manifest.json`,
+    manifestBytes,
+  );
   await writeFile(join(bundle, 'world.zip'), packBytes);
   const extraResource = options.unsafe
     ? '\n[ext_resource type="Script" path="res://../private.gd" id="1_bad"]\n'
