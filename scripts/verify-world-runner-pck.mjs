@@ -13,6 +13,7 @@ import {
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { deflateSync } from 'node:zlib';
 
 import Ajv2020 from 'ajv/dist/2020.js';
 
@@ -25,20 +26,6 @@ import { parsePi4Metrics } from './lib/pi4-physical-acceptance.mjs';
 const WORLD_ID = 'ci-world';
 const PROFILE = 'side-platformer';
 const REPOSITORY_ROOT = fileURLToPath(new URL('../', import.meta.url));
-const CHARACTER_REVISION_SOURCE = join(
-  REPOSITORY_ROOT,
-  'docs',
-  'visual-qa',
-  'production-art',
-  'side-platformer-character-profile-revision-v2.json',
-);
-const CHARACTER_ATLAS_SOURCE = join(
-  REPOSITORY_ROOT,
-  'docs',
-  'visual-qa',
-  'production-art',
-  'side-platformer-character-atlas-v2.png',
-);
 const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
   let value = index;
   for (let bit = 0; bit < 8; bit += 1) {
@@ -108,6 +95,73 @@ function singleFileZip(name, bytes) {
   return Buffer.concat([local, bytes, central, eocd]);
 }
 
+function pngChunk(type, data) {
+  const typeBytes = Buffer.from(type, 'ascii');
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.byteLength, 0);
+  const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(crc32(Buffer.concat([typeBytes, data])), 0);
+  return Buffer.concat([length, typeBytes, data, checksum]);
+}
+
+function characterFixture() {
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(1, 0);
+  header.writeUInt32BE(1, 4);
+  header[8] = 8;
+  header[9] = 6;
+  const atlas = Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk('IHDR', header),
+    pngChunk('IDAT', deflateSync(Buffer.from([0, 255, 255, 255, 255]))),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ]);
+  const actions = ['idle', 'run', 'jump', 'fall', 'land', 'hurt'];
+  const directions = ['left', 'right'];
+  const revision = {
+    schema_version: '1.0.0',
+    document_type: 'character-profile-revision',
+    profile_revision_id: 'ci-character-side-platformer',
+    character_id: 'ci-character',
+    profile: PROFILE,
+    atlas: {
+      path: 'characters/ci-character.png',
+      media_type: 'image/png',
+      bytes: atlas.byteLength,
+      sha256: sha256(atlas),
+      width: 1,
+      height: 1,
+    },
+    frame_geometry: {
+      frame_width: 1,
+      frame_height: 1,
+      columns: 1,
+      rows: 1,
+    },
+    pivot: { x: 0, y: 0, unit: 'pixels' },
+    clips: actions.flatMap((action) => directions.map((direction) => ({
+      clip_id: `${action}.${direction}`,
+      action,
+      direction,
+      fps: 8,
+      loop: action === 'idle' || action === 'run',
+      frames: [{ column: 0, row: 0 }],
+    }))),
+    source_identity: {
+      identity_digest_sha256: 'c'.repeat(64),
+      source_reference_ids: ['ci-character-reference'],
+    },
+    rights: {
+      distribution: 'internal-review',
+      license: 'LicenseRef-Proprietary',
+    },
+  };
+  return {
+    atlas,
+    revision: Buffer.from(`${JSON.stringify(revision, null, 2)}\n`, 'utf8'),
+  };
+}
+
 async function writeFixture(root, options = {}) {
   const bundle = join(root, options.name ?? 'bundle');
   const imported = join(bundle, 'imported', WORLD_ID);
@@ -171,14 +225,15 @@ async function writeFixture(root, options = {}) {
   if (options.character) {
     const character = join(bundle, 'character');
     await mkdir(character, { recursive: true });
+    const fixture = characterFixture();
     await Promise.all([
-      copyFile(
-        CHARACTER_REVISION_SOURCE,
+      writeFile(
         join(character, 'character-profile-revision.json'),
+        fixture.revision,
       ),
-      copyFile(
-        CHARACTER_ATLAS_SOURCE,
+      writeFile(
         join(character, 'character-profile-atlas.png'),
+        fixture.atlas,
       ),
     ]);
   }
