@@ -11,6 +11,15 @@ import {
   type ConfirmedWorldFacts,
   type WorldCreationIntakeTarget,
 } from '../../core/confirmed-world-creation-intake';
+import type {
+  WorldLayoutConstraintIntent,
+  WorldLayoutHazardLevel,
+  WorldLayoutRouteShape,
+  WorldLayoutScale,
+  WorldLayoutSettlementDensity,
+  WorldLayoutVerticality,
+  WorldLayoutWaterShape,
+} from '../../core/world-layout-constraints';
 import {
   PROFILE_CREATION_CAPABILITIES,
   WORLD_CREATION_STAGES,
@@ -45,6 +54,16 @@ const STARTER_FACTS: ConfirmedWorldFacts = Object.freeze({
 
 const STARTER_REPLIES: Readonly<Partial<Record<WorldCreationStage, string>>> = Object.freeze({
   'style-sample': 'Keep the palette and character scale. Increase the exit landmark contrast before full generation.',
+});
+
+const STARTER_LAYOUT_INTENT: WorldLayoutConstraintIntent = Object.freeze({
+  route_shape: 'direct',
+  scale: 'standard',
+  verticality: 'medium',
+  water: 'crossing',
+  settlement_density: 'settled',
+  hazard_level: 'calm',
+  landmark_labels: Object.freeze(['Old ferry', 'Waterwheel market', 'Hilltop gate']),
 });
 
 type WorldFactKey = keyof ConfirmedWorldFacts;
@@ -85,14 +104,40 @@ export interface WorldCreationAssetHandoff {
   readonly profile: WorldAssetProfile;
   readonly target: WorldCreationIntakeTarget;
   readonly facts: ConfirmedWorldFacts;
+  readonly layoutIntent: WorldLayoutConstraintIntent;
   readonly description: string;
   readonly sessionRevision: number;
   readonly checkpoints: readonly ConfirmedDialogueCheckpoint[];
   readonly approvedIntentPreviewSha256: string;
 }
 
+export function materializeWorldCreationAssetHandoff(
+  input: WorldCreationAssetHandoff,
+): WorldCreationAssetHandoff {
+  if (!validLayoutIntent(input.layoutIntent)) {
+    throw new Error('World creation handoff requires two to four unique landmark labels.');
+  }
+  return Object.freeze({
+    profile: input.profile,
+    target: input.target,
+    facts: Object.freeze({ ...input.facts }),
+    layoutIntent: Object.freeze({
+      ...input.layoutIntent,
+      landmark_labels: Object.freeze([...input.layoutIntent.landmark_labels]),
+    }),
+    description: input.description,
+    sessionRevision: input.sessionRevision,
+    checkpoints: Object.freeze(input.checkpoints.map((checkpoint) => Object.freeze({
+      stage: checkpoint.stage,
+      snapshotSha256: checkpoint.snapshotSha256,
+    }))),
+    approvedIntentPreviewSha256: input.approvedIntentPreviewSha256,
+  });
+}
+
 interface WorldCreationDialogueProps {
   readonly onReadyForAssets?: (handoff: WorldCreationAssetHandoff) => void;
+  readonly onHandoffInvalidated?: () => void;
 }
 
 async function sha256(value: string): Promise<string> {
@@ -156,13 +201,71 @@ function checkpointPrefix(stage: WorldCreationStage): string {
   return stage.replace('world-', '').replace('art-direction', 'art').replace('map-layout', 'layout').replace('style-sample', 'sample');
 }
 
-export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogueProps) {
+export async function fingerprintWorldCreationCheckpoint(input: Readonly<{
+  profile: WorldAssetProfile;
+  target: WorldCreationIntakeTarget;
+  stage: WorldCreationStage;
+  facts: ConfirmedWorldFacts;
+  layoutIntent: WorldLayoutConstraintIntent;
+  sampleNotes?: string;
+  visualSampleSha256?: string;
+}>): Promise<string> {
+  const factKeys = STAGE_FACT_KEYS[input.stage] ?? [];
+  return sha256(JSON.stringify({
+    profile: input.profile,
+    target: input.target,
+    stage: input.stage,
+    facts: Object.fromEntries(factKeys.map((fact) => [fact, input.facts[fact]])),
+    ...(input.stage === 'map-layout' ? { layoutIntent: input.layoutIntent } : {}),
+    ...(input.stage === 'style-sample' ? { sampleNotes: input.sampleNotes ?? '' } : {}),
+    ...(input.visualSampleSha256
+      ? { visualSampleSha256: input.visualSampleSha256 }
+      : {}),
+  }));
+}
+
+export function parseConfirmedLandmarkLabels(value: string): readonly string[] {
+  return Object.freeze(value
+    .split(/[,;，；、|\n]+/u)
+    .map((label) => label.trim())
+    .filter(Boolean)
+    .slice(0, 4));
+}
+
+function materializeLayoutIntent(
+  draft: WorldLayoutConstraintIntent,
+  facts: ConfirmedWorldFacts,
+): WorldLayoutConstraintIntent {
+  return Object.freeze({
+    route_shape: draft.route_shape,
+    scale: draft.scale,
+    verticality: draft.verticality,
+    water: draft.water,
+    settlement_density: draft.settlement_density,
+    hazard_level: draft.hazard_level,
+    landmark_labels: parseConfirmedLandmarkLabels(facts.landmarks),
+  });
+}
+
+function validLayoutIntent(intent: WorldLayoutConstraintIntent): boolean {
+  return intent.landmark_labels.length >= 2
+    && intent.landmark_labels.length <= 4
+    && new Set(intent.landmark_labels).size === intent.landmark_labels.length;
+}
+
+export function WorldCreationDialogue({
+  onReadyForAssets,
+  onHandoffInvalidated,
+}: WorldCreationDialogueProps) {
   const [session, setSession] = useState(() => createWorldCreationSession({
     id: 'browser-world-session',
     profile: 'topdown-farm',
   }));
   const [target, setTarget] = useState<WorldCreationIntakeTarget>('raspberry-pi-4b');
   const [facts, setFacts] = useState<ConfirmedWorldFacts>(STARTER_FACTS);
+  const [layoutIntent, setLayoutIntent] = useState<WorldLayoutConstraintIntent>(
+    STARTER_LAYOUT_INTENT,
+  );
   const [reply, setReply] = useState('');
   const [answers, setAnswers] = useState<Partial<Record<WorldCreationStage, string>>>({});
   const [busy, setBusy] = useState(false);
@@ -175,9 +278,12 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
     [session.stage, session.profile, facts],
   );
   const currentFactKeys = STAGE_FACT_KEYS[session.stage] ?? [];
-  const canConfirm = currentFactKeys.length > 0
+  const currentLayoutIntent = materializeLayoutIntent(layoutIntent, facts);
+  const canConfirmFacts = currentFactKeys.length > 0
     ? currentFactKeys.every((fact) => facts[fact].trim().length > 0)
     : reply.trim().length > 0;
+  const canConfirm = canConfirmFacts
+    && (session.stage !== 'map-layout' || validLayoutIntent(currentLayoutIntent));
 
   async function confirmCurrentStage() {
     if (!dialogueStage || !canConfirm) return;
@@ -189,20 +295,23 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
           currentFactKeys.map((fact) => [fact, facts[fact].trim()]),
         ),
       } as ConfirmedWorldFacts;
+      const normalizedLayoutIntent = materializeLayoutIntent(layoutIntent, normalizedFacts);
+      if (session.stage === 'map-layout' && !validLayoutIntent(normalizedLayoutIntent)) {
+        throw new Error('Confirm two to four unique landmark labels before saving the map layout.');
+      }
       const normalized = stageSummary(session.stage, normalizedFacts, reply);
       const visualSampleSha256 = session.stage === 'style-sample' && styleSample
         ? await sha256Bytes(styleSample.pngBytes)
         : undefined;
-      const snapshotSha256 = await sha256(JSON.stringify({
+      const snapshotSha256 = await fingerprintWorldCreationCheckpoint({
         profile: session.profile,
         target,
         stage: session.stage,
-        facts: Object.fromEntries(
-          currentFactKeys.map((fact) => [fact, normalizedFacts[fact]]),
-        ),
+        facts: normalizedFacts,
+        layoutIntent: normalizedLayoutIntent,
         ...(session.stage === 'style-sample' ? { sampleNotes: normalized } : {}),
         ...(visualSampleSha256 ? { visualSampleSha256 } : {}),
-      }));
+      });
       const prefix = checkpointPrefix(session.stage);
       const next = reduceWorldCreationSession(session, {
         type: 'confirm-stage',
@@ -214,6 +323,7 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
       const nextAnswers = { ...answers, [session.stage]: normalized };
       setAnswers(nextAnswers);
       setFacts(normalizedFacts);
+      if (session.stage === 'map-layout') setLayoutIntent(normalizedLayoutIntent);
       setSession(next);
       setReply(STARTER_REPLIES[next.stage] ?? '');
       if (next.stage === 'asset-generation' && next.phase !== 'blocked') {
@@ -223,15 +333,16 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
           if (!checkpoint) throw new Error(`Missing confirmed ${stage} checkpoint.`);
           return Object.freeze({ stage, snapshotSha256: checkpoint.snapshotSha256 });
         });
-        onReadyForAssets?.({
+        onReadyForAssets?.(materializeWorldCreationAssetHandoff({
           profile: next.profile as WorldCreationAssetHandoff['profile'],
           target,
-          facts: Object.freeze({ ...normalizedFacts }),
+          facts: normalizedFacts,
+          layoutIntent: normalizedLayoutIntent,
           description: generationDescription(normalizedFacts),
           sessionRevision: next.revision,
-          checkpoints: Object.freeze(checkpoints),
+          checkpoints,
           approvedIntentPreviewSha256: visualSampleSha256,
-        });
+        }));
       }
       setNotice(next.phase === 'blocked'
         ? next.blockedReason ?? 'This profile is not yet available for complete generation.'
@@ -251,6 +362,7 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
         profile,
       });
       setSession(next);
+      onHandoffInvalidated?.();
       setNotice(`${PROFILE_LABELS[profile]} selected. The later steps now follow that profile's asset contract.`);
     } catch (error) {
       setNotice(error instanceof WorldCreationError ? error.message : 'The profile could not be changed.');
@@ -265,6 +377,7 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
         stage,
       });
       setSession(next);
+      onHandoffInvalidated?.();
       setReply(stage === 'style-sample'
         ? answers[stage] ?? STARTER_REPLIES[stage] ?? ''
         : '');
@@ -380,6 +493,119 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
                   />
                 </label>
               ))}
+              {session.stage === 'map-layout' && (
+                <fieldset className="creation-layout-intent">
+                  <legend>Structured map confirmation</legend>
+                  <p>
+                    These values—not keyword guesses—drive the deterministic map solver.
+                    Edit the landmark text above to confirm two to four public labels.
+                  </p>
+                  <div className="creation-layout-intent-grid">
+                    <label>
+                      Route topology
+                      <select
+                        value={layoutIntent.route_shape}
+                        onChange={(event) => setLayoutIntent((current) => ({
+                          ...current,
+                          route_shape: event.target.value as WorldLayoutRouteShape,
+                        }))}
+                      >
+                        <option value="direct">Direct route</option>
+                        <option value="fork-rejoin">Fork and rejoin</option>
+                        <option value="loop">Loop route</option>
+                      </select>
+                    </label>
+                    <label>
+                      World scale
+                      <select
+                        value={layoutIntent.scale}
+                        onChange={(event) => setLayoutIntent((current) => ({
+                          ...current,
+                          scale: event.target.value as WorldLayoutScale,
+                        }))}
+                      >
+                        <option value="compact">Compact · 48×36</option>
+                        <option value="standard">Standard · 64×36</option>
+                        <option value="extended">Extended · 80×36</option>
+                      </select>
+                    </label>
+                    <label>
+                      Verticality
+                      <select
+                        value={layoutIntent.verticality}
+                        onChange={(event) => setLayoutIntent((current) => ({
+                          ...current,
+                          verticality: event.target.value as WorldLayoutVerticality,
+                        }))}
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                    </label>
+                    <label>
+                      Water structure
+                      <select
+                        value={layoutIntent.water}
+                        onChange={(event) => setLayoutIntent((current) => ({
+                          ...current,
+                          water: event.target.value as WorldLayoutWaterShape,
+                        }))}
+                      >
+                        <option value="none">None</option>
+                        <option value="crossing">Route crossing</option>
+                        <option value="basin">Basin or coast</option>
+                      </select>
+                    </label>
+                    <label>
+                      Settlement density
+                      <select
+                        value={layoutIntent.settlement_density}
+                        onChange={(event) => setLayoutIntent((current) => ({
+                          ...current,
+                          settlement_density: event.target.value as WorldLayoutSettlementDensity,
+                        }))}
+                      >
+                        <option value="sparse">Sparse</option>
+                        <option value="settled">Settled</option>
+                        <option value="dense">Dense</option>
+                      </select>
+                    </label>
+                    <label>
+                      Hazard level
+                      <select
+                        value={layoutIntent.hazard_level}
+                        onChange={(event) => setLayoutIntent((current) => ({
+                          ...current,
+                          hazard_level: event.target.value as WorldLayoutHazardLevel,
+                        }))}
+                      >
+                        <option value="calm">Calm</option>
+                        <option value="guarded">Guarded</option>
+                        <option value="dangerous">Dangerous</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div
+                    className={`creation-layout-landmarks ${validLayoutIntent(currentLayoutIntent) ? '' : 'is-invalid'}`}
+                    aria-live="polite"
+                  >
+                    <strong>Confirmed landmark nodes</strong>
+                    {currentLayoutIntent.landmark_labels.length > 0
+                      ? (
+                        <ol>
+                          {currentLayoutIntent.landmark_labels.map((label, index) => (
+                            <li key={`${index}-${label}`}>{label}</li>
+                          ))}
+                        </ol>
+                      )
+                      : <span>No valid landmark labels yet.</span>}
+                    {!validLayoutIntent(currentLayoutIntent) && (
+                      <small>Use two to four unique labels separated by commas, semicolons, or new lines.</small>
+                    )}
+                  </div>
+                </fieldset>
+              )}
               {session.stage === 'style-sample' && (
                 <label>
                   Approval notes

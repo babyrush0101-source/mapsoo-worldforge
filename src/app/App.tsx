@@ -362,13 +362,17 @@ export function App() {
           onSelect={(id) => void loadWorldExample(id)}
         />
 
-        <WorldCreationDialogue onReadyForAssets={(handoff) => setCreationHandoff(handoff)} />
+        <WorldCreationDialogue
+          onReadyForAssets={(handoff) => setCreationHandoff(handoff)}
+          onHandoffInvalidated={() => setCreationHandoff(null)}
+        />
 
         <ReferenceWorldGenerator
           key={creationHandoff?.checkpoints.map(({ snapshotSha256 }) => snapshotSha256).join(':') ?? 'standalone-reference-generator'}
           initialProfile={creationHandoff?.profile}
           initialDescription={creationHandoff?.description}
           initialWorldFacts={creationHandoff?.facts}
+          initialLayoutIntent={creationHandoff?.layoutIntent}
           initialTarget={creationHandoff?.target}
           initialSessionRevision={creationHandoff?.sessionRevision}
           initialApprovedIntentPreviewSha256={creationHandoff?.approvedIntentPreviewSha256}

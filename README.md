@@ -42,6 +42,10 @@ Godot pack. Direct, fork/rejoin, and loop descriptions now produce different
 graph structure instead of sharing one fixed map with different metadata.
 Explicit Agent-confirmed intent is kept distinct from the limited legacy
 text-derived compatibility path.
+The map-layout round now exposes those structural choices directly, previews
+the exact landmark-node list, binds the visible values into its checkpoint,
+and shows the frozen intent again before reference-based generation. Returning
+to an earlier round invalidates the old browser handoff.
 
 The fourth-round image is explicitly an **intent preview**, not final artwork.
 After references and complete assets are generated, the browser instead shows

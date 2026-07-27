@@ -6,6 +6,10 @@ import type {
   ConfirmedWorldFacts,
   WorldCreationIntakeTarget,
 } from '../../core/confirmed-world-creation-intake';
+import type {
+  WorldLayoutConstraintIntent,
+  WorldLayoutConstraintOrigin,
+} from '../../core/world-layout-constraints';
 import {
   freezeWorldAssetRevision,
   type FrozenWorldLaunchBinding,
@@ -26,6 +30,7 @@ interface ReferenceWorldGeneratorProps {
   readonly initialConfirmation?: ConfirmedDialogueInput;
   readonly initialApprovedIntentPreviewSha256?: string;
   readonly initialWorldFacts?: ConfirmedWorldFacts;
+  readonly initialLayoutIntent?: WorldLayoutConstraintIntent;
   readonly initialTarget?: WorldCreationIntakeTarget;
   readonly initialSessionRevision?: number;
 }
@@ -87,6 +92,7 @@ export function ReferenceWorldGenerator({
   initialConfirmation,
   initialApprovedIntentPreviewSha256,
   initialWorldFacts,
+  initialLayoutIntent,
   initialTarget = 'raspberry-pi-4b',
   initialSessionRevision,
 }: ReferenceWorldGeneratorProps) {
@@ -114,6 +120,8 @@ export function ReferenceWorldGenerator({
   const [reviewBindingSha256, setReviewBindingSha256] = useState<string | null>(null);
   const [exportedPreviewSha256, setExportedPreviewSha256] = useState<string | null>(null);
   const [confirmedIntakeSha256, setConfirmedIntakeSha256] = useState<string | null>(null);
+  const [layoutConstraintsSha256, setLayoutConstraintsSha256] = useState<string | null>(null);
+  const [layoutConstraintOrigin, setLayoutConstraintOrigin] = useState<WorldLayoutConstraintOrigin | null>(null);
   const [layoutPlanSha256, setLayoutPlanSha256] = useState<string | null>(null);
 
   useEffect(() => () => {
@@ -141,6 +149,8 @@ export function ReferenceWorldGenerator({
     setReviewBindingSha256(null);
     setExportedPreviewSha256(null);
     setConfirmedIntakeSha256(null);
+    setLayoutConstraintsSha256(null);
+    setLayoutConstraintOrigin(null);
     setLayoutPlanSha256(null);
     replacePreviewUrl(null);
     setState('idle');
@@ -169,6 +179,11 @@ export function ReferenceWorldGenerator({
 
   async function generate() {
     if (!environment || !character || !rightsConfirmed) return;
+    if (initialWorldFacts && !initialLayoutIntent) {
+      setState('error');
+      setNotice('Confirmed browser generation requires the exact structured layout intent.');
+      return;
+    }
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -194,6 +209,7 @@ export function ReferenceWorldGenerator({
           environment,
           character,
           approvedIntentPreviewSha256: initialApprovedIntentPreviewSha256,
+          layoutIntent: initialLayoutIntent,
           completedAt: new Date().toISOString(),
           signal: controller.signal,
         })
@@ -216,6 +232,8 @@ export function ReferenceWorldGenerator({
       setReviewBindingSha256(generated.reviewEvidence.review_binding_sha256);
       setExportedPreviewSha256(generated.reviewEvidence.preview.sha256);
       setConfirmedIntakeSha256(confirmedGenerated?.confirmedIntakeSha256 ?? null);
+      setLayoutConstraintsSha256(confirmedGenerated?.layoutConstraintsSha256 ?? null);
+      setLayoutConstraintOrigin(confirmedGenerated?.layoutConstraints.origin ?? null);
       setLayoutPlanSha256(confirmedGenerated?.layoutPlanSha256 ?? null);
       setState('ready');
       setNotice(`Complete Pack ${generated.packSchemaVersion} ready for visual review: ${generated.generatedFileCount} generated files, ${generated.requiredRoleCount} required roles, ${generated.characterClipCount} character clips.`);
@@ -242,6 +260,7 @@ export function ReferenceWorldGenerator({
     environment && character && rightsConfirmed
     && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(worldId)
     && description.trim() && seed.trim()
+    && (!initialWorldFacts || Boolean(initialLayoutIntent))
     && state !== 'reading' && state !== 'generating',
   );
   const copy = PROFILE_COPY[profile];
@@ -296,6 +315,18 @@ export function ReferenceWorldGenerator({
               <option value="web">Web</option>
             </select>
           </label>
+          {initialLayoutIntent && (
+            <div className="confirmed-layout-summary">
+              <strong>Confirmed layout intent</strong>
+              <span>{initialLayoutIntent.route_shape}</span>
+              <span>{initialLayoutIntent.scale}</span>
+              <span>{initialLayoutIntent.verticality} verticality</span>
+              <span>{initialLayoutIntent.water} water</span>
+              <span>{initialLayoutIntent.settlement_density} settlement</span>
+              <span>{initialLayoutIntent.hazard_level} hazards</span>
+              <small>{initialLayoutIntent.landmark_labels.join(' · ')}</small>
+            </div>
+          )}
           <p className="reference-generator-status">World ID and seed are public: they are written into the ZIP name, manifest, README, and receipt.</p>
           <label>{initialWorldFacts ? 'Confirmed world facts' : 'Description'}
             <textarea
@@ -347,6 +378,9 @@ export function ReferenceWorldGenerator({
             <span>{confirmedIntakeSha256
               ? `Confirmed intake ${confirmedIntakeSha256.slice(0, 12)}… · exact structured conversation`
               : 'No structured intake binding yet'}</span>
+            <span>{layoutConstraintsSha256
+              ? `Layout constraints ${layoutConstraintsSha256.slice(0, 12)}… · ${layoutConstraintOrigin}`
+              : 'No structured layout constraints yet'}</span>
             <span>{layoutPlanSha256
               ? `World layout ${layoutPlanSha256.slice(0, 12)}… · embedded in Godot pack`
               : 'No confirmed layout binding yet'}</span>

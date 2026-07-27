@@ -21,10 +21,15 @@ The browser now exposes the first four confirmation rounds as an interactive gui
 At the map-layout stage, the Agent may now propose a provider-neutral
 `WorldLayoutConstraintIntent`: route shape, scale, verticality, water,
 settlement density, hazard level, and two to four public landmark labels. The
-UI must show these values for confirmation before using the
-`confirmed-intent` path. The solver then produces profile-specific terrain,
+browser shows all six enum choices and the exact landmark-node list before the
+map checkpoint can be saved. That checkpoint hashes the visible structured
+intent as well as the map facts. The frozen handoff carries the same immutable
+intent through the application boundary, and the complete generator therefore
+uses the `confirmed-intent` path. The solver produces profile-specific terrain,
 regions, traversal graph, collision, navigation, spawn, landmarks, and exit.
-Older callers without this structured confirmation remain visibly marked
+Returning to map layout or an earlier stage clears the old application handoff,
+so an obsolete confirmation cannot remain attached to the generator. Older
+callers without this structured confirmation remain visibly marked
 `compatibility-derived`; they do not silently claim that NLP inference was
 approved by the user.
 

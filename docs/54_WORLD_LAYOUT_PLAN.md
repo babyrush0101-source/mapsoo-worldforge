@@ -221,9 +221,11 @@ each profile's canonical `terrain.*` asset roles. It will not invent a
 `volcanic-floor`, `reed-wetland`, or cultural building material and silently
 reuse an unrelated tile. Compiling new semantic materials, buildings, props,
 NPCs, and hazards into a typed `AssetRequirements` inventory is the next
-separate core step. Explicit intent is supported by the generation API, but
-the browser still needs a visual constraint-confirmation editor before every
-normal UI-created world can claim `confirmed-intent`.
+separate core step. The browser now presents and hashes the structured
+constraint choices at the map-layout checkpoint, carries the frozen intent
+through the application handoff, displays it again beside the reference
+generator, and invalidates that handoff when the user returns to an earlier
+round.
 
 ## Fail-closed behavior
 

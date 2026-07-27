@@ -49,4 +49,39 @@ describe('reference world generator UI', () => {
     expect(markup).toContain('Alpha12 candidate');
     expect(markup).toContain('Seven depth planes');
   });
+
+  it('renders the exact structured layout intent handed off by the confirmed dialogue', () => {
+    const markup = renderToStaticMarkup(createElement(ReferenceWorldGenerator, {
+      initialWorldFacts: {
+        premise: 'Reconnect a river settlement.',
+        worldview: 'Mutual aid keeps routes open.',
+        terrain: 'Riverbanks and a hill.',
+        geography: 'Ferry spawn to hill exit.',
+        culture: 'Growers and ferry workers.',
+        ecology: 'Reeds, birds and mist.',
+        mood: 'Hopeful and readable.',
+        art_direction: 'Warm original pixels.',
+        traversal: 'Follow a loop through the market.',
+        landmarks: 'Ferry; Market; Hill gate',
+      },
+      initialLayoutIntent: {
+        route_shape: 'loop',
+        scale: 'extended',
+        verticality: 'medium',
+        water: 'crossing',
+        settlement_density: 'settled',
+        hazard_level: 'dangerous',
+        landmark_labels: ['Ferry', 'Market', 'Hill gate'],
+      },
+      initialSessionRevision: 4,
+      initialApprovedIntentPreviewSha256: 'a'.repeat(64),
+    }));
+
+    expect(markup).toContain('Confirmed layout intent');
+    expect(markup).toContain('loop');
+    expect(markup).toContain('extended');
+    expect(markup).toContain('dangerous hazards');
+    expect(markup).toContain('Ferry · Market · Hill gate');
+    expect(markup).toContain('Confirmed world facts');
+  });
 });
