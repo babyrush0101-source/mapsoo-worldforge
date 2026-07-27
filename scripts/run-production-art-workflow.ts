@@ -48,6 +48,7 @@ import {
   fingerprintCharacterProfileRevision,
   materializeCharacterProfileRevision,
 } from '../src/core/character-profile-revision';
+import { createProductionArtRunSet } from '../src/core/production-art-run-set';
 
 const WORKFLOW_ROOT = 'docs/visual-qa/production-art/workflows';
 const MODEL_RUN_ROOT = 'docs/visual-qa/production-art/model-runs';
@@ -772,6 +773,7 @@ function interruptedTask(state: ProductionArtWorkflowState):
 async function writeRunSet(
   directory: string,
   state: ProductionArtWorkflowState,
+  plan: ProductionArtPlan,
 ): Promise<string | undefined> {
   if (!state.tasks.every(({ status }) => status === 'succeeded')) return undefined;
   const runs = Object.fromEntries(state.tasks.map((task) => {
@@ -782,12 +784,7 @@ async function writeRunSet(
       relative(directory, resolve(runDirectory)).replaceAll('\\', '/'),
     ];
   }));
-  const runSet = {
-    schema_version: '1.0.0',
-    document_type: 'production-art-run-set',
-    profile: state.profile,
-    runs,
-  };
+  const runSet = createProductionArtRunSet(plan, runs);
   const path = resolve(directory, 'production-art-run-set.json');
   const text = `${JSON.stringify(runSet, null, 2)}\n`;
   try {
@@ -921,7 +918,7 @@ async function main(): Promise<void> {
         artifact,
       });
       await persistState(directory, state);
-      const runSet = await writeRunSet(directory, state);
+      const runSet = await writeRunSet(directory, state, plan);
       console.log(JSON.stringify(workflowSummary(
         state,
         plan,
@@ -933,7 +930,7 @@ async function main(): Promise<void> {
     }
 
     if (!args.execute) {
-      const runSet = await writeRunSet(directory, state);
+      const runSet = await writeRunSet(directory, state, plan);
       console.log(JSON.stringify(workflowSummary(
         state,
         plan,
@@ -1030,7 +1027,7 @@ async function main(): Promise<void> {
         break;
       }
     }
-    const runSet = await writeRunSet(directory, state);
+    const runSet = await writeRunSet(directory, state, plan);
     const summary = workflowSummary(
       state,
       plan,

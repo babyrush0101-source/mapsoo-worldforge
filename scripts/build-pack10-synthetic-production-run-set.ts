@@ -8,6 +8,7 @@ import {
   type ProductionArtOutput,
   type ProductionArtTask,
 } from '../src/core/production-art-contract';
+import { createProductionArtRunSet } from '../src/core/production-art-run-set';
 
 const DEFAULT_OUTPUT =
   'docs/visual-qa/production-art/model-runs/synthetic-pack10-production-v1';
@@ -241,12 +242,7 @@ async function main(): Promise<void> {
     ]);
     runs[task.task_id] = `./${task.task_id}`;
   }
-  const runSet = {
-    schema_version: '1.0.0',
-    document_type: 'production-art-run-set',
-    profile: 'layered-depth-2d',
-    runs,
-  };
+  const runSet = createProductionArtRunSet(plan, runs);
   const runSetPath = resolve(outputRoot, 'layered-depth-run-set.json');
   await writeReproducible(
     runSetPath,

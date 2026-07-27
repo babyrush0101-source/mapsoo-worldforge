@@ -163,9 +163,10 @@ The journal stores one combined private-input binding, not source contents,
 paths, filenames, individual reference digests, prompts, or credentials.
 Concurrent processes are rejected by a per-workflow lock. Once every canonical
 task succeeds, the CLI writes a source-free `production-art-run-set.json`
-accepted by the deterministic Pack 1.0 review assembler. A passing player task
-must also contain a verified profile-matched character revision and atlas, so
-the workflow result can be staged for the reusable Godot runtime shell.
+accepted by the shared four-profile run inventory and the implemented Pack 1.0
+review assembler. A passing player task must also contain a verified
+profile-matched character revision and atlas, so the workflow result can be
+staged for the reusable Godot runtime shell.
 
 `pnpm production-art:workflow:verify` exercises dry-run, privacy projection,
 duplicate-key rejection, immutable-input rejection, credential/budget
@@ -439,7 +440,20 @@ run-set JSON. It is an operator input and is never embedded in the output:
 
 Each directory must contain the immutable `source.png`, `normalized.png`,
 `output.json` and `evidence.json` written by the model adapter. Paths are
-resolved relative to the run-set file. Build the complete internal-review ZIP:
+resolved relative to the run-set file. First run the read-only, zero-request
+shared verifier:
+
+```bash
+pnpm production-art:run-set:verify -- \
+  --runs-manifest=review-input/layered-depth-run-set.json
+```
+
+It supports all four profiles and rejects missing or extra tasks, path aliases,
+changed PNG bytes, output/evidence drift, profile/rights mismatch, and reused
+remote request IDs before a profile-specific pack builder runs. It does not
+write, upload, publish, or embed the local run paths.
+
+Then build the complete layered-depth internal-review ZIP:
 
 ```bash
 pnpm pack10:fixture:build

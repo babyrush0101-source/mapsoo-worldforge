@@ -148,6 +148,17 @@ meaning, composition or aesthetic quality.
 
 ## Complete Pack 1.0 internal-review assembly
 
+Before any profile-specific projector mutates a review pack,
+`materializeProductionArtRunSet` and
+`materializeProductionArtRunInventory` now provide the shared four-profile
+ingress boundary. They require every canonical task exactly once, prohibit
+directory aliasing and absolute/URL paths, decode both frozen PNGs, re-hash
+source and normalized bytes, validate every output/evidence document, and bind
+provider, model, rights, role order, dimensions, alpha policy and request IDs.
+The same inventory contract accepts `topdown-farm`, `side-platformer`,
+`isometric-action`, and `layered-depth-2d`; only the final runtime projection
+and pack merge remain profile-specific.
+
 `src/adapters/build-pack10-production-review-candidate.ts` is the final
 source-free merge boundary for this first profile. It starts from one complete,
 validated data-only Pack 1.0 base world and replaces:

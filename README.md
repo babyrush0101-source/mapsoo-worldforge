@@ -56,8 +56,11 @@ request budget and per-invocation cap. Interrupted work never retries
 automatically; frozen run files can be reconciled without another request, and
 any retry requires explicit duplicate-cost acknowledgement. Private input
 paths, contents and individual reference digests are excluded from workflow
-state and the completed source-free run set. Player tasks for all four
-profiles now additionally project into portable, complete
+state and the completed source-free run set. A shared zero-request verifier now
+materializes those run sets for all four profiles, re-decodes and re-hashes
+every frozen PNG/evidence pair, and rejects incomplete, aliased or substituted
+task inventories before a profile-specific pack builder can mutate a ZIP.
+Player tasks for all four profiles now additionally project into portable, complete
 `CharacterProfileRevision` artifacts while preserving normalized atlas bytes.
 The reusable Godot runtime shell can now load any of the four generated world
 profiles and bind a matching revision plus atlas afterward, including through

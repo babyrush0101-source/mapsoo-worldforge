@@ -99,8 +99,9 @@ Initial constraints:
 
 ## Next implementation slice
 
-1. Connect completed model workflow run sets to the full provider bundle
-   builders for all four profiles, not only the layered-depth review assembler.
+1. Build the profile-specific runtime atlas/layer projectors and review-pack
+   mergers for top-down farm, side platformer and isometric action on top of
+   the shared four-profile run-set inventory. Layered-depth already consumes it.
 2. Split large character pose inventories into smaller continuity-bound review
    batches before assembling the canonical atlas.
 3. Collect playtest feedback and branch a new revision without overwriting the playable one.

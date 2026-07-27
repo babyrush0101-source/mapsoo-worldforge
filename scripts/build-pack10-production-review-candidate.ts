@@ -26,26 +26,21 @@ import {
   type ProductionArtOutput,
   type ProductionArtRights,
 } from '../src/core/production-art-contract';
+import {
+  materializeProductionArtRunSet,
+  type ProductionArtRunSet,
+} from '../src/core/production-art-run-set';
+import {
+  materializeProductionArtRunInventory,
+} from '../src/adapters/materialize-production-art-run-inventory';
 
 // @ts-expect-error The public privacy helper is intentionally plain ESM.
 import { containsPrivateConsumerToken } from './lib/private-consumer-boundary.mjs';
 
-const TASK_IDS = Object.freeze([
-  'scene-direction',
-  'terrain-sheet',
-  'prop-sheet',
-  'effect-sheet',
-  'character-character-player-atlas',
-  'character-character-npc-atlas',
-  'background-background-sky',
-  'background-background-far',
-  'background-background-mid',
-  'background-background-depth-fog',
-  'background-near-overlay',
-  'background-lighting-ambient',
-  'background-lighting-local',
-  'background-foreground-overlay',
-] as const);
+const TASK_IDS = Object.freeze(createProductionArtPlan('layered-depth-2d', {
+  distribution: 'internal-review',
+  license: 'LicenseRef-Proprietary',
+}).tasks.map(({ task_id: taskId }) => taskId));
 
 const VALUE_FLAGS = new Set([
   '--base-pack',
@@ -66,13 +61,6 @@ interface Arguments {
   readonly title: string;
   readonly version: string;
   readonly createdAt: string;
-}
-
-interface RunSet {
-  readonly schema_version: '1.0.0';
-  readonly document_type: 'production-art-run-set';
-  readonly profile: 'layered-depth-2d';
-  readonly runs: Readonly<Record<typeof TASK_IDS[number], string>>;
 }
 
 function usage(): string {
@@ -142,37 +130,12 @@ function parseJson<T>(bytes: Uint8Array, label: string): T {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function parseRunSet(value: unknown): RunSet {
-  if (!isRecord(value)) throw new Error('Run-set root must be an object.');
-  const rootKeys = Object.keys(value).sort();
-  if (
-    JSON.stringify(rootKeys)
-      !== JSON.stringify(['document_type', 'profile', 'runs', 'schema_version'])
-    || value.schema_version !== '1.0.0'
-    || value.document_type !== 'production-art-run-set'
-    || value.profile !== 'layered-depth-2d'
-    || !isRecord(value.runs)
-  ) {
-    throw new Error('Run-set identity or shape is invalid.');
+function parseRunSet(value: unknown): ProductionArtRunSet {
+  const runSet = materializeProductionArtRunSet(value);
+  if (runSet.profile !== 'layered-depth-2d') {
+    throw new Error('Pack 1.0 production review accepts only layered-depth-2d runs.');
   }
-  const runKeys = Object.keys(value.runs).sort();
-  if (
-    JSON.stringify(runKeys) !== JSON.stringify([...TASK_IDS].sort())
-    || runKeys.some((taskId) => {
-      const path = value.runs[taskId];
-      return typeof path !== 'string'
-        || path.length < 1
-        || path.length > 1000
-        || path.trim() !== path;
-    })
-  ) {
-    throw new Error('Run-set must map exactly the 14 canonical task ids.');
-  }
-  return value as unknown as RunSet;
+  return runSet;
 }
 
 async function loadResult(
@@ -253,10 +216,16 @@ async function main(): Promise<void> {
     taskId,
     await loadResult(manifestDirectory, taskId, runSet.runs[taskId]),
   ] as const));
-  const results = new Map(entries);
+  let results = new Map(entries);
   const direction = results.get('scene-direction') as NormalizedProductionArtResult;
   const rights = direction.output.rights as ProductionArtRights;
   const plan = createProductionArtPlan('layered-depth-2d', rights);
+  const inventory = await materializeProductionArtRunInventory(
+    plan,
+    runSet,
+    Object.fromEntries(entries),
+  );
+  results = new Map(inventory.items.map((item) => [item.task.task_id, item]));
   const layerResults = plan.tasks
     .filter(({ kind }) => kind === 'background-layer')
     .map(({ task_id: taskId }) => results.get(taskId) as NormalizedProductionArtResult);
