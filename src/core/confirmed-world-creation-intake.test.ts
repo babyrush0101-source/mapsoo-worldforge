@@ -99,6 +99,39 @@ describe('confirmed world creation intake 1.0', () => {
     })).rejects.toMatchObject({ code: 'intake.checkpoint-mismatch' });
   });
 
+  it('binds terrain and geography to map-layout while keeping art-only edits separate', async () => {
+    const value = await intake();
+    const recreate = (facts: typeof value.facts) => createConfirmedWorldCreationIntake({
+      intake_id: value.intake_id,
+      session_revision: value.session_revision,
+      profile: value.profile,
+      target: value.target,
+      seed: value.seed,
+      facts,
+      character_source: value.character_source,
+      references: value.references,
+      approved_intent_preview_sha256: value.approved_intent_preview_sha256,
+    });
+    const changedGeography = await recreate({
+      ...value.facts,
+      terrain: 'A dry plateau and a narrow canyon replace the river terraces.',
+      geography: 'One direct canyon route connects spawn and exit.',
+    });
+    const changedArt = await recreate({
+      ...value.facts,
+      mood: 'A darker but equally readable atmosphere.',
+      art_direction: 'Monochrome ink pixels with one amber accent.',
+    });
+    const checkpoint = (
+      candidate: typeof value,
+      stage: 'map-layout' | 'art-direction',
+    ) => candidate.checkpoints.find((entry) => entry.stage === stage)!.snapshot_sha256;
+
+    expect(checkpoint(changedGeography, 'map-layout')).not.toBe(checkpoint(value, 'map-layout'));
+    expect(checkpoint(changedArt, 'map-layout')).toBe(checkpoint(value, 'map-layout'));
+    expect(checkpoint(changedArt, 'art-direction')).not.toBe(checkpoint(value, 'art-direction'));
+  });
+
   it('requires the selected character source to be the declared character reference', async () => {
     const value = await intake();
     await expect(materializeConfirmedWorldCreationIntake({

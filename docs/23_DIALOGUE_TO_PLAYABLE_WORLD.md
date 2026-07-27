@@ -18,6 +18,16 @@ Every confirmation creates a checkpoint. A revision never overwrites an approved
 
 The browser now exposes the first four confirmation rounds as an interactive guided conversation. A consumer Agent may expand those rounds into ten smaller questions covering premise, worldview, terrain, geography, culture, ecology, mood, art direction, traversal, and landmarks. `ConfirmedWorldCreationIntake 1.0` binds the resulting structured facts back to the same four trusted checkpoint stages, so follow-up questions do not create a second generation path. After the first three decisions, the fourth round renders a deterministic 320×180 profile intent preview. Its image SHA-256 is included in the style-sample checkpoint alongside the user's approval notes. This preview establishes world grammar, depth, traversal, landmark contrast, and character scale, but it is not described as production art or as the exact final scene. The user's decoded character identity and environment analysis are applied during complete generation.
 
+At the map-layout stage, the Agent may now propose a provider-neutral
+`WorldLayoutConstraintIntent`: route shape, scale, verticality, water,
+settlement density, hazard level, and two to four public landmark labels. The
+UI must show these values for confirmation before using the
+`confirmed-intent` path. The solver then produces profile-specific terrain,
+regions, traversal graph, collision, navigation, spawn, landmarks, and exit.
+Older callers without this structured confirmation remain visibly marked
+`compatibility-derived`; they do not silently claim that NLP inference was
+approved by the user.
+
 The trusted core reducer in `src/core/world-creation-session.ts` owns the complete seven-stage transition model. Every command includes `expectedRevision`, so a stale model response, duplicated click, or late generation job cannot overwrite a newer decision.
 
 The handoff to complete generation creates a privacy-minimized `ConfirmedGenerationBinding`:

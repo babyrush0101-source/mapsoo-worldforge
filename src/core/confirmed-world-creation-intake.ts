@@ -254,6 +254,9 @@ function checkpointPayload(
   }
   if (stage === 'map-layout') {
     return {
+      profile: intake.profile,
+      terrain: intake.facts.terrain,
+      geography: intake.facts.geography,
       traversal: intake.facts.traversal,
       landmarks: intake.facts.landmarks,
     };

@@ -118,6 +118,15 @@ describe('reference-world profile router', () => {
       character,
       approvedIntentPreviewSha256: 'e'.repeat(64),
       completedAt: '2026-07-20T12:00:00.000Z',
+      layoutIntent: {
+        route_shape: 'loop',
+        scale: 'standard',
+        verticality: 'medium',
+        water: 'crossing',
+        settlement_density: 'settled',
+        hazard_level: 'calm',
+        landmark_labels: ['Old ferry', 'Waterwheel market', 'Hilltop gate'],
+      },
     });
 
     expect(generated.confirmedIntake).toMatchObject({
@@ -131,6 +140,16 @@ describe('reference-world profile router', () => {
       },
     });
     expect(generated.confirmedIntakeSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(generated.layoutConstraintsSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(generated.layoutConstraints).toMatchObject({
+      origin: 'confirmed-intent',
+      profile: 'topdown-farm',
+      route_shape: 'loop',
+      landmark_labels: ['Old ferry', 'Waterwheel market', 'Hilltop gate'],
+    });
+    expect(JSON.stringify(generated.layoutConstraints)).not.toContain(
+      generated.confirmedIntake.facts.traversal,
+    );
     expect(generated.layoutPlanSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(generated.layoutPlan).toMatchObject({
       profile: 'topdown-farm',
@@ -140,6 +159,7 @@ describe('reference-world profile router', () => {
         seed: generated.confirmedIntake.seed,
       },
     });
+    expect(generated.layoutPlan.traversal.edges.some(({ id }) => id === 'edge-loop')).toBe(true);
     expect(generated.confirmationBinding?.binding_sha256)
       .toBe(generated.assetRevision.dialogue_binding_sha256);
     expect(generated.reviewEvidence.approved_intent_preview_sha256).toBe('e'.repeat(64));

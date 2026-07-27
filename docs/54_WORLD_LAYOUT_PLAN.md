@@ -8,6 +8,13 @@ application fields.
 
 ## Contract files
 
+- Provider-neutral constraint JSON Schema:
+  `schemas/mapsoo-world-layout-constraints-1.0.schema.json`
+- Constraint validator, explicit-intent constructor, compatibility projector,
+  and fingerprint:
+  `src/core/world-layout-constraints.ts`
+- Four-profile deterministic solver registry:
+  `src/core/world-layout-solver.ts`
 - JSON Schema:
   `schemas/mapsoo-world-layout-plan-1.0.schema.json`
 - TypeScript materializer, validator, deterministic builder, and fingerprint:
@@ -19,6 +26,19 @@ application fields.
   `src/core/world-material-palette.ts`
 
 The builder accepts only a validated `ConfirmedWorldCreationIntake 1.0`.
+Before geometry is created, the intake is projected into canonical
+`WorldLayoutConstraints 1.0`. The formal world-creation path supplies an
+explicit, user-confirmed `WorldLayoutConstraintIntent`; the constraint artifact
+is then marked `confirmed-intent`. Existing 1.0 callers that only have the ten
+text facts use a deliberately limited bilingual compatibility projector and
+are marked `compatibility-derived`, so inferred structure cannot be mistaken
+for user-confirmed structure.
+
+The constraints expose only route shape, scale, verticality, water shape,
+settlement density, hazard level, and two to four explicitly public landmark
+labels. Raw premise, geography, traversal prose, provider prompts, reference
+paths, and private application fields are not part of the constraint document.
+
 `source` binds the plan to:
 
 - the confirmed intake ID and session revision;
@@ -33,7 +53,8 @@ plan ID, the intake binding, and the plan fingerprint.
 
 ## Coordinate and graph model
 
-The canonical builder uses a 64×36 logical-tile space. Every region, terrain
+The solver uses a 48, 64, or 80 by 36 logical-tile space according to the
+confirmed compact, standard, or extended scale. Every region, terrain
 rectangle, traversal node, landmark, spawn, and exit must remain within the
 declared bounds. IDs use lowercase kebab-case and cannot contain paths.
 
@@ -60,22 +81,37 @@ the portable shape/profile discriminator layer; consumers should run both.
 | `isometric-action` | terrain zones | `isometric-footprints` | `diamond-grid` |
 | `layered-depth-2d` | terrain zones | `depth-lane-blockers` | `depth-lanes` |
 
-The side-platformer canonical graph uses explicit forward jump/drop edges and a
-bidirectional final walking edge. The other profiles use connected
-bidirectional walking graphs. These graph semantics are planning intent, not
-engine physics.
+The side-platformer solver derives walk/jump/drop edges from its platform
+heights. The other profiles use connected bidirectional walking graphs.
+Direct routes form one main path, fork/rejoin routes add a separately reachable
+branch and merge, and loop routes add a canonical cycle. These graph semantics
+are planning intent, not a claim that every future arbitrary constraint is
+already physically solvable.
 
 ## Integration points
 
-The plan is built immediately after
+The constraints and plan are built immediately after
 `materializeConfirmedWorldCreationIntake` and before the production-art
-workflow or exporter:
+workflow or exporter. An Agent-assisted flow should show the structured intent
+to the user and pass that confirmed value:
 
 ```ts
-const plan = await buildWorldLayoutPlanFromConfirmedIntake(confirmedIntake);
+const constraints = await createWorldLayoutConstraintsFromConfirmedIntake(
+  confirmedIntake,
+  confirmedLayoutIntent,
+);
+const plan = await solveWorldLayoutPlanFromConstraints(
+  constraints,
+  confirmedIntake,
+);
 const verified = await materializeWorldLayoutPlan(plan, confirmedIntake);
 const planSha256 = await fingerprintWorldLayoutPlan(verified);
 ```
+
+`buildWorldLayoutPlanFromConfirmedIntake(confirmedIntake)` remains the
+compatibility facade for older callers. It derives a
+`compatibility-derived` constraint artifact first and then invokes the same
+solver; there is no remaining fixed-template runtime path.
 
 The delivery workspace writes canonical `world-layout-plan.json` bytes and
 binds their semantic fingerprint to the production-art manifest. When a
@@ -172,18 +208,29 @@ profile gameplay completion, human art approval, and physical Raspberry Pi
 performance remain separate gates. See
 [`55_WORLD_TERRAIN_AUTOTILES.md`](55_WORLD_TERRAIN_AUTOTILES.md).
 
-The canonical layout builder is still a deterministic profile template:
-confirmed seed values change bounded node positions and confirmed landmark
-text supplies the first two labels, but the remaining terrain, geography,
-culture, and traversal prose does not yet compile into a world-specific
-topology. A typed layout-constraint compiler and profile solver are the next
-required step; the runtime handoff above prevents the old fixed map from
-silently overriding that future plan.
+The fixed profile template has been removed from the active builder. Confirmed
+route shape now changes graph structure, scale changes bounds, every confirmed
+landmark becomes a bound region/node, water and hazard constraints change
+terrain/collision inventory, and verticality changes profile-specific
+placement. Tests compare a structural topology projection that excludes plan
+IDs, hashes, labels, and seed jitter, so metadata changes cannot masquerade as
+a different world.
+
+The current solver intentionally selects only material IDs already backed by
+each profile's canonical `terrain.*` asset roles. It will not invent a
+`volcanic-floor`, `reed-wetland`, or cultural building material and silently
+reuse an unrelated tile. Compiling new semantic materials, buildings, props,
+NPCs, and hazards into a typed `AssetRequirements` inventory is the next
+separate core step. Explicit intent is supported by the generation API, but
+the browser still needs a visual constraint-confirmation editor before every
+normal UI-created world can claim `confirmed-intent`.
 
 ## Fail-closed behavior
 
 The materializer rejects:
 
+- malformed or source-mismatched layout constraints;
+- unsupported constraint enum values and duplicate or missing landmarks;
 - unknown properties or unsafe IDs;
 - non-canonical profile/terrain/collision/navigation combinations;
 - out-of-bounds rectangles and nodes;

@@ -282,7 +282,7 @@ async function basePack(
       facts: {
         premise: 'A compact production review world.',
         worldview: 'Routes and landmarks preserve the confirmed world logic.',
-        terrain: 'Profile-specific terrain supports the complete route.',
+        terrain: 'Profile-specific terrain and one river crossing support the complete route.',
         geography: 'Spawn, landmarks, and exit form one connected route.',
         culture: 'Architecture and props share one readable visual language.',
         ecology: 'Weather and vegetation reinforce the profile.',

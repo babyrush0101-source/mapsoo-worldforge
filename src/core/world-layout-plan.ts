@@ -2,8 +2,16 @@ import { isWorldAssetProfile, type WorldAssetProfile } from './asset-profile';
 import {
   fingerprintConfirmedWorldCreationIntake,
   materializeConfirmedWorldCreationIntake,
-  type ConfirmedWorldCreationIntake,
 } from './confirmed-world-creation-intake';
+import {
+  deriveWorldLayoutConstraintsFromConfirmedIntake,
+  materializeWorldLayoutConstraints,
+  type WorldLayoutConstraints,
+} from './world-layout-constraints';
+import {
+  solveWorldLayoutConstraints,
+  WORLD_LAYOUT_SOLVER_VERSION,
+} from './world-layout-solver';
 
 export const WORLD_LAYOUT_PLAN_VERSION = '1.0.0' as const;
 export const WORLD_LAYOUT_PLAN_STATUS = 'planned' as const;
@@ -704,159 +712,53 @@ export async function materializeWorldLayoutPlan(
   return plan;
 }
 
-type LayoutTemplate = Readonly<{
-  regions: WorldLayoutPlan['regions'];
-  terrain: readonly WorldLayoutTerrain[];
-  nodes: WorldLayoutPlan['traversal']['nodes'];
-  edges: WorldLayoutPlan['traversal']['edges'];
-  landmarkNodeIds: readonly [string, string];
-  solidTerrainIds: readonly string[];
-  oneWayTerrainIds: readonly string[];
-  blockedRegionIds: readonly string[];
-  agentRadius: number;
-}>;
-
-const COMMON_REGIONS = Object.freeze([
-  Object.freeze({ id: 'region-start', x: 0, y: 0, width: 12, height: 36, purpose: 'spawn' as const }),
-  Object.freeze({ id: 'region-landmark-west', x: 12, y: 0, width: 8, height: 36, purpose: 'landmark' as const }),
-  Object.freeze({ id: 'region-center', x: 20, y: 0, width: 16, height: 36, purpose: 'route' as const }),
-  Object.freeze({ id: 'region-landmark-east', x: 36, y: 0, width: 8, height: 36, purpose: 'landmark' as const }),
-  Object.freeze({ id: 'region-exit', x: 44, y: 0, width: 20, height: 36, purpose: 'exit' as const }),
-]);
-
-function template(profile: WorldAssetProfile): LayoutTemplate {
-  if (profile === 'side-platformer') {
-    return {
-      regions: COMMON_REGIONS,
-      terrain: [
-        { id: 'ground-start', x: 0, y: 28, width: 20, height: 8, material: 'ground', navigation: 'walkable' },
-        { id: 'ground-center', x: 20, y: 26, width: 24, height: 10, material: 'ground', navigation: 'walkable' },
-        { id: 'ground-exit', x: 44, y: 28, width: 20, height: 8, material: 'ground', navigation: 'walkable' },
-        { id: 'platform-west', x: 12, y: 21, width: 8, height: 2, material: 'wood', navigation: 'one-way' },
-        { id: 'platform-east', x: 36, y: 19, width: 8, height: 2, material: 'stone', navigation: 'one-way' },
-      ],
-      nodes: [
-        { id: 'node-spawn', kind: 'spawn', region_id: 'region-start', x: 4, y: 27 },
-        { id: 'node-landmark-west', kind: 'landmark', region_id: 'region-landmark-west', x: 16, y: 20 },
-        { id: 'node-route-center', kind: 'route', region_id: 'region-center', x: 28, y: 25 },
-        { id: 'node-landmark-east', kind: 'landmark', region_id: 'region-landmark-east', x: 40, y: 18 },
-        { id: 'node-route-exit', kind: 'route', region_id: 'region-exit', x: 52, y: 27 },
-        { id: 'node-exit', kind: 'exit', region_id: 'region-exit', x: 60, y: 27 },
-      ],
-      edges: [
-        { id: 'edge-1', from: 'node-spawn', to: 'node-landmark-west', kind: 'jump', direction: 'forward' },
-        { id: 'edge-2', from: 'node-landmark-west', to: 'node-route-center', kind: 'drop', direction: 'forward' },
-        { id: 'edge-3', from: 'node-route-center', to: 'node-landmark-east', kind: 'jump', direction: 'forward' },
-        { id: 'edge-4', from: 'node-landmark-east', to: 'node-route-exit', kind: 'drop', direction: 'forward' },
-        { id: 'edge-5', from: 'node-route-exit', to: 'node-exit', kind: 'walk', direction: 'bidirectional' },
-      ],
-      landmarkNodeIds: ['node-landmark-west', 'node-landmark-east'],
-      solidTerrainIds: ['ground-start', 'ground-center', 'ground-exit'],
-      oneWayTerrainIds: ['platform-west', 'platform-east'],
-      blockedRegionIds: [],
-      agentRadius: 0.45,
-    };
-  }
-
-  const terrainByProfile: Record<Exclude<WorldAssetProfile, 'side-platformer'>, readonly WorldLayoutTerrain[]> = {
-    'topdown-farm': [
-      { id: 'zone-meadow', x: 0, y: 0, width: 20, height: 36, material: 'meadow', navigation: 'walkable' },
-      { id: 'zone-fields', x: 20, y: 0, width: 12, height: 36, material: 'farmland', navigation: 'walkable' },
-      { id: 'zone-market', x: 32, y: 0, width: 12, height: 36, material: 'stone-path', navigation: 'walkable' },
-      { id: 'zone-hill', x: 44, y: 0, width: 20, height: 36, material: 'grass', navigation: 'walkable' },
-      { id: 'zone-pond', x: 30, y: 14, width: 4, height: 4, material: 'water', navigation: 'blocked' },
-    ],
-    'isometric-action': [
-      { id: 'zone-approach', x: 0, y: 0, width: 20, height: 36, material: 'stone', navigation: 'walkable' },
-      { id: 'zone-arena-west', x: 20, y: 0, width: 12, height: 36, material: 'arena', navigation: 'walkable' },
-      { id: 'zone-arena-east', x: 32, y: 0, width: 12, height: 36, material: 'arena', navigation: 'walkable' },
-      { id: 'zone-gate', x: 44, y: 0, width: 20, height: 36, material: 'stone', navigation: 'walkable' },
-      { id: 'zone-pillar', x: 30, y: 14, width: 4, height: 4, material: 'pillar', navigation: 'blocked' },
-    ],
-    'layered-depth-2d': [
-      { id: 'zone-front-lane', x: 0, y: 24, width: 64, height: 12, material: 'front-lane', navigation: 'walkable' },
-      { id: 'zone-middle-west', x: 0, y: 12, width: 32, height: 12, material: 'middle-lane', navigation: 'walkable' },
-      { id: 'zone-middle-east', x: 32, y: 12, width: 32, height: 12, material: 'middle-lane', navigation: 'walkable' },
-      { id: 'zone-back-lane', x: 0, y: 0, width: 64, height: 12, material: 'back-lane', navigation: 'walkable' },
-      { id: 'zone-occluder', x: 30, y: 20, width: 4, height: 8, material: 'occluder', navigation: 'blocked' },
-    ],
-  };
-  const yCoordinates = profile === 'layered-depth-2d'
-    ? [30, 22, 18, 14, 22, 30]
-    : [28, 24, 18, 14, 22, 28];
-  return {
-    regions: COMMON_REGIONS,
-    terrain: terrainByProfile[profile],
-    nodes: [
-      { id: 'node-spawn', kind: 'spawn', region_id: 'region-start', x: 4, y: yCoordinates[0] },
-      { id: 'node-landmark-west', kind: 'landmark', region_id: 'region-landmark-west', x: 16, y: yCoordinates[1] },
-      { id: 'node-route-center', kind: 'route', region_id: 'region-center', x: 28, y: yCoordinates[2] },
-      { id: 'node-landmark-east', kind: 'landmark', region_id: 'region-landmark-east', x: 40, y: yCoordinates[3] },
-      { id: 'node-route-exit', kind: 'route', region_id: 'region-exit', x: 52, y: yCoordinates[4] },
-      { id: 'node-exit', kind: 'exit', region_id: 'region-exit', x: 60, y: yCoordinates[5] },
-    ],
-    edges: [
-      { id: 'edge-1', from: 'node-spawn', to: 'node-landmark-west', kind: 'walk', direction: 'bidirectional' },
-      { id: 'edge-2', from: 'node-landmark-west', to: 'node-route-center', kind: 'walk', direction: 'bidirectional' },
-      { id: 'edge-3', from: 'node-route-center', to: 'node-landmark-east', kind: 'walk', direction: 'bidirectional' },
-      { id: 'edge-4', from: 'node-landmark-east', to: 'node-route-exit', kind: 'walk', direction: 'bidirectional' },
-      { id: 'edge-5', from: 'node-route-exit', to: 'node-exit', kind: 'walk', direction: 'bidirectional' },
-    ],
-    landmarkNodeIds: ['node-landmark-west', 'node-landmark-east'],
-    solidTerrainIds: [
-      profile === 'topdown-farm'
-        ? 'zone-pond'
-        : profile === 'isometric-action'
-          ? 'zone-pillar'
-          : 'zone-occluder',
-    ],
-    oneWayTerrainIds: [],
-    blockedRegionIds: [],
-    agentRadius: profile === 'isometric-action' ? 0.7 : 0.5,
-  };
-}
-
-function confirmedLandmarkLabels(intake: ConfirmedWorldCreationIntake): readonly [string, string] {
-  const values = intake.facts.landmarks
-    .split(/[,;，；、|]+/u)
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .slice(0, 2);
-  if (values.length === 0) values.push('Confirmed landmark');
-  if (values.length === 1) {
-    const geography = intake.facts.geography.slice(0, 120).trim();
-    values.push(geography === values[0] ? 'Secondary landmark' : geography);
-  }
-  return [values[0]!.slice(0, 120).trim(), values[1]!.slice(0, 120).trim()];
-}
-
 export async function buildWorldLayoutPlanFromConfirmedIntake(
   value: unknown,
 ): Promise<WorldLayoutPlan> {
   const intake = await materializeConfirmedWorldCreationIntake(value);
-  const rules = PROFILE_RULES[intake.profile];
-  const layoutTemplate = template(intake.profile);
-  const labels = confirmedLandmarkLabels(intake);
-  const landmarkNodes = layoutTemplate.landmarkNodeIds.map((nodeId) => (
-    layoutTemplate.nodes.find(({ id }) => id === nodeId)!
-  ));
+  const constraints = await deriveWorldLayoutConstraintsFromConfirmedIntake(intake);
+  return solveWorldLayoutPlanFromConstraints(constraints, intake);
+}
+
+export async function solveWorldLayoutPlanFromConstraints(
+  constraintsValue: unknown,
+  intakeValue: unknown,
+): Promise<WorldLayoutPlan> {
+  const intake = await materializeConfirmedWorldCreationIntake(intakeValue);
+  const constraints: WorldLayoutConstraints = await materializeWorldLayoutConstraints(
+    constraintsValue,
+    intake,
+  );
   const mapCheckpoint = intake.checkpoints.find(({ stage }) => stage === 'map-layout')!;
   const seedSha256 = await sha256(intake.seed);
-  const seededNodes = layoutTemplate.nodes.map((node, index) => {
-    const region = layoutTemplate.regions.find(({ id }) => id === node.region_id)!;
-    const offset = (
-      Number.parseInt(seedSha256.slice(index * 2, index * 2 + 2), 16) % 5
-    ) - 2;
-    return {
-      ...node,
-      x: Math.max(region.x, Math.min(region.x + region.width - 1, node.x + offset)),
-    };
+  const solverSeedSha256 = await sha256({
+    solver: 'world-layout-solver',
+    solver_version: WORLD_LAYOUT_SOLVER_VERSION,
+    seed_sha256: seedSha256,
+    profile: constraints.profile,
+    route_shape: constraints.route_shape,
+    scale: constraints.scale,
+    verticality: constraints.verticality,
+    water: constraints.water,
+    settlement_density: constraints.settlement_density,
+    hazard_level: constraints.hazard_level,
+    landmark_count: constraints.landmark_labels.length,
   });
+  const solution = solveWorldLayoutConstraints(constraints, solverSeedSha256);
+  const rules = PROFILE_RULES[intake.profile];
   const terrain_layout = rules.terrainKind === 'bands'
-    ? { kind: 'bands' as const, bands: layoutTemplate.terrain }
-    : { kind: 'zones' as const, zones: layoutTemplate.terrain };
+    ? { kind: 'bands' as const, bands: solution.terrain }
+    : { kind: 'zones' as const, zones: solution.terrain };
   const intakeSha256 = await fingerprintConfirmedWorldCreationIntake(intake);
-  const planId = `layout-${intakeSha256.slice(0, 16)}`;
+  const constraintsSha256 = await sha256(constraints);
+  const planId = `layout-${(await sha256({
+    intake_sha256: intakeSha256,
+    constraints_sha256: constraintsSha256,
+    solver: 'world-layout-solver',
+    solver_version: WORLD_LAYOUT_SOLVER_VERSION,
+  })).slice(0, 16)}`;
+  const spawn = solution.nodes.find(({ kind }) => kind === 'spawn')!;
+  const exit = solution.nodes.find(({ kind }) => kind === 'exit')!;
   const candidate = {
     schema_version: WORLD_LAYOUT_PLAN_VERSION,
     document_type: 'world-layout-plan' as const,
@@ -871,34 +773,24 @@ export async function buildWorldLayoutPlanFromConfirmedIntake(
       seed: intake.seed,
       seed_sha256: seedSha256,
     },
-    bounds: { width: 64, height: 36, unit: 'logical-tile' as const },
-    regions: layoutTemplate.regions,
+    bounds: solution.bounds,
+    regions: solution.regions,
     terrain_layout,
-    spawn: { node_id: 'node-spawn', x: seededNodes[0]!.x, y: seededNodes[0]!.y },
-    exit: { node_id: 'node-exit', x: seededNodes[5]!.x, y: seededNodes[5]!.y },
-    traversal: { nodes: seededNodes, edges: layoutTemplate.edges },
-    landmarks: landmarkNodes.map((node, index) => {
-      const seededNode = seededNodes.find(({ id }) => id === node.id)!;
-      return {
-        id: `landmark-${index + 1}`,
-        label: labels[index]!,
-        region_id: seededNode.region_id,
-        node_id: seededNode.id,
-        x: seededNode.x,
-        y: seededNode.y,
-      };
-    }),
+    spawn: { node_id: spawn.id, x: spawn.x, y: spawn.y },
+    exit: { node_id: exit.id, x: exit.x, y: exit.y },
+    traversal: { nodes: solution.nodes, edges: solution.edges },
+    landmarks: solution.landmarks,
     collision_intent: {
-      mode: rules.collisionMode,
-      solid_terrain_ids: layoutTemplate.solidTerrainIds,
-      one_way_terrain_ids: layoutTemplate.oneWayTerrainIds,
-      blocked_region_ids: layoutTemplate.blockedRegionIds,
+      mode: solution.collision.mode,
+      solid_terrain_ids: solution.collision.solidTerrainIds,
+      one_way_terrain_ids: solution.collision.oneWayTerrainIds,
+      blocked_region_ids: solution.collision.blockedRegionIds,
     },
     navigation_intent: {
-      mode: rules.navigationMode,
-      walkable_region_ids: layoutTemplate.regions.map(({ id }) => id),
-      traversal_edge_ids: layoutTemplate.edges.map(({ id }) => id),
-      agent_radius: layoutTemplate.agentRadius,
+      mode: solution.navigation.mode,
+      walkable_region_ids: solution.regions.map(({ id }) => id),
+      traversal_edge_ids: solution.edges.map(({ id }) => id),
+      agent_radius: solution.navigation.agentRadius,
     },
   };
   return materializeWorldLayoutPlan(candidate, intake);

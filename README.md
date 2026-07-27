@@ -35,9 +35,13 @@ culture, ecology, mood, art direction, traversal, and landmarks. The selected
 profile and target device are locked after the fourth round. Once the user
 adds the environment and character references and confirms their rights, the
 application creates the same canonical `ConfirmedWorldCreationIntake` and
-`WorldLayoutPlan` used by the CLI, then embeds that layout in the generated
-Godot pack. A dialogue answer can no longer be displayed as confirmed while a
-different default layout silently enters the ZIP.
+provider-neutral `WorldLayoutConstraints` used by the CLI. The four-profile
+solver turns confirmed route shape, scale, verticality, water, settlement,
+hazard, and landmark constraints into the `WorldLayoutPlan` embedded in the
+Godot pack. Direct, fork/rejoin, and loop descriptions now produce different
+graph structure instead of sharing one fixed map with different metadata.
+Explicit Agent-confirmed intent is kept distinct from the limited legacy
+text-derived compatibility path.
 
 The fourth-round image is explicitly an **intent preview**, not final artwork.
 After references and complete assets are generated, the browser instead shows

@@ -6,6 +6,7 @@ import { WORLD_ASSET_PROFILES, type WorldAssetProfile } from './asset-profile';
 import {
   createConfirmedWorldCreationIntake,
   type ConfirmedWorldCreationIntake,
+  type ConfirmedWorldFacts,
 } from './confirmed-world-creation-intake';
 import {
   buildWorldLayoutPlanFromConfirmedIntake,
@@ -18,6 +19,18 @@ const CHARACTER_HASH = 'a'.repeat(64);
 const ENVIRONMENT_HASH = 'b'.repeat(64);
 const IDENTITY_HASH = 'c'.repeat(64);
 const PREVIEW_HASH = 'd'.repeat(64);
+const BASE_FACTS: ConfirmedWorldFacts = Object.freeze({
+  premise: 'A courier reconnects neighborhoods separated by a seasonal river.',
+  worldview: 'Promises shape safe routes, and restored crossings change how the community cooperates.',
+  terrain: 'Low river terraces, orchards, reed wetlands, and one elevated stone ridge.',
+  geography: 'A west ferry, central market island, eastern homes, and a hill gate form the route.',
+  culture: 'River crafts, shared meals, painted ferry signs, and a lantern exchange define the settlement.',
+  ecology: 'Willows, reeds, ducks, fireflies, orchard trees, and shallow seasonal flood pools.',
+  mood: 'Hopeful morning exploration with gentle mystery and strong landmark readability.',
+  art_direction: 'Hand-painted pixel art, warm landmarks, teal water, mist, and clean silhouettes.',
+  traversal: 'Spawn at the old ferry, cross two routes, visit the market, then reach the hill gate.',
+  landmarks: 'Old ferry, Lantern market, Waterwheel workshop, Hill gate',
+});
 
 function reference(role: 'environment-style' | 'character') {
   const stem = role === 'character' ? 'traveler' : 'harbor';
@@ -43,6 +56,7 @@ function reference(role: 'environment-style' | 'character') {
 async function intake(
   profile: WorldAssetProfile = 'topdown-farm',
   seed = `blue-harbor-${profile}-seed`,
+  facts: ConfirmedWorldFacts = BASE_FACTS,
 ): Promise<ConfirmedWorldCreationIntake> {
   return createConfirmedWorldCreationIntake({
     intake_id: `blue-harbor-${profile}`,
@@ -50,18 +64,7 @@ async function intake(
     profile,
     target: 'raspberry-pi-4b',
     seed,
-    facts: {
-      premise: 'A courier reconnects neighborhoods separated by a seasonal river.',
-      worldview: 'Promises shape safe routes, and restored crossings change how the community cooperates.',
-      terrain: 'Low river terraces, orchards, reed wetlands, and one elevated stone ridge.',
-      geography: 'A west ferry, central market island, eastern homes, and a hill gate form the route.',
-      culture: 'River crafts, shared meals, painted ferry signs, and a lantern exchange define the settlement.',
-      ecology: 'Willows, reeds, ducks, fireflies, orchard trees, and shallow seasonal flood pools.',
-      mood: 'Hopeful morning exploration with gentle mystery and strong landmark readability.',
-      art_direction: 'Hand-painted pixel art, warm landmarks, teal water, mist, and clean silhouettes.',
-      traversal: 'Spawn at the old ferry, cross two routes, visit the market, then reach the hill gate.',
-      landmarks: 'Old ferry, Lantern market, Waterwheel workshop, Hill gate',
-    },
+    facts,
     character_source: {
       reference_id: 'traveler-reference',
       identity_digest_sha256: IDENTITY_HASH,
@@ -73,6 +76,33 @@ async function intake(
 
 function mutable<T>(value: T): any {
   return JSON.parse(JSON.stringify(value));
+}
+
+function structuralTopology(plan: Awaited<ReturnType<typeof buildWorldLayoutPlanFromConfirmedIntake>>) {
+  const terrain = plan.terrain_layout.kind === 'bands'
+    ? plan.terrain_layout.bands
+    : plan.terrain_layout.zones;
+  return {
+    bounds: plan.bounds,
+    regions: plan.regions,
+    terrain,
+    nodes: plan.traversal.nodes.map(({ id, kind, region_id }) => ({ id, kind, region_id })),
+    edges: plan.traversal.edges,
+    spawn_node_id: plan.spawn.node_id,
+    exit_node_id: plan.exit.node_id,
+    landmarks: plan.landmarks.map(({ id, region_id, node_id }) => ({ id, region_id, node_id })),
+    collision_intent: plan.collision_intent,
+    navigation_intent: plan.navigation_intent,
+  };
+}
+
+function placement(plan: Awaited<ReturnType<typeof buildWorldLayoutPlanFromConfirmedIntake>>) {
+  return {
+    nodes: plan.traversal.nodes.map(({ id, x, y }) => ({ id, x, y })),
+    spawn: plan.spawn,
+    exit: plan.exit,
+    landmarks: plan.landmarks.map(({ id, x, y }) => ({ id, x, y })),
+  };
 }
 
 describe('WorldLayoutPlan 1.0', () => {
@@ -94,7 +124,12 @@ describe('WorldLayoutPlan 1.0', () => {
       expect(first.source.map_layout_checkpoint_sha256).toBe(
         confirmed.checkpoints.find(({ stage }) => stage === 'map-layout')?.snapshot_sha256,
       );
-      expect(first.landmarks.map(({ label }) => label)).toEqual(['Old ferry', 'Lantern market']);
+      expect(first.landmarks.map(({ label }) => label)).toEqual([
+        'Old ferry',
+        'Lantern market',
+        'Waterwheel workshop',
+        'Hill gate',
+      ]);
       expect(first.navigation_intent.traversal_edge_ids).toEqual(
         first.traversal.edges.map(({ id }) => id),
       );
@@ -133,9 +168,81 @@ describe('WorldLayoutPlan 1.0', () => {
     expect(first.traversal.nodes.map(({ x }) => x)).not.toEqual(
       second.traversal.nodes.map(({ x }) => x),
     );
+    expect(structuralTopology(first)).toEqual(structuralTopology(second));
+    expect(placement(first)).not.toEqual(placement(second));
     expect(await fingerprintWorldLayoutPlan(first)).not.toBe(
       await fingerprintWorldLayoutPlan(second),
     );
+  });
+
+  it.each(WORLD_ASSET_PROFILES)(
+    'changes %s structural topology when confirmed route facts change',
+    async (profile) => {
+      const directFacts: ConfirmedWorldFacts = {
+        ...BASE_FACTS,
+        terrain: 'A flat dry meadow with orchards and stone paths.',
+        geography: 'One direct route connects the west entrance to the east gate.',
+        traversal: 'Follow one direct route through every landmark to the exit.',
+      };
+      const forkFacts: ConfirmedWorldFacts = {
+        ...directFacts,
+        geography: 'The route forks after the entrance and two routes rejoin before the east gate.',
+        traversal: 'Choose either branch, pass the same landmarks, then rejoin before the exit.',
+      };
+      const direct = await buildWorldLayoutPlanFromConfirmedIntake(
+        await intake(profile, 'shared-topology-seed', directFacts),
+      );
+      const fork = await buildWorldLayoutPlanFromConfirmedIntake(
+        await intake(profile, 'shared-topology-seed', forkFacts),
+      );
+
+      expect(direct.source.seed_sha256).toBe(fork.source.seed_sha256);
+      expect(direct.landmarks.map(({ label }) => label)).toEqual(
+        fork.landmarks.map(({ label }) => label),
+      );
+      expect(structuralTopology(direct)).not.toEqual(structuralTopology(fork));
+      expect(direct.traversal.nodes.some(({ id }) => id === 'node-route-branch')).toBe(false);
+      expect(fork.traversal.nodes.some(({ id }) => id === 'node-route-branch')).toBe(true);
+      expect(fork.traversal.edges.length).toBeGreaterThan(direct.traversal.edges.length);
+    },
+  );
+
+  it.each(WORLD_ASSET_PROFILES)(
+    'keeps %s topology and placement stable when only non-layout art facts change',
+    async (profile) => {
+      const first = await buildWorldLayoutPlanFromConfirmedIntake(
+        await intake(profile, 'stable-non-layout-seed', BASE_FACTS),
+      );
+      const second = await buildWorldLayoutPlanFromConfirmedIntake(
+        await intake(profile, 'stable-non-layout-seed', {
+          ...BASE_FACTS,
+          mood: 'A nocturnal, solemn atmosphere with restrained visual tension.',
+          art_direction: 'Limited-color ink rendering with crisp silhouettes and moonlit accents.',
+        }),
+      );
+
+      expect(first.plan_id).not.toBe(second.plan_id);
+      expect(structuralTopology(first)).toEqual(structuralTopology(second));
+      expect(placement(first)).toEqual(placement(second));
+    },
+  );
+
+  it('changes only public labels when landmark wording changes without changing count', async () => {
+    const first = await buildWorldLayoutPlanFromConfirmedIntake(
+      await intake('topdown-farm', 'label-only-seed', BASE_FACTS),
+    );
+    const second = await buildWorldLayoutPlanFromConfirmedIntake(
+      await intake('topdown-farm', 'label-only-seed', {
+        ...BASE_FACTS,
+        landmarks: 'West landing, Festival square, Mill workshop, Summit gate',
+      }),
+    );
+
+    expect(first.landmarks.map(({ label }) => label)).not.toEqual(
+      second.landmarks.map(({ label }) => label),
+    );
+    expect(structuralTopology(first)).toEqual(structuralTopology(second));
+    expect(placement(first)).toEqual(placement(second));
   });
 
   it('rejects unknown fields and unsafe ids', async () => {
@@ -152,7 +259,7 @@ describe('WorldLayoutPlan 1.0', () => {
 
   it('rejects rectangles and nodes outside logical bounds', async () => {
     const plan = mutable(await buildWorldLayoutPlanFromConfirmedIntake(await intake()));
-    plan.regions[0].width = 65;
+    plan.regions[0].width = plan.bounds.width + 1;
     await expect(materializeWorldLayoutPlan(plan)).rejects.toMatchObject({
       code: 'layout.invalid-value',
     });
@@ -169,10 +276,10 @@ describe('WorldLayoutPlan 1.0', () => {
     const plan = mutable(
       await buildWorldLayoutPlanFromConfirmedIntake(await intake('side-platformer')),
     );
-    plan.traversal.edges[2] = {
-      ...plan.traversal.edges[2],
-      from: 'node-landmark-east',
-      to: 'node-route-center',
+    plan.traversal.edges[0] = {
+      ...plan.traversal.edges[0],
+      from: 'node-landmark-2',
+      to: 'node-landmark-1',
       direction: 'forward',
     };
     await expect(materializeWorldLayoutPlan(plan)).rejects.toMatchObject({

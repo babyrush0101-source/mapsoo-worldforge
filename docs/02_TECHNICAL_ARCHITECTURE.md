@@ -232,7 +232,7 @@ profile + seed + rights ─> provider candidate sets ─> normalize/atlas/map �
 WorldForge 只自研决定项目差异化和可验证交付的核心：
 
 - 多轮对话确认后的世界定义与版本化 checkpoint；
-- `WorldLayoutPlan`、角色身份绑定和四类世界的完整性规则；
+- `WorldLayoutConstraints`、四类确定性布局求解、`WorldLayoutPlan`、角色身份绑定和完整性规则；
 - 人工确认的角色语义身份，以及四类镜头下只允许的适配边界；
 - provider-neutral 美术任务、候选归一化、来源/许可记录和人工审核状态；
 - 可复现世界包、Godot importer、World Runner 契约与树莓派交付证据。
@@ -248,6 +248,8 @@ WorldForge 只自研决定项目差异化和可验证交付的核心：
 
 ```text
 confirmed world
+  -> confirmed WorldLayoutConstraints
+  -> profile solver
   -> WorldLayoutPlan + ProductionArtPlan
   -> ProductionArtProvider port
        -> built-in offline adapter

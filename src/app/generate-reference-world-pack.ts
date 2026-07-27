@@ -24,10 +24,17 @@ import {
   type WorldAssetRevision,
 } from '../core/world-asset-revision';
 import {
-  buildWorldLayoutPlanFromConfirmedIntake,
   fingerprintWorldLayoutPlan,
+  solveWorldLayoutPlanFromConstraints,
   type WorldLayoutPlan,
 } from '../core/world-layout-plan';
+import {
+  createWorldLayoutConstraintsFromConfirmedIntake,
+  deriveWorldLayoutConstraintsFromConfirmedIntake,
+  fingerprintWorldLayoutConstraints,
+  type WorldLayoutConstraintIntent,
+  type WorldLayoutConstraints,
+} from '../core/world-layout-constraints';
 import type {
   ReferenceImageDescriptor,
   ReferenceImageRole,
@@ -97,12 +104,15 @@ export interface GenerateConfirmedReferenceWorldPackInput {
   readonly character: LocalReferenceImage;
   readonly approvedIntentPreviewSha256: string;
   readonly completedAt: string;
+  readonly layoutIntent?: WorldLayoutConstraintIntent;
   readonly signal?: AbortSignal;
 }
 
 export interface GeneratedConfirmedReferenceWorldPack extends GeneratedReferenceWorldPack {
   readonly confirmedIntake: ConfirmedWorldCreationIntake;
   readonly confirmedIntakeSha256: string;
+  readonly layoutConstraints: WorldLayoutConstraints;
+  readonly layoutConstraintsSha256: string;
   readonly layoutPlan: WorldLayoutPlan;
   readonly layoutPlanSha256: string;
 }
@@ -300,10 +310,16 @@ export async function generateConfirmedReferenceWorldPack(
     ],
     approved_intent_preview_sha256: input.approvedIntentPreviewSha256,
   });
-  const [projection, layoutPlan] = await Promise.all([
+  const [projection, layoutConstraints] = await Promise.all([
     projectConfirmedWorldCreationIntake(confirmedIntake),
-    buildWorldLayoutPlanFromConfirmedIntake(confirmedIntake),
+    input.layoutIntent
+      ? createWorldLayoutConstraintsFromConfirmedIntake(confirmedIntake, input.layoutIntent)
+      : deriveWorldLayoutConstraintsFromConfirmedIntake(confirmedIntake),
   ]);
+  const layoutPlan = await solveWorldLayoutPlanFromConstraints(
+    layoutConstraints,
+    confirmedIntake,
+  );
   abortIfNeeded(input.signal);
   const generated = await generateReferenceWorldPack({
     profile: input.profile,
@@ -336,6 +352,8 @@ export async function generateConfirmedReferenceWorldPack(
     ...generated,
     confirmedIntake,
     confirmedIntakeSha256: projection.intake_sha256,
+    layoutConstraints,
+    layoutConstraintsSha256: await fingerprintWorldLayoutConstraints(layoutConstraints),
     layoutPlan,
     layoutPlanSha256: await fingerprintWorldLayoutPlan(layoutPlan),
   });
