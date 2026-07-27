@@ -17,6 +17,11 @@ import {
   createProductionArtPlan,
   type ProductionArtTask,
 } from '../src/core/production-art-contract';
+import {
+  fingerprintCharacterProfileRevision,
+  materializeCharacterProfileRevision,
+  serializeCharacterProfileRevisionCanonical,
+} from '../src/core/character-profile-revision';
 
 const PROFILE = 'side-platformer';
 const ADMISSION = 'internal-technical-review-only';
@@ -361,20 +366,14 @@ async function verifyPositive(
   ) {
     fail('Run-set admission record weakens rights, privacy or release gates.');
   }
-  const characterRevision = JSON.parse(
-    await readFile(join(outputRoot, 'character', 'character-profile-revision.json'), 'utf8'),
-  ) as {
-    document_type?: string;
-    profile_revision_id?: string;
-    runtime_direction_transform?: {
-      strategy?: string;
-      directions?: readonly string[];
-      provenance?: {
-        basis?: string;
-        source_reference_ids?: readonly string[];
-      };
-    };
-  };
+  const characterRevisionBytes = Uint8Array.from(
+    await readFile(join(outputRoot, 'character', 'character-profile-revision.json')),
+  );
+  const characterRevision = materializeCharacterProfileRevision(
+    JSON.parse(Buffer.from(characterRevisionBytes).toString('utf8')),
+  );
+  const canonicalCharacterRevisionBytes =
+    serializeCharacterProfileRevisionCanonical(characterRevision);
   const characterAtlas = Uint8Array.from(
     await readFile(join(outputRoot, 'character', 'character-profile-atlas.png')),
   );
@@ -383,6 +382,12 @@ async function verifyPositive(
   if (
     characterRevision.document_type !== 'character-profile-revision'
     || typeof characterRevision.profile_revision_id !== 'string'
+    || Buffer.compare(
+      Buffer.from(characterRevisionBytes),
+      Buffer.from(canonicalCharacterRevisionBytes),
+    ) !== 0
+    || sha256(characterRevisionBytes)
+      !== await fingerprintCharacterProfileRevision(characterRevision)
     || characterRevision.runtime_direction_transform?.strategy !== 'horizontal-flip'
     || characterRevision.runtime_direction_transform.directions?.join(',') !== 'left'
     || characterRevision.runtime_direction_transform.provenance?.basis

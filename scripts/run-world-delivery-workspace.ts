@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   finalizeWorldRunnerDelivery,
   prepareWorldDeliveryWorkspace,
-} from '../src/adapters/world-delivery-workspace';
+} from '../src/app/world-delivery-workspace';
 import {
   WORLD_RUNNER_ARCHITECTURES,
   WORLD_RUNNER_ARTIFACT_KINDS,
@@ -22,6 +22,7 @@ const PREPARE_FLAGS = new Set([
   '--reference-root',
   '--workspace',
   '--character-id',
+  '--completed-at',
   '--quality',
   '--request-budget',
 ]);
@@ -51,6 +52,7 @@ function usage(): string {
     '    --reference-root <reference-root> \\',
     '    --workspace <private-workspace-outside-this-repository> \\',
     '    --character-id <neutral-kebab-case-id> \\',
+    '    --completed-at <canonical-UTC-ISO> \\',
     '    [--quality low|medium|high] [--request-budget <integer>]',
     '',
     'Finalize an already reviewed and headless-smoked runtime delivery:',
@@ -69,6 +71,8 @@ function usage(): string {
     '',
     'Privacy and safety:',
     '  - prepare writes private references, briefs, and absolute paths only outside the repository;',
+    '  - prepare also writes a hash-bound Godot-import-ready procedural baseline pack;',
+    '  - the baseline is a playable placeholder and is never labelled as finished model art;',
     '  - prepare makes zero remote requests; the production-art workflow remains a separate reviewed step;',
     '  - finalize never overwrites different output and binds exact pack, runtime, character, and report bytes;',
     '  - this CLI accepts only the public consumer-neutral contract; private product records stay private.',
@@ -156,6 +160,7 @@ async function prepare(argv: readonly string[]): Promise<void> {
     '--reference-root',
     '--workspace',
     '--character-id',
+    '--completed-at',
   ]) required(values, flag);
   const requestBudgetText = values.get('--request-budget');
   if (requestBudgetText && !/^[1-9]\d?$/.test(requestBudgetText)) {
@@ -173,6 +178,7 @@ async function prepare(argv: readonly string[]): Promise<void> {
     ),
     workspace: privateWorkspacePath(required(values, '--workspace')),
     characterId: required(values, '--character-id'),
+    completedAt: required(values, '--completed-at'),
     ...(quality ? { quality } : {}),
     ...(requestBudgetText ? { requestBudget: Number(requestBudgetText) } : {}),
   });

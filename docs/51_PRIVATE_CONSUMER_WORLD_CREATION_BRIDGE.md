@@ -48,7 +48,8 @@ pnpm world-delivery:workspace -- prepare \
   --intake <confirmed-intake.json> \
   --reference-root <private-reference-root> \
   --workspace <absolute-private-workspace-outside-this-repository> \
-  --character-id <portable-character-id>
+  --character-id <portable-character-id> \
+  --completed-at <canonical-UTC-ISO>
 ```
 
 This command:
@@ -56,6 +57,13 @@ This command:
 - re-materializes and fingerprints the confirmed ten-fact intake;
 - re-reads both reference images under the declared root and verifies their
   media type, dimensions, byte length, SHA-256, role, and rights;
+- requires the explicit completion instant used by the reproducible baseline
+  receipt instead of inventing or reading a nondeterministic timestamp;
+- builds a complete zero-request procedural world pack from the same confirmed
+  intake, checkpoint hashes, references and `WorldLayoutPlan`;
+- writes the baseline ZIP, exact exported preview, world-asset revision and
+  review evidence under `baseline/`, with every byte in the workspace hash
+  inventory;
 - derives the canonical four-profile production task inventory and exact
   default request budget;
 - writes the confirmed intake, projection, world brief, style bible, copied
@@ -66,7 +74,25 @@ This command:
 
 Existing output is accepted only when every file is byte-identical. A changed
 intake, reference, generated job, or inventory is never merged over prior
-state. The generated job can be inspected locally with:
+state.
+
+The workspace manifest labels the first pack:
+
+```json
+{
+  "status": "godot-import-ready",
+  "art_quality": "procedural-placeholder",
+  "final_art_required": true
+}
+```
+
+It is a real complete pack whose scene, collision, navigation, spawn, exit and
+landmarks come from the confirmed layout and can be imported immediately. It
+is not presented as finished model art. This gives the user a playable map
+while later model tasks replace the placeholder atlases under independent
+review gates.
+
+The generated model-art job can be inspected locally with:
 
 ```bash
 pnpm production-art:workflow -- \

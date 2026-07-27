@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it } from 'vitest';
 import Ajv2020 from 'ajv/dist/2020.js';
+import JSZip from 'jszip';
 
 import { encodeRgbaPng } from './canvas/encode-png';
 import smokeReportSchema
@@ -39,6 +40,7 @@ import {
 
 const roots: string[] = [];
 const execFileAsync = promisify(execFile);
+const COMPLETED_AT = '2026-07-27T12:00:00.000Z';
 
 afterEach(async () => {
   const { rm } = await import('node:fs/promises');
@@ -73,7 +75,7 @@ async function intakeFixture(
   ]);
   const rights = {
     basis: 'owned' as const,
-    license: 'CC0-1.0',
+    license: 'LicenseRef-User-Owned',
     allowGenerativeAdaptation: true as const,
     allowOutputRedistribution: true as const,
     allowOutputCc0Dedication: true as const,
@@ -141,12 +143,34 @@ describe('world delivery workspace preparation', () => {
       referenceRoot: root,
       workspace,
       characterId: 'neutral-traveler',
+      completedAt: COMPLETED_AT,
     });
     expect(manifest.profile).toBe(profile);
     expect(manifest.remote_request_count).toBe(0);
     expect(manifest.task_count).toBeGreaterThan(1);
     expect(manifest.request_budget).toBe(manifest.task_count);
+    expect(manifest.baseline).toMatchObject({
+      status: 'godot-import-ready',
+      art_quality: 'procedural-placeholder',
+      pack_schema_version: {
+        'topdown-farm': '0.6.0',
+        'side-platformer': '0.7.0',
+        'isometric-action': '0.8.0',
+        'layered-depth-2d': '0.9.0',
+      }[profile],
+      preview_path: 'baseline/world-preview.png',
+      asset_revision_path: 'baseline/world-asset-revision.json',
+      review_evidence_path:
+        'baseline/exported-world-review-evidence.json',
+      godot_scene_path:
+        `res://mapsoo_imports/${intake.intake_id}/${intake.intake_id}.world.tscn`,
+      final_art_required: true,
+    });
     expect(Object.keys(manifest.files)).toEqual(expect.arrayContaining([
+      manifest.baseline.pack_path,
+      manifest.baseline.preview_path,
+      manifest.baseline.asset_revision_path,
+      manifest.baseline.review_evidence_path,
       'confirmed-intake.json',
       'confirmed-intake-projection.json',
       'production-art-workflow-job.json',
@@ -157,6 +181,45 @@ describe('world delivery workspace preparation', () => {
       'world-brief.txt',
     ]));
     expect(manifest.layout_plan_sha256).toMatch(/^[a-f0-9]{64}$/u);
+    const baselinePack = Uint8Array.from(await readFile(
+      resolve(workspace, ...manifest.baseline.pack_path.split('/')),
+    ));
+    expect(sha(baselinePack)).toBe(manifest.baseline.pack_sha256);
+    const baselineZip = await JSZip.loadAsync(baselinePack);
+    const layoutEntry = Object.values(baselineZip.files)
+      .find(({ name }) => name.endsWith('/world-layout-plan.json'));
+    expect(layoutEntry).toBeDefined();
+    expect(JSON.parse(await layoutEntry!.async('text'))).toMatchObject({
+      profile,
+      source: {
+        intake_id: intake.intake_id,
+        seed: intake.seed,
+      },
+    });
+    const assetRevision = JSON.parse(await readFile(
+      resolve(workspace, manifest.baseline.asset_revision_path),
+      'utf8',
+    )) as Record<string, unknown>;
+    expect(assetRevision).toMatchObject({
+      profile,
+      world_id: intake.intake_id,
+      pack_sha256: manifest.baseline.pack_sha256,
+      revision_sha256: manifest.baseline.asset_revision_sha256,
+    });
+    const previewBytes = Uint8Array.from(await readFile(
+      resolve(workspace, manifest.baseline.preview_path),
+    ));
+    expect(sha(previewBytes)).toBe(manifest.baseline.preview_sha256);
+    const reviewEvidence = JSON.parse(await readFile(
+      resolve(workspace, manifest.baseline.review_evidence_path),
+      'utf8',
+    )) as Record<string, unknown>;
+    expect(reviewEvidence).toMatchObject({
+      profile,
+      approved_intent_preview_sha256:
+        intake.approved_intent_preview_sha256,
+      review_binding_sha256: manifest.baseline.review_binding_sha256,
+    });
     const job = JSON.parse(await readFile(
       resolve(workspace, 'production-art-workflow-job.json'),
       'utf8',
@@ -175,6 +238,7 @@ describe('world delivery workspace preparation', () => {
       referenceRoot: root,
       workspace,
       characterId: 'neutral-traveler',
+      completedAt: COMPLETED_AT,
     })).toEqual(manifest);
   });
 
@@ -188,7 +252,21 @@ describe('world delivery workspace preparation', () => {
       referenceRoot: root,
       workspace: resolve(root, 'workspace'),
       characterId: 'neutral-traveler',
+      completedAt: COMPLETED_AT,
     })).rejects.toThrow(/SHA-256|byteLength/u);
+  });
+
+  it('requires an explicit canonical completion instant for the baseline receipt', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'mapsoo-world-workspace-'));
+    roots.push(root);
+    const intake = await intakeFixture(root, 'topdown-farm');
+    await expect(prepareWorldDeliveryWorkspace({
+      intake,
+      referenceRoot: root,
+      workspace: resolve(root, 'workspace'),
+      characterId: 'neutral-traveler',
+      completedAt: 'today',
+    })).rejects.toThrow(/canonical UTC ISO instant/u);
   });
 
   it('runs the generated job in dry-run mode with all state outside the repository', async () => {
@@ -201,6 +279,7 @@ describe('world delivery workspace preparation', () => {
       referenceRoot: root,
       workspace,
       characterId: 'neutral-traveler',
+      completedAt: COMPLETED_AT,
     });
     const { stdout } = await execFileAsync(process.execPath, [
       resolve(process.cwd(), 'node_modules/vite-node/vite-node.mjs'),
@@ -237,6 +316,7 @@ describe('world delivery workspace preparation', () => {
       referenceRoot: root,
       workspace,
       characterId: 'neutral-traveler',
+      completedAt: COMPLETED_AT,
     })).resolves.toMatchObject({
       intake_id: intake.intake_id,
       remote_request_count: 0,

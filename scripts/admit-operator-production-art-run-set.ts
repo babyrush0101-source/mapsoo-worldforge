@@ -39,6 +39,9 @@ import {
   isWorldAssetProfile,
   type WorldAssetProfile,
 } from '../src/core/asset-profile';
+import {
+  serializeCharacterProfileRevisionCanonical,
+} from '../src/core/character-profile-revision';
 
 const ADMISSION = 'internal-technical-review-only';
 const SAFE_MODEL = /^[a-z0-9][a-z0-9._-]{0,79}$/;
@@ -466,7 +469,7 @@ async function main(): Promise<void> {
   await Promise.all([
     writeExclusiveOrIdentical(
       join(args.outputRoot, 'character', 'character-profile-revision.json'),
-      json(characterProjection.revision),
+      serializeCharacterProfileRevisionCanonical(characterProjection.revision),
       'character profile revision',
     ),
     writeExclusiveOrIdentical(

@@ -2,7 +2,7 @@
 
 ## 1. 现状与目标
 
-现有仓库曾是 React 18 + Vite 6 的网站前端。v0.1 只保留 React/Vite 工具链和 Git 历史，应用源代码直接重建为 Worldsmith 工作台；营销页、博客、社区、Supabase 登录和本地管理员不迁移。
+现有仓库曾是 React 18 + Vite 6 的网站前端。v0.1 只保留 React/Vite 工具链和 Git 历史，应用源代码直接重建为 WorldForge 工作台；营销页、博客、社区、Supabase 登录和本地管理员不迁移。
 
 目标架构把领域逻辑与 UI 分开，确保生成、校验和导出可以在浏览器 UI、测试、CLI 或未来 Godot 插件中复用。
 
@@ -37,50 +37,32 @@ Adapters
   └─ Godot exporter/importer
 ```
 
-## 3. 建议目录
+## 3. 当前目录与依赖方向
 
 ```text
 src/
-  app/
-    App.tsx
-    routes.ts
-  features/
-    world-editor/
-    world-preview/
-    asset-inspector/
-    export-pack/
-  core/
-    schema/
-      world-spec.ts
-      manifest.ts
-      migrations.ts
-    generation/
-      provider.ts
-      procedural-provider.ts
-      seeded-random.ts
-    validation/
-      rules.ts
-      validate-pack.ts
-    export/
-      common-pack.ts
-      godot-pack.ts
-      itch-pack.ts
-  adapters/
-    canvas/
-    storage/
-    zip/
-  examples/
-    meadow.world.json
-tests/
-godot/
-  addons/mapsoo_importer/
-  example/
-schemas/
+  core/          # 纯契约、校验、指纹、版本化 manifest；不认识 UI 或供应商
+  providers/     # 内置程序化实现和可替换 provider 实现
+  adapters/      # PNG/ZIP、文件、Godot、SpriteCook 等格式与运行时边界
+  app/           # 跨 core/provider/adapter 的用例编排与应用状态
+  features/      # 浏览器组件；只调用 app 用例或稳定 core 契约
+  integrations/  # 可选 server-only 外部服务入口
+scripts/         # 薄 CLI；解析参数后调用 app/adapters
+godot/           # importer、示例工程与 headless 验证
+schemas/         # 对外 JSON Schema
 ```
 
 旧网站已经存在于 Git 历史，不需要在新工作树中额外保存 `legacy` 副本。
 
-当前代码仍采用较浅目录：Provider 契约位于 `src/core/generation-provider.ts`，身份规则位于 `src/core/generator-identity.ts`，内置 Provider 与注册表位于 `src/providers/`。只有模块继续增长时才做机械目录迁移，避免为了理想树形打乱已发布路径。
+新增模块的依赖方向保持单向：`providers` 和 `adapters` 依赖 `core`；
+`app` 负责编排它们；`features` 与 `scripts` 只作为入口。早期公开 facade
+`core/generation-provider.ts` 和已发布导出策略
+`core/playable-terrain-export-policy.ts` 仍反向绑定内置 provider，作为版本
+兼容例外保留；新代码不得复制这种方向，未来只在版本化迁移时移除。
+供应商 SDK、账号状态、计费和专有响应只允许停留在 `integrations` 或
+专用 adapter。已被内部测试或外部调用使用的旧路径可以保留一行
+re-export 兼容层，但不再放实现。只有职责真的增长时才拆模块，避免为了
+理想目录提前搭框架。
 
 ## 4. World Spec
 

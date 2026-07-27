@@ -112,11 +112,19 @@ pnpm world-delivery:workspace -- prepare \
   --intake <confirmed-intake.json> \
   --reference-root <private-reference-root> \
   --workspace <private-workspace-outside-this-repository> \
-  --character-id <portable-character-id>
+  --character-id <portable-character-id> \
+  --completed-at <canonical-UTC-ISO>
 ```
 
-The generated job declares an absolute `private_output_root` outside this
-repository. The workflow writes its append-only states under
+Preparation also creates a complete zero-request procedural baseline pack from
+the same confirmed intake, reference bytes and `WorldLayoutPlan`. Its ZIP,
+runtime preview, asset revision and review evidence are written under
+`<private-workspace>/baseline/` and hash-bound by the workspace manifest. That
+pack is immediately ready for the matching Godot importer, while remaining
+clearly labelled `procedural-placeholder` with final art required.
+
+The generated model-art job declares an absolute `private_output_root` outside
+this repository. The workflow writes its append-only states under
 `<private_output-root>/workflows/` and all source/normalized candidates under
 `<private_output-root>/model-runs/`. The job parser rejects an in-repository
 private output root. The legacy ignored repository paths remain available only
@@ -729,7 +737,9 @@ pnpm production-art:operator-admit -- \
 Admission re-hashes and decodes all nine PNGs, re-checks dimensions and alpha
 policy, writes the normal production-art run-set plus per-task generation
 evidence, and projects the admitted player sheet into a portable character
-revision and exact atlas. Each task also receives an `operator-admission.json`
+revision and exact atlas. The revision is written with the same canonical
+serializer as the model-backed path, so its raw SHA-256 can be bound directly
+by the Runner, PCK receipt and final delivery. Each task also receives an `operator-admission.json`
 hash binding. The run-set admission deliberately retains `rights: pending`,
 `public_release: prohibited`, `human_review: required`, and
 `remote_request_count: 0`; it never embeds candidate or output absolute paths.
