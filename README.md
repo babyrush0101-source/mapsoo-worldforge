@@ -122,6 +122,14 @@ The provider-neutral
 [live-model four-profile direction review](docs/52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md)
 catches world-landmark and character-identity drift before one profile is
 selected and later asset tasks are unlocked.
+The strict
+[four-profile world-family continuity contract](docs/56_WORLD_FAMILY_CONTINUITY.md)
+then binds four confirmed intakes and four complete character revisions to one
+world identity and one character identity. It allows profile-specific camera,
+traversal and animation geometry, but fails closed on missing profiles, world
+drift, character drift or changed source fingerprints. Its
+`continuity-confirmed` status deliberately does not replace human art, rights,
+runtime or physical Raspberry Pi gates.
 The optional terrain-transition layer now also has a zero-network local
 SpriteCook 17-piece importer. It strips the optional guide grid and reorders
 the documented N/E/S/W cells into the same neutral 4 by 4 mask contract used

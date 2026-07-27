@@ -770,6 +770,13 @@ This source adapter is a real provider implementation, but the following work is
 still required before claiming “a few dialogue rounds create one complete
 production world”:
 
+The four-profile continuity boundary is now executable: one receipt binds the
+exact four confirmed intakes and exact four character revisions to a shared
+world identity and character identity while allowing profile-specific camera,
+traversal and atlas geometry. See
+[`56_WORLD_FAMILY_CONTINUITY.md`](56_WORLD_FAMILY_CONTINUITY.md). This proves
+continuity only and does not reduce any item below.
+
 - exercise the now-connected automatic character staging path with reviewed
   real model outputs; the provider-neutral revision, neutral player slot,
   embedded one-click PCK binding and reusable-shell mode are implemented

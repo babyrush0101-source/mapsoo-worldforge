@@ -126,6 +126,7 @@
     "production-art:run-set:verify": "vite-node scripts/verify-production-art-run-set.ts",
     "production-art:review-pack:build": "vite-node scripts/build-production-review-pack.ts",
     "world-delivery:workspace": "vite-node scripts/run-world-delivery-workspace.ts",
+    "world-family:continuity": "vite-node scripts/verify-world-family-continuity.ts",
     "world-runner:pck:build": "node scripts/build-world-runner-pck.mjs",
     "world-runner:pck:verify": "node scripts/verify-world-runner-pck.mjs",
     "pi4:physical:accept": "node scripts/run-pi4-physical-acceptance.mjs",

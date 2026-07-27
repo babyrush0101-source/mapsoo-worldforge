@@ -343,6 +343,8 @@ Implemented in this repository:
 
 - strict confirmed-intake materializer, canonical fingerprint, and projection;
 - strict JSON Schema and positive/negative tests for all four profiles;
+- strict four-profile world-family continuity receipt binding one shared world
+  identity and character identity to the exact four intake/revision pairs;
 - zero-request private-workspace preparation CLI with atomic/idempotent output;
 - external private workflow-state and candidate-art roots, proven by a real
   workflow dry run;

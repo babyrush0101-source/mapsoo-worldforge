@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-family-continuity-1.0.schema.json",
+  "title": "Mapsoo World Family Continuity 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "family_id",
+    "target",
+    "world_identity_sha256",
+    "character_id",
+    "character_identity_sha256",
+    "profiles",
+    "status"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "world-family-continuity" },
+    "family_id": { "$ref": "#/$defs/id" },
+    "target": { "enum": ["desktop", "raspberry-pi-4b", "web"] },
+    "world_identity_sha256": { "$ref": "#/$defs/sha256" },
+    "character_id": { "$ref": "#/$defs/id" },
+    "character_identity_sha256": { "$ref": "#/$defs/sha256" },
+    "profiles": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "$ref": "#/$defs/sidePlatformer" },
+        { "$ref": "#/$defs/isometricAction" },
+        { "$ref": "#/$defs/topdownFarm" },
+        { "$ref": "#/$defs/layeredDepth" }
+      ],
+      "items": false
+    },
+    "status": { "const": "continuity-confirmed" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "intake_id",
+        "intake_sha256",
+        "character_profile_revision_id",
+        "character_profile_revision_sha256"
+      ],
+      "properties": {
+        "profile": {
+          "enum": [
+            "side-platformer",
+            "isometric-action",
+            "topdown-farm",
+            "layered-depth-2d"
+          ]
+        },
+        "intake_id": { "$ref": "#/$defs/id" },
+        "intake_sha256": { "$ref": "#/$defs/sha256" },
+        "character_profile_revision_id": { "$ref": "#/$defs/id" },
+        "character_profile_revision_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sidePlatformer": {
+      "allOf": [
+        { "$ref": "#/$defs/binding" },
+        { "type": "object", "properties": { "profile": { "const": "side-platformer" } } }
+      ]
+    },
+    "isometricAction": {
+      "allOf": [
+        { "$ref": "#/$defs/binding" },
+        { "type": "object", "properties": { "profile": { "const": "isometric-action" } } }
+      ]
+    },
+    "topdownFarm": {
+      "allOf": [
+        { "$ref": "#/$defs/binding" },
+        { "type": "object", "properties": { "profile": { "const": "topdown-farm" } } }
+      ]
+    },
+    "layeredDepth": {
+      "allOf": [
+        { "$ref": "#/$defs/binding" },
+        { "type": "object", "properties": { "profile": { "const": "layered-depth-2d" } } }
+      ]
+    }
+  }
+}
