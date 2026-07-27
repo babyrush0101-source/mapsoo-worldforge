@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-confirmed-world-creation-intake-1.0.schema.json",
+  "title": "Mapsoo confirmed world creation intake 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "intake_id",
+    "session_revision",
+    "profile",
+    "target",
+    "seed",
+    "facts",
+    "character_source",
+    "references",
+    "approved_intent_preview_sha256",
+    "checkpoints"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "status": { "const": "confirmed" },
+    "intake_id": { "$ref": "#/$defs/id" },
+    "session_revision": { "type": "integer", "minimum": 4 },
+    "profile": {
+      "enum": ["side-platformer", "isometric-action", "topdown-farm", "layered-depth-2d"]
+    },
+    "target": { "enum": ["desktop", "raspberry-pi-4b", "web"] },
+    "seed": { "$ref": "#/$defs/text160" },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "premise",
+        "worldview",
+        "terrain",
+        "geography",
+        "culture",
+        "ecology",
+        "mood",
+        "art_direction",
+        "traversal",
+        "landmarks"
+      ],
+      "properties": {
+        "premise": { "$ref": "#/$defs/text240" },
+        "worldview": { "$ref": "#/$defs/text240" },
+        "terrain": { "$ref": "#/$defs/text200" },
+        "geography": { "$ref": "#/$defs/text200" },
+        "culture": { "$ref": "#/$defs/text240" },
+        "ecology": { "$ref": "#/$defs/text200" },
+        "mood": { "$ref": "#/$defs/text160" },
+        "art_direction": { "$ref": "#/$defs/text240" },
+        "traversal": { "$ref": "#/$defs/text200" },
+        "landmarks": { "$ref": "#/$defs/text240" }
+      }
+    },
+    "character_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_id", "identity_digest_sha256"],
+      "properties": {
+        "reference_id": { "$ref": "#/$defs/referenceId" },
+        "identity_digest_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "references": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/reference" },
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "role": { "const": "environment-style" } },
+            "required": ["role"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "properties": { "role": { "const": "character" } },
+            "required": ["role"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "approved_intent_preview_sha256": { "$ref": "#/$defs/sha256" },
+    "checkpoints": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/worldBriefCheckpoint" },
+        { "$ref": "#/$defs/artDirectionCheckpoint" },
+        { "$ref": "#/$defs/mapLayoutCheckpoint" },
+        { "$ref": "#/$defs/styleSampleCheckpoint" }
+      ],
+      "items": false,
+      "minItems": 4,
+      "maxItems": 4
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "referenceId": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "text160": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    },
+    "text200": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    },
+    "text240": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    },
+    "safePath": {
+      "type": "string",
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "basis",
+        "license",
+        "allowGenerativeAdaptation",
+        "allowOutputRedistribution",
+        "allowOutputCc0Dedication"
+      ],
+      "properties": {
+        "basis": { "enum": ["owned", "licensed", "public-domain"] },
+        "license": {
+          "type": "string",
+          "pattern": "^(?:CC0-1\\.0|CC-BY-4\\.0|CC-BY-SA-4\\.0|LicenseRef-[A-Za-z0-9][A-Za-z0-9.-]{0,79})$"
+        },
+        "allowGenerativeAdaptation": { "const": true },
+        "allowOutputRedistribution": { "const": true },
+        "allowOutputCc0Dedication": { "const": true },
+        "attribution": { "type": "string", "minLength": 1, "maxLength": 500 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "basis": { "const": "licensed" } },
+            "required": ["basis"]
+          },
+          "then": {
+            "properties": {
+              "attribution": { "type": "string", "minLength": 1, "maxLength": 500 }
+            },
+            "required": ["attribution"]
+          }
+        }
+      ]
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "path",
+        "mediaType",
+        "byteLength",
+        "width",
+        "height",
+        "sha256",
+        "rights"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/referenceId" },
+        "role": { "enum": ["environment-style", "character"] },
+        "path": { "$ref": "#/$defs/safePath" },
+        "mediaType": { "enum": ["image/png", "image/jpeg"] },
+        "byteLength": { "type": "integer", "minimum": 1, "maximum": 8388608 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "rights": { "$ref": "#/$defs/rights" }
+      }
+    },
+    "checkpointBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "snapshot_sha256"],
+      "properties": {
+        "stage": { "type": "string" },
+        "snapshot_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "worldBriefCheckpoint": {
+      "allOf": [
+        { "$ref": "#/$defs/checkpointBase" },
+        { "type": "object", "properties": { "stage": { "const": "world-brief" } } }
+      ]
+    },
+    "artDirectionCheckpoint": {
+      "allOf": [
+        { "$ref": "#/$defs/checkpointBase" },
+        { "type": "object", "properties": { "stage": { "const": "art-direction" } } }
+      ]
+    },
+    "mapLayoutCheckpoint": {
+      "allOf": [
+        { "$ref": "#/$defs/checkpointBase" },
+        { "type": "object", "properties": { "stage": { "const": "map-layout" } } }
+      ]
+    },
+    "styleSampleCheckpoint": {
+      "allOf": [
+        { "$ref": "#/$defs/checkpointBase" },
+        { "type": "object", "properties": { "stage": { "const": "style-sample" } } }
+      ]
+    }
+  }
+}

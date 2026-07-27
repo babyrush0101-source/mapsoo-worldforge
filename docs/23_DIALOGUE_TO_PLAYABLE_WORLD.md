@@ -16,7 +16,7 @@ The product is a guided world-building conversation, not a one-shot image prompt
 
 Every confirmation creates a checkpoint. A revision never overwrites an approved asset pack or Godot map in place.
 
-The browser now exposes the first four confirmation rounds as an interactive guided conversation. After the first three decisions, the fourth round renders a deterministic 320×180 profile intent preview. Its image SHA-256 is included in the style-sample checkpoint alongside the user's approval notes. This preview establishes world grammar, depth, traversal, landmark contrast, and character scale, but it is not described as production art or as the exact final scene. The user's decoded character identity and environment analysis are applied during complete generation.
+The browser now exposes the first four confirmation rounds as an interactive guided conversation. A consumer Agent may expand those rounds into ten smaller questions covering premise, worldview, terrain, geography, culture, ecology, mood, art direction, traversal, and landmarks. `ConfirmedWorldCreationIntake 1.0` binds the resulting structured facts back to the same four trusted checkpoint stages, so follow-up questions do not create a second generation path. After the first three decisions, the fourth round renders a deterministic 320×180 profile intent preview. Its image SHA-256 is included in the style-sample checkpoint alongside the user's approval notes. This preview establishes world grammar, depth, traversal, landmark contrast, and character scale, but it is not described as production art or as the exact final scene. The user's decoded character identity and environment analysis are applied during complete generation.
 
 The trusted core reducer in `src/core/world-creation-session.ts` owns the complete seven-stage transition model. Every command includes `expectedRevision`, so a stale model response, duplicated click, or late generation job cannot overwrite a newer decision.
 
@@ -88,6 +88,11 @@ the world. File-based launch accepts only one
 `res://mapsoo_characters/<revision-id>/` directory and the trusted canonical
 revision SHA-256; changing worlds clears the active character binding and
 requires a compatible rebind.
+
+The consumer-neutral final handoff is `WorldRunnerDelivery 1.0`. It requires a
+prebuilt PCK for the Raspberry Pi 4B target and binds the exact world-pack,
+runtime-contract, character-profile and headless-smoke digests. See
+`docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md`.
 
 Initial constraints:
 

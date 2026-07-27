@@ -1,12 +1,13 @@
 # Runtime consumer boundary
 
-Status: public integration boundary plus executable neutral contract 1.0
+Status: public integration boundary plus executable neutral intake, runtime,
+character, and delivery contracts
 
 Mapsoo generates portable, verifiable world and character art data. A consuming product owns users, character identity truth, NPC behavior, memory, dialogue, permissions, device fleet state, and business completion.
 
 This boundary lets a private product consume Mapsoo packs without copying private product content into the open-source repository.
 
-The first synthetic-only executable slice now lives in:
+The executable boundary now lives in:
 
 - `src/core/portable-world-runtime-contract.ts`;
 - `schemas/mapsoo-portable-world-runtime-1.0.schema.json`;
@@ -14,6 +15,10 @@ The first synthetic-only executable slice now lives in:
 - `src/core/character-profile-revision.ts`;
 - `schemas/mapsoo-character-profile-revision-1.0.schema.json`;
 - `src/core/character-profile-revision.test.ts`.
+- `src/core/confirmed-world-creation-intake.ts`;
+- `schemas/mapsoo-confirmed-world-creation-intake-1.0.schema.json`;
+- `src/core/world-runner-delivery.ts`;
+- `schemas/mapsoo-world-runner-delivery-1.0.schema.json`.
 
 It validates a portable world, spawn points, neutral entity slots and event hooks, plus generic `prepare`, `bind`, `launch`, `exit`, and `status` messages. Every bridge message carries an idempotency key and a canonical payload SHA-256; unknown slots, broken references, unsafe paths, private extension fields, and changed payloads fail closed. This is a public protocol and mockable validation boundary, not a client for any private daemon.
 
@@ -137,4 +142,4 @@ The target artifact records source pack hash, engine version, architecture, main
 
 The public repository must never contain private world or character names, NPC stories, product copy, user or device identifiers, service addresses, tokens, hostnames, internal database/event schemas, private asset hashes, private screenshots, or private source paths.
 
-Tests use only synthetic worlds, characters, entity slots, digests, and runtime acknowledgements.
+Tests use only synthetic worlds, characters, entity slots, digests, and runtime acknowledgements. The complete private-consumer bridge and remaining host responsibilities are documented in `docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md`.

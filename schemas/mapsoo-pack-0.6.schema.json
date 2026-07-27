@@ -76,7 +76,7 @@
     "files": { "type": "array", "minItems": 1, "maxItems": 512, "items": { "$ref": "#/$defs/fileRecord" } },
     "license": {
       "type": "object", "additionalProperties": false, "required": ["output"],
-      "properties": { "output": { "type": "object", "additionalProperties": false, "required": ["id", "notice_path", "permits_redistribution"], "properties": { "id": { "$ref": "#/$defs/nonEmpty" }, "notice_path": { "$ref": "#/$defs/path" }, "permits_redistribution": { "const": true } } } }
+      "properties": { "output": { "type": "object", "additionalProperties": false, "required": ["id", "notice_path", "permits_redistribution"], "properties": { "id": { "enum": ["CC0-1.0", "LicenseRef-UNRELEASED"] }, "notice_path": { "const": "license-assets.md" }, "permits_redistribution": { "type": "boolean" } }, "oneOf": [{ "properties": { "id": { "const": "CC0-1.0" }, "permits_redistribution": { "const": true } } }, { "properties": { "id": { "const": "LicenseRef-UNRELEASED" }, "permits_redistribution": { "const": false } } }] } }
     },
     "provenance": {
       "type": "object", "additionalProperties": false,

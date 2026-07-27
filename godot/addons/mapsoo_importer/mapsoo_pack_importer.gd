@@ -1071,7 +1071,12 @@ static func _validate_complete_farm(manifest: Dictionary, pack_root: String, pre
 		var importer := _dictionary_at(compatibility, "importer", errors)
 		if compatibility.get("godot_min") != "4.3" or compatibility.get("grid") != "orthogonal" or compatibility.get("art_style") != "pixel_art" or importer.get("id") != "mapsoo_importer" or importer.get("min_version") != "0.1.0-alpha.9": errors.append("Pack 0.6 compatibility contract is unsupported.")
 		if manifest.get("profile") != "topdown-farm" or manifest.get("completeness_policy") != "topdown-farm-complete-v1": errors.append("Pack 0.6 must use the complete top-down farm profile.")
-		if output_license.get("permits_redistribution") != true or typeof(output_license.get("id")) != TYPE_STRING or str(output_license.get("id")).is_empty(): errors.append("Pack 0.6 output must permit redistribution.")
+		var public_license: bool = output_license.get("id") == "CC0-1.0" and output_license.get("notice_path") == "license-assets.md" and output_license.get("permits_redistribution") == true
+		var review_license: bool = output_license.get("id") == "LicenseRef-UNRELEASED" and output_license.get("notice_path") == "license-assets.md" and output_license.get("permits_redistribution") == false
+		if not public_license and not review_license: errors.append("Pack 0.6 output must use the canonical public or internal-review license contract.")
+		var provenance := _dictionary_at(manifest, "provenance", errors)
+		if review_license and (provenance.get("contains_generative_ai") != true or provenance.get("output_provenance") not in ["generative-ai", "hybrid"] or typeof(provenance.get("model_provider")) != TYPE_STRING or str(provenance.get("model_provider", "")).is_empty() or typeof(provenance.get("model")) != TYPE_STRING or str(provenance.get("model", "")).is_empty() or provenance.get("human_curated") != false):
+			errors.append("Pack 0.6 internal-review provenance contract is invalid.")
 	if not errors.is_empty(): return prepared
 
 	var file_index := _validate_file_records(manifest.get("files"), pack_root, errors)

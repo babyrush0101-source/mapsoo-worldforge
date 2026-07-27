@@ -5,6 +5,10 @@ import {
   ISOMETRIC_ENEMY_ACTIONS,
   ISOMETRIC_PLAYER_ACTIONS,
 } from './isometric-action-asset-bundle';
+import {
+  validatePackOutputAuthorization,
+  type PackOutputLicense,
+} from './production-review-pack-license';
 
 export const ALPHA11_PACK_SCHEMA_VERSION = '0.8.0' as const;
 export const ALPHA11_PACK_VERSION = '0.1.0-alpha.11' as const;
@@ -118,7 +122,7 @@ export interface Alpha11PackManifest {
     bytes: number;
     sha256: string;
   }>[];
-  readonly license: Readonly<{ output: Readonly<{ id: string; notice_path: string; permits_redistribution: true }> }>;
+  readonly license: Readonly<{ output: Readonly<PackOutputLicense> }>;
   readonly provenance: Readonly<{
     provider: Readonly<{ id: string; version: string }>;
     output_provenance: 'procedural' | 'generative-ai' | 'hybrid';
@@ -211,6 +215,9 @@ export function validateAlpha11PackManifest(manifest: Alpha11PackManifest): Alph
   ];
   if (referenced.some((path) => !known.has(path))) {
     issues.push({ code: 'manifest.file-reference', message: 'Every referenced path must exist in files.' });
+  }
+  for (const code of validatePackOutputAuthorization(manifest.license.output, manifest.provenance)) {
+    issues.push({ code, message: 'Pack output license and provenance are not an authorized public or internal-review pair.' });
   }
   return issues;
 }

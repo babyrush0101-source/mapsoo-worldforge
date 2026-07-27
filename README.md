@@ -197,6 +197,7 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 - [Production-art task/output contract for all four profiles](docs/32_PRODUCTION_ART_CONTRACT.md)
 - [Independent character profile revisions and neutral runtime binding](docs/33_CHARACTER_PROFILE_REVISION.md)
 - [Godot runtime binding for portable character profiles](docs/50_CHARACTER_PROFILE_RUNTIME_BINDING.md)
+- [Private-consumer world creation and World Runner bridge](docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md)
 - [Generation Provider SDK](docs/09_PROVIDER_SDK.md)
 - [Model-backed production art and safe single-task CLI](docs/49_MODEL_BACKED_PRODUCTION_ART.md)
 - [10-minute first Godot import](docs/10_FIRST_GODOT_IMPORT.md)

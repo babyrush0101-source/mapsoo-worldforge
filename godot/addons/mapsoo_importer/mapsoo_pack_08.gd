@@ -62,8 +62,18 @@ static func validate_and_prepare(manifest: Dictionary, pack_root: String, prepar
 		errors.append("Pack 0.8 requires the complete isometric-action profile.")
 	if compatibility.get("godot_min") != "4.3" or compatibility.get("grid") != "diamond-64x32" or compatibility.get("art_style") != "pixel_art" or importer.get("id") != "mapsoo_importer" or importer.get("min_version") != PACK_VERSION:
 		errors.append("Pack 0.8 compatibility contract is unsupported.")
-	if output_license.get("id") != "CC0-1.0" or output_license.get("notice_path") != "license-assets.md" or output_license.get("permits_redistribution") != true:
-		errors.append("Pack 0.8 requires the canonical CC0 output contract.")
+	var public_license: bool = output_license.get("id") == "CC0-1.0" and output_license.get("notice_path") == "license-assets.md" and output_license.get("permits_redistribution") == true
+	var review_license: bool = output_license.get("id") == "LicenseRef-UNRELEASED" and output_license.get("notice_path") == "license-assets.md" and output_license.get("permits_redistribution") == false
+	if not public_license and not review_license:
+		errors.append("Pack 0.8 requires the canonical public or internal-review output contract.")
+	var provenance := _dict(manifest.get("provenance"), "provenance", errors)
+	var provider := _dict(provenance.get("provider"), "provenance.provider", errors)
+	_require_keys(provenance, ["provider", "output_provenance", "contains_generative_ai", "model_provider", "model", "seed", "human_curated"], "provenance", errors)
+	_require_keys(provider, ["id", "version"], "provenance.provider", errors)
+	if not _asset_id(str(provider.get("id", ""))) or str(provider.get("version", "")).is_empty() or provenance.get("output_provenance") not in ["procedural", "generative-ai", "hybrid"] or typeof(provenance.get("contains_generative_ai")) != TYPE_BOOL or typeof(provenance.get("human_curated")) != TYPE_BOOL or typeof(provenance.get("seed")) != TYPE_STRING or str(provenance.get("seed", "")).is_empty():
+		errors.append("Pack 0.8 provenance contract is invalid.")
+	if review_license and (provenance.get("contains_generative_ai") != true or provenance.get("output_provenance") not in ["generative-ai", "hybrid"] or typeof(provenance.get("model_provider")) != TYPE_STRING or str(provenance.get("model_provider", "")).is_empty() or typeof(provenance.get("model")) != TYPE_STRING or str(provenance.get("model", "")).is_empty() or provenance.get("human_curated") != false):
+		errors.append("Pack 0.8 internal-review provenance contract is invalid.")
 	_validate_ordered(manifest.get("layers"), LAYERS, "id", "Pack 0.8 layers", errors, true)
 
 	var atlas_paths := {}

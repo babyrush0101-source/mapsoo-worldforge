@@ -62,14 +62,18 @@ static func validate_and_prepare(manifest: Dictionary, pack_root: String, prepar
 		errors.append("Pack 0.7 compatibility contract is unsupported.")
 	if manifest.get("profile") != "side-platformer" or manifest.get("completeness_policy") != POLICY:
 		errors.append("Pack 0.7 requires the complete side-platformer profile.")
-	if output_license.get("id") != "CC0-1.0" or output_license.get("permits_redistribution") != true or output_license.get("notice_path") != "license-assets.md":
-		errors.append("Pack 0.7 generated assets must use the canonical redistributable CC0 contract.")
+	var public_license: bool = output_license.get("id") == "CC0-1.0" and output_license.get("permits_redistribution") == true and output_license.get("notice_path") == "license-assets.md"
+	var review_license: bool = output_license.get("id") == "LicenseRef-UNRELEASED" and output_license.get("permits_redistribution") == false and output_license.get("notice_path") == "license-assets.md"
+	if not public_license and not review_license:
+		errors.append("Pack 0.7 assets must use the canonical public or internal-review license contract.")
 	var provenance := _dict(manifest.get("provenance"), "provenance", errors)
 	var provider := _dict(provenance.get("provider"), "provenance.provider", errors)
 	_require_keys(provenance, ["provider", "output_provenance", "contains_generative_ai", "model_provider", "model", "seed", "human_curated"], "provenance", errors)
 	_require_keys(provider, ["id", "version"], "provenance.provider", errors)
 	if not _asset_id(str(provider.get("id", ""))) or str(provider.get("version", "")).is_empty() or provenance.get("output_provenance") not in ["procedural", "generative-ai", "hybrid"] or typeof(provenance.get("contains_generative_ai")) != TYPE_BOOL or typeof(provenance.get("human_curated")) != TYPE_BOOL or typeof(provenance.get("seed")) != TYPE_STRING or str(provenance.get("seed")).is_empty():
 		errors.append("Pack 0.7 provenance contract is invalid.")
+	if review_license and (provenance.get("contains_generative_ai") != true or provenance.get("output_provenance") not in ["generative-ai", "hybrid"] or typeof(provenance.get("model_provider")) != TYPE_STRING or str(provenance.get("model_provider", "")).is_empty() or typeof(provenance.get("model")) != TYPE_STRING or str(provenance.get("model", "")).is_empty() or provenance.get("human_curated") != false):
+		errors.append("Pack 0.7 internal-review provenance contract is invalid.")
 	var files: Variant = manifest.get("files")
 	if typeof(files) == TYPE_ARRAY:
 		for record_value: Variant in files:

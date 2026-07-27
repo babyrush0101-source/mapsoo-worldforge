@@ -36,9 +36,9 @@ export const WORLD_CREATION_STAGE_DESCRIPTORS: Readonly<Record<WorldCreationStag
     'world-brief': Object.freeze({
       id: 'world-brief',
       label: 'World brief',
-      question: 'What kind of place is this, who lives there, and what should the player feel?',
+      question: 'Describe the premise, worldview, terrain, geography, inhabitants, culture, ecology, and intended player feeling.',
       confirmation: 'Confirm the world premise and selected camera profile.',
-      output: 'A versioned world brief with references, target device, and seed.',
+      output: 'A versioned, consumer-neutral world intake with confirmed facts, references, target device, and seed.',
     }),
     'art-direction': Object.freeze({
       id: 'art-direction',
