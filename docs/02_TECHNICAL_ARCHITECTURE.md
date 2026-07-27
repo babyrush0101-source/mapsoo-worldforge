@@ -244,3 +244,45 @@ profile + seed + rights ─> provider candidate sets ─> normalize/atlas/map �
 完整性验证器读取 manifest 绑定的 profile matrix，逐类复核必需资产、atlas region、alpha/pivot、动画方向/帧、地图图层、可行走数据、跨 sidecar 引用、文件大小与 SHA-256。Provider 只能返回分类候选，不能自己声明 pack 完整；exporter 只接受 runner-owned、深冻结且完整性无 error 的单一结果。非确定模型输出按冻结候选审计，seed 只承诺受信后处理、地图解析、packing 和序列化可复现，不能伪称模型像素可重复。
 
 原始参考图、其原始公开 digest、EXIF/OCR、文件名、本地路径和自由文本 Provider 错误默认不进入公共 artifact。公开 receipt 只记录安全投影、Provider/工作流、确定性边界、权利类别、人工选择和输出许可；需要对私有原图做精确审计时使用不随 pack 发布的本地记录。详细合同、Godot matrix 与停止条件见 [`19_ALPHA9_REFERENCE_TO_FARM_WORLD.md`](19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)。
+
+## 14. 自研与复用边界
+
+WorldForge 只自研决定项目差异化和可验证交付的核心：
+
+- 多轮对话确认后的世界定义与版本化 checkpoint；
+- `WorldLayoutPlan`、角色身份绑定和四类世界的完整性规则；
+- provider-neutral 美术任务、候选归一化、来源/许可记录和人工审核状态；
+- 可复现世界包、Godot importer、World Runner 契约与树莓派交付证据。
+
+已经存在且不是项目差异化的能力优先复用，不在核心中重复实现：
+
+- 图像生成、参考图编辑和风格一致性；
+- Sprite sheet、方向与动画候选生成；
+- TileSet/auto-tile 制作、拼接预览和素材编辑器；
+- 抠图、放大、格式转换等通用图像工具。
+
+所有外部能力只能通过一个小型 adapter 接入：
+
+```text
+confirmed world
+  -> WorldLayoutPlan + ProductionArtPlan
+  -> ProductionArtProvider port
+       -> built-in offline adapter
+       -> optional SpriteCook adapter
+       -> optional model/artist adapter
+  -> untrusted candidates
+  -> normalize + validate + human review
+  -> reproducible pack
+  -> Godot importer / World Runner
+```
+
+核心、schema、manifest 和 Godot importer 不导入供应商 SDK，也不理解供应商响应格式。API key、OAuth session、计费、重试和供应商错误只存在于 adapter/runtime 边界；原始错误、私有 prompt、用户路径和凭据不得进入 pack。adapter 必须把结果降为标准候选文件和证据，不能自行宣布世界包完整、可发布或权利合格。
+
+SpriteCook 适合作为可选 adapter，复用其参考图驱动的 Sprite、动画和 TileSet 工作流；WorldForge 仍负责把这些候选组织成已确认世界的完整资产角色、地图计划和 Godot 可加载包。集成采用用户自带账号/授权，不复制其产品 UI，不把第三方 API 转售为 WorldForge 自有 API，并保留离线 provider 与其他 adapter 的同等入口。
+
+新增依赖前使用四个判断：
+
+1. 是否属于上述 WorldForge 核心；若是，维护稳定的内部契约。
+2. 是否已有成熟、许可可接受的实现；若是，优先 adapter 或库。
+3. 移除该供应商后，核心测试、离线基线和 pack validator 是否仍能运行。
+4. 新抽象是否至少服务一个当前实现和一个可替代实现；否则保持简单函数，不提前搭框架。
