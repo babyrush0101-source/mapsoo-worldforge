@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://babyrush0101-source.github.io/mapsoo-worldforge/schemas/mapsoo-production-art-geometry-reference-import-1.0.schema.json",
+  "title": "Mapsoo production-art geometry reference import report 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "adapter",
+    "source",
+    "output",
+    "target_mapping",
+    "runtime_asset",
+    "human_review",
+    "public_release"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": {
+      "const": "production-art-geometry-reference-import"
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "const": "spritecook-isometric21-local-export" },
+        "version": { "const": "1.0.0" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "convention",
+        "sha256",
+        "width",
+        "height",
+        "tile_width",
+        "tile_height",
+        "columns",
+        "rows",
+        "gap",
+        "inset",
+        "validated_cells",
+        "source_pixels_copied"
+      ],
+      "properties": {
+        "convention": {
+          "const": "spritecook-isometric-2-1-reference-grid"
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "type": "integer", "minimum": 36, "maximum": 1058 },
+        "height": { "type": "integer", "minimum": 20, "maximum": 546 },
+        "tile_width": { "enum": [32, 64] },
+        "tile_height": { "enum": [16, 32] },
+        "columns": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "rows": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "gap": { "const": 2 },
+        "inset": { "const": 2 },
+        "validated_cells": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "source_pixels_copied": { "const": false }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "convention",
+        "sha256",
+        "width",
+        "height",
+        "cell_width",
+        "cell_height",
+        "columns",
+        "rows",
+        "reference_role",
+        "target_profile",
+        "target_task",
+        "license"
+      ],
+      "properties": {
+        "convention": {
+          "const": "worldforge-isometric-terrain-task-geometry-reference"
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "const": 768 },
+        "height": { "const": 384 },
+        "cell_width": { "const": 96 },
+        "cell_height": { "const": 48 },
+        "columns": { "const": 8 },
+        "rows": { "const": 8 },
+        "reference_role": { "const": "environment-style" },
+        "target_profile": { "const": "isometric-action" },
+        "target_task": { "const": "terrain-sheet" },
+        "license": { "const": "CC0-1.0" }
+      }
+    },
+    "target_mapping": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "target_column", "target_row"],
+        "properties": {
+          "role": {
+            "enum": [
+              "terrain.void",
+              "terrain.floor.base",
+              "terrain.floor.variant",
+              "terrain.floor.edge",
+              "terrain.elevation.top",
+              "terrain.elevation.riser-left",
+              "terrain.elevation.riser-right",
+              "terrain.ramp",
+              "terrain.wall"
+            ]
+          },
+          "target_column": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7
+          },
+          "target_row": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7
+          }
+        }
+      }
+    },
+    "runtime_asset": { "const": false },
+    "human_review": { "const": "required" },
+    "public_release": { "const": "reference-only" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

@@ -117,6 +117,13 @@ non-publishable until human art and rights review. A complete normalized
 top-down material set can now enter the existing production-review pack
 builder without introducing any SpriteCook field into the manifest or Godot
 runtime.
+SpriteCook's separate 2:1 mode is handled through a second zero-network
+compatibility adapter because its diamond grid has no autotile-mask semantics.
+The adapter verifies the native 32/64-pixel geometry, copies no source pixels,
+and independently renders a CC0 `768 × 384` guide matching the existing
+isometric terrain production task. That guide enters the normal
+provider-neutral environment-reference path alongside an approved style
+direction; it is never presented as runtime art or a finished tileset.
 
 A separately labelled **synthetic technical fixture** now exercises that full
 path without a model call. Its deterministic candidate passed real headless

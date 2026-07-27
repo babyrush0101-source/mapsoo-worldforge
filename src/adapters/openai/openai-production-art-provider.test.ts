@@ -140,6 +140,11 @@ describe('OpenAI production art source adapter', () => {
     expect(form.get('output_format')).toBe('png');
     expect(form.get('input_fidelity')).toBeNull();
     expect(form.getAll('image[]')).toHaveLength(2);
+    expect(form.getAll('image[]').map((value) =>
+      typeof value === 'string' ? value : value.name)).toEqual([
+      'environment-style-environment-reference.png',
+      'character-character-reference.png',
+    ]);
     expect(result).toMatchObject({
       model: OPENAI_PRODUCTION_ART_MODEL,
       workflow: 'image-edit',
@@ -177,6 +182,10 @@ describe('OpenAI production art source adapter', () => {
   it('serializes canonical action, direction, frame and cell semantics into character prompts', async () => {
     const value = await characterJob();
     const prompt = buildOpenAiProductionArtPrompt(value);
+    expect(prompt).toContain(
+      'image-1=environment-reference (environment-style)',
+    );
+    expect(prompt).toContain('image-2=character-reference (character)');
     expect(value.task.pose_mappings).toHaveLength(32);
     expect(prompt).toContain('0,0=idle.left.frame-0');
     expect(prompt).toContain('4,0=idle.left.frame-1');

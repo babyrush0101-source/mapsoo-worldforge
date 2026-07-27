@@ -115,6 +115,7 @@
     "world-material-palette:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-world-material-palette-godot.ps1",
     "world-terrain-autotile:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-world-terrain-autotile-godot.ps1",
     "terrain-autotile:spritecook:import": "vite-node scripts/import-spritecook-topdown17-export.ts",
+    "production-art:spritecook:isometric-reference": "vite-node scripts/import-spritecook-isometric21-reference.ts",
     "production-art:model": "vite-node scripts/run-openai-production-art-source.ts",
     "production-art:workflow": "vite-node scripts/run-production-art-workflow.ts",
     "production-art:workflow:verify": "node scripts/verify-production-art-workflow.mjs",

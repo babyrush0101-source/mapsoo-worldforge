@@ -155,6 +155,61 @@ The builder independently reopens every PNG, rejects metadata and wrong
 dimensions, verifies complete material coverage, regenerates every hash and
 binding, and keeps the resulting archive non-redistributable.
 
+### Separate 2:1 isometric geometry reference
+
+SpriteCook's current `Isometric 2:1` mode is **not** an autotile transition
+sheet. It exports a rectangular grid of separated 2:1 diamonds:
+
+- tile width `32` or `64`;
+- tile height exactly half the width;
+- `2px` outer inset and `2px` gaps;
+- operator-selected `1-16` columns and rows;
+- native output or an optional centered `1024x1024` upscale.
+
+Those cells have no N/E/S/W mask meaning. Assigning them to
+`WorldTerrainAutotileSet` masks would invent semantics and could create broken
+material joins. WorldForge therefore routes this mode through the existing
+production-art **reference** boundary instead of the runtime autotile boundary.
+
+Normalize one native export locally:
+
+```bash
+pnpm production-art:spritecook:isometric-reference -- \
+  --source <spritecook-isometric-2-1.png> \
+  --out <worldforge-isometric-terrain-geometry.png> \
+  --report <worldforge-isometric-terrain-geometry.json>
+```
+
+The adapter verifies every gap, inset, cell and diamond boundary, but copies no
+source pixels or colors. It independently renders a metadata-free,
+CC0-licensed `768x384` guide matching the existing `isometric-action`
+`terrain-sheet` task: an `8x8` grid of `96x48` cells with the nine declared
+terrain-role footprints populated and all undeclared cells transparent. The
+report is validated by
+`mapsoo-production-art-geometry-reference-import-1.0.schema.json`.
+
+The guide can then be passed as the optional second environment reference while
+the accepted scene direction remains the first, style-bearing reference:
+
+```bash
+pnpm production-art:model -- \
+  --profile isometric-action \
+  --task terrain-sheet \
+  --world-brief-file <private-brief.txt> \
+  --style-bible-file <private-style.txt> \
+  --approved-direction <accepted-scene-direction.png> \
+  --environment-reference <worldforge-isometric-terrain-geometry.png> \
+  --environment-reference-id isometric-terrain-geometry-guide \
+  --quality medium \
+  --execute --allow-remote-upload
+```
+
+This reuses the existing provider authorization, reference hashing,
+normalization, review-pack projection and Godot path. The adapter is not a
+provider, does not call SpriteCook or another image API, and does not create a
+second isometric pack format. Its output is a geometry reference only—not final
+art, a runtime asset, a transition sheet, or evidence of human approval.
+
 ## Pack and importer boundary
 
 `buildPack10ProductionReviewCandidate()` accepts an optional neutral authoring
@@ -193,8 +248,9 @@ all three optional layout-related definitions.
 The generic contract, all four internal-review builder boundaries, and Godot
 importer are implemented. Remaining work is:
 
-- add a separate, geometry-correct 2:1 authoring adapter for isometric and
-  layered-depth cells instead of stretching the square top-down guide;
+- generate and review a real isometric terrain result using the new 2:1
+  geometry reference; runtime multi-material transitions still require an
+  independently authored mask-aware sheet rather than relabelling the guide;
 - add visual seam and topology review captures using real generated or
   artist-authored transition sheets;
 - decide whether approved public packs may include the images only after
@@ -206,5 +262,5 @@ physical performance remain independent release gates.
 ## External references
 
 - [SpriteCook Tileset Base Generator](https://www.spritecook.ai/tileset-base-generator)
-- [SpriteCook open 4 by 4 tileset generator (MIT)](https://github.com/SpriteCook/spritecook-tileset-gen)
+- [SpriteCook open top-down tileset generator (MIT)](https://github.com/SpriteCook/spritecook-tileset-gen)
 - [SpriteCook public API documentation](https://www.spritecook.ai/api-docs)

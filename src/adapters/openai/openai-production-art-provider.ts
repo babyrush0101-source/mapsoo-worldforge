@@ -119,6 +119,10 @@ export function buildOpenAiProductionArtPrompt(job: ProductionArtProviderJob): s
     `World brief: ${worldBrief}`,
     `Approved style bible: ${styleBible}`,
     `Canvas grid: ${gridDescription(job.task)}. Preserve the declared role order exactly.`,
+    `Reference images in upload order: ${job.references.map(
+      ({ descriptor }, index) =>
+        `image-${index + 1}=${descriptor.id} (${descriptor.role})`,
+    ).join('; ')}.`,
     `Declared roles: ${job.task.role_mappings.map(({ role }) => role).join(', ')}.`,
     ...(job.task.pose_mappings
       ? [
@@ -264,13 +268,13 @@ export function createOpenAiProductionArtProvider(
       form.append('background', 'opaque');
       form.append('output_format', 'png');
       form.append('n', '1');
-      job.references.forEach((reference, index) => {
+      job.references.forEach((reference) => {
         const extension = reference.descriptor.mediaType === 'image/png' ? 'png' : 'jpg';
         const bytes = reference.readBytes();
         form.append(
           'image[]',
           new Blob([Uint8Array.from(bytes).buffer], { type: reference.descriptor.mediaType }),
-          `${reference.descriptor.role}-${index + 1}.${extension}`,
+          `${reference.descriptor.role}-${reference.descriptor.id}.${extension}`,
         );
       });
       let response: Response;
