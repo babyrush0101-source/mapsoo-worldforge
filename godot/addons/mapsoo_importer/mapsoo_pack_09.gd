@@ -44,7 +44,9 @@ const PNG_SIZES := {
 
 static func validate_and_prepare(manifest: Dictionary, pack_root: String, prepared: Dictionary, file_index: Dictionary) -> Dictionary:
 	var errors: Array[String] = prepared.errors
-	_require_keys(manifest, ["schema_version", "pack", "profile", "completeness_policy", "compatibility", "layers", "atlases", "planes", "roles", "characters", "runtime", "files", "license", "provenance"], "Pack 0.9 manifest", errors)
+	var manifest_keys := ["schema_version", "pack", "profile", "completeness_policy", "compatibility", "layers", "atlases", "planes", "roles", "characters", "runtime", "files", "license", "provenance"]
+	if manifest.has("layout"): manifest_keys.append("layout")
+	_require_keys(manifest, manifest_keys, "Pack 0.9 manifest", errors)
 	var pack := _dict(manifest.get("pack"), "pack", errors)
 	var compatibility := _dict(manifest.get("compatibility"), "compatibility", errors)
 	var importer := _dict(compatibility.get("importer"), "compatibility.importer", errors)

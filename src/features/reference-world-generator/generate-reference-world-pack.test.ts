@@ -5,6 +5,8 @@ import { encodeRgbaPng } from '../../adapters/canvas/encode-png';
 import { decodeReferenceImageRgba } from '../../adapters/decode-reference-image-rgba';
 import type { BrowserReferenceImage } from '../../adapters/read-reference-image-file';
 import { extractCharacterIdentitySignature } from '../../core/character-identity-signature';
+import { createConfirmedWorldCreationIntake } from '../../core/confirmed-world-creation-intake';
+import { buildWorldLayoutPlanFromConfirmedIntake } from '../../core/world-layout-plan';
 import { generateReferenceWorldPack, type ImplementedReferenceWorldProfile } from './generate-reference-world-pack';
 
 async function sha256(bytes: Uint8Array): Promise<string> {
@@ -88,6 +90,72 @@ const confirmation = {
 };
 
 describe('reference-world profile router', () => {
+  it('embeds the confirmed deterministic layout across all four pack profiles', async () => {
+    const [environment, character] = await references();
+    for (const profile of [
+      'topdown-farm',
+      'side-platformer',
+      'isometric-action',
+      'layered-depth-2d',
+    ] as const) {
+      const intake = await createConfirmedWorldCreationIntake({
+        intake_id: `layout-route-${profile}`,
+        session_revision: 4,
+        profile,
+        target: 'raspberry-pi-4b',
+        seed: 'confirmed-layout-seed',
+        facts: {
+          premise: 'Restore a compact harbor route.',
+          worldview: 'Lantern guilds preserve safe passage.',
+          terrain: 'Stone paths, wet docks, and reed beds.',
+          geography: 'A readable route connects the pier and lighthouse.',
+          culture: 'Boat builders share a market square.',
+          ecology: 'Rain, gulls, salt grass, and fog.',
+          mood: 'Quiet and readable.',
+          art_direction: 'Original hand-painted pixel art.',
+          traversal: 'Move from the pier through two landmarks to the exit.',
+          landmarks: 'Bell buoy; leaning lighthouse',
+        },
+        character_source: {
+          reference_id: character.descriptor.id,
+          identity_digest_sha256: 'a'.repeat(64),
+        },
+        references: [environment.descriptor, character.descriptor],
+        approved_intent_preview_sha256: 'd'.repeat(64),
+      });
+      const layoutPlan = await buildWorldLayoutPlanFromConfirmedIntake(intake);
+      const generated = await generateReferenceWorldPack({
+        profile,
+        environment,
+        character,
+        worldId: intake.intake_id,
+        description: 'A confirmed layout route.',
+        seed: intake.seed,
+        completedAt: '2026-07-20T12:00:00.000Z',
+        layoutPlan,
+      });
+      expect(generated.layoutPlanEmbeddedInPack).toBe(true);
+      const zip = await JSZip.loadAsync(generated.pack.bytes);
+      const layoutEntry = Object.values(zip.files)
+        .find(({ name }) => name.endsWith('/world-layout-plan.json'));
+      expect(layoutEntry).toBeDefined();
+      expect(JSON.parse(await layoutEntry!.async('text'))).toMatchObject({
+        plan_id: layoutPlan.plan_id,
+        profile,
+        source: { seed: intake.seed },
+      });
+      const manifestEntry = Object.values(zip.files)
+        .find(({ name }) => name.endsWith('/mapsoo.manifest.json'));
+      expect(manifestEntry).toBeDefined();
+      expect(JSON.parse(await manifestEntry!.async('text'))).toMatchObject({
+        layout: {
+          plan_id: layoutPlan.plan_id,
+          path: 'world-layout-plan.json',
+        },
+      });
+    }
+  });
+
   it('routes four complete profiles to their versioned source packs', async () => {
     const farm = await generate('topdown-farm');
     const side = await generate('side-platformer');

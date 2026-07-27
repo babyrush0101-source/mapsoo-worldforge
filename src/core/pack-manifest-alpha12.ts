@@ -4,6 +4,10 @@ import {
   LAYERED_DEPTH_PLAYER_ACTIONS,
   LAYERED_DEPTH_REQUIRED_ROLES,
 } from './layered-depth-asset-bundle';
+import {
+  validateWorldLayoutPackBinding,
+  type WorldLayoutPackBinding,
+} from './world-layout-pack-binding';
 
 export const ALPHA12_PACK_SCHEMA_VERSION = '0.9.0' as const;
 export const ALPHA12_PACK_VERSION = '0.1.0-alpha.12' as const;
@@ -130,6 +134,7 @@ export interface Alpha12PackManifest {
     navigation: Readonly<{ path: string }>;
     spawn: DepthPoint;
   }>;
+  readonly layout?: Readonly<WorldLayoutPackBinding>;
   readonly files: readonly Readonly<{
     path: string;
     media_type: 'image/png' | 'application/json' | 'application/schema+json' | 'text/markdown';
@@ -231,10 +236,12 @@ export function validateAlpha12PackManifest(manifest: Alpha12PackManifest): Alph
     manifest.runtime.collision.path,
     manifest.runtime.navigation.path,
     manifest.license.output.notice_path,
+    ...(manifest.layout ? [manifest.layout.path] : []),
   ];
   if (referenced.some((path) => !known.has(path))) {
     issues.push({ code: 'manifest.file-reference', message: 'Every referenced Pack 0.9 path must exist in files.' });
   }
+  issues.push(...validateWorldLayoutPackBinding(manifest.layout, manifest.files));
   return issues;
 }
 

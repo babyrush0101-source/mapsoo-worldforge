@@ -62,11 +62,14 @@ static func validate_and_prepare(
 	authorization: Dictionary,
 ) -> Dictionary:
 	var errors: Array[String] = prepared.errors
-	_require_keys(manifest, [
+	var manifest_keys := [
 		"schema_version", "pack", "profile", "distribution", "review",
 		"compatibility", "planes", "atlases", "roles", "characters", "runtime",
 		"files", "license", "provenance", "reference_policy",
-	], "Pack 1.0 manifest", errors)
+	]
+	if manifest.has("layout"):
+		manifest_keys.append("layout")
+	_require_keys(manifest, manifest_keys, "Pack 1.0 manifest", errors)
 	var pack := _dict(manifest.get("pack"), "pack", errors)
 	var generator := _dict(pack.get("generator"), "pack.generator", errors)
 	var review := _dict(manifest.get("review"), "review", errors)

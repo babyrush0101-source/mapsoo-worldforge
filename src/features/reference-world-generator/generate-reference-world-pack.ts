@@ -17,6 +17,7 @@ import {
   createWorldAssetRevision,
   type WorldAssetRevision,
 } from '../../core/world-asset-revision';
+import type { WorldLayoutPlan } from '../../core/world-layout-plan';
 
 export const IMPLEMENTED_REFERENCE_WORLD_PROFILES = Object.freeze([
   'topdown-farm',
@@ -41,6 +42,7 @@ export interface GenerateReferenceWorldPackInput {
   readonly completedAt: string;
   readonly confirmation?: ConfirmedDialogueInput;
   readonly approvedIntentPreviewSha256?: string;
+  readonly layoutPlan?: WorldLayoutPlan;
   readonly signal?: AbortSignal;
 }
 
@@ -54,6 +56,7 @@ export interface GeneratedReferenceWorldPack {
   readonly characterClipCount: 8 | 12 | 24 | 128;
   readonly confirmationBinding?: ConfirmedGenerationBinding;
   readonly confirmationEmbeddedInPack: boolean;
+  readonly layoutPlanEmbeddedInPack: boolean;
   readonly assetRevision: WorldAssetRevision;
   /** Local-only correlation aid; not serialized into either public pack. */
   readonly characterIdentitySignatureSha256: string;
@@ -109,7 +112,12 @@ export async function generateReferenceWorldPack(input: GenerateReferenceWorldPa
     abortIfNeeded(input.signal);
     result = await runWorldAssetProvider(PROCEDURAL_TOPDOWN_FARM_PROVIDER, job, { signal: input.signal });
     abortIfNeeded(input.signal);
-    const builtPack = await buildAlpha9WorldAssetPack(result, job.request, input.completedAt);
+    const builtPack = await buildAlpha9WorldAssetPack(
+      result,
+      job.request,
+      input.completedAt,
+      input.layoutPlan,
+    );
     pack = builtPack;
     portableManifest = builtPack.manifest;
     packVersion = builtPack.manifest.pack.version;
@@ -124,7 +132,13 @@ export async function generateReferenceWorldPack(input: GenerateReferenceWorldPa
     abortIfNeeded(input.signal);
     result = await runWorldAssetProvider(PROCEDURAL_SIDE_PLATFORMER_PROVIDER, job, { signal: input.signal });
     abortIfNeeded(input.signal);
-    const builtPack = await buildAlpha10WorldAssetPack(result, job.request, input.completedAt, confirmationBinding);
+    const builtPack = await buildAlpha10WorldAssetPack(
+      result,
+      job.request,
+      input.completedAt,
+      confirmationBinding,
+      input.layoutPlan,
+    );
     pack = builtPack;
     portableManifest = builtPack.manifest;
     packVersion = builtPack.manifest.pack.version;
@@ -144,6 +158,7 @@ export async function generateReferenceWorldPack(input: GenerateReferenceWorldPa
       job.request,
       input.completedAt,
       confirmationBinding,
+      input.layoutPlan,
     );
     pack = builtPack;
     portableManifest = builtPack.manifest;
@@ -164,6 +179,7 @@ export async function generateReferenceWorldPack(input: GenerateReferenceWorldPa
       job.request,
       input.completedAt,
       confirmationBinding,
+      input.layoutPlan,
     );
     pack = builtPack;
     portableManifest = builtPack.manifest;
@@ -208,6 +224,7 @@ export async function generateReferenceWorldPack(input: GenerateReferenceWorldPa
     characterClipCount,
     ...(confirmationBinding ? { confirmationBinding } : {}),
     confirmationEmbeddedInPack: Boolean(confirmationBinding && input.profile !== 'topdown-farm'),
+    layoutPlanEmbeddedInPack: Boolean(input.layoutPlan),
     assetRevision,
     characterIdentitySignatureSha256: characterIdentity.signature_sha256,
     environmentArtSignatureSha256: environmentArt.signature_sha256,

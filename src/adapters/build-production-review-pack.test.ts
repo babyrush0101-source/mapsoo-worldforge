@@ -31,6 +31,11 @@ import { createProductionArtRunSet } from '../core/production-art-run-set';
 import { bindGenerationRequestV2 } from '../core/generation-request-v2';
 import { runWorldAssetProvider } from '../core/world-asset-provider';
 import type { WorldAssetProfile } from '../core/asset-profile';
+import {
+  buildWorldLayoutPlanFromConfirmedIntake,
+  type WorldLayoutPlan,
+} from '../core/world-layout-plan';
+import { createConfirmedWorldCreationIntake } from '../core/confirmed-world-creation-intake';
 import { PROCEDURAL_TOPDOWN_FARM_PROVIDER } from '../providers/procedural-topdown-farm-provider';
 import { PROCEDURAL_SIDE_PLATFORMER_PROVIDER } from '../providers/procedural-side-platformer-provider';
 import { PROCEDURAL_ISOMETRIC_ACTION_PROVIDER } from '../providers/procedural-isometric-action-provider';
@@ -249,14 +254,47 @@ async function boundRequest(profile: WorldAssetProfile) {
   return { bound, characterRgba };
 }
 
-async function basePack(profile: WorldAssetProfile): Promise<ProductionReviewBasePackArtifact> {
+async function basePack(
+  profile: WorldAssetProfile,
+  includeLayout = false,
+): Promise<ProductionReviewBasePackArtifact> {
   const { bound, characterRgba } = await boundRequest(profile);
+  const layout: WorldLayoutPlan | undefined = includeLayout
+    ? await buildWorldLayoutPlanFromConfirmedIntake(
+      await createConfirmedWorldCreationIntake({
+      intake_id: `review-layout-${profile}`,
+      session_revision: 4,
+      profile,
+      target: 'desktop',
+      seed: bound.request.seed,
+      facts: {
+        premise: 'A compact production review world.',
+        worldview: 'Routes and landmarks preserve the confirmed world logic.',
+        terrain: 'Profile-specific terrain supports the complete route.',
+        geography: 'Spawn, landmarks, and exit form one connected route.',
+        culture: 'Architecture and props share one readable visual language.',
+        ecology: 'Weather and vegetation reinforce the profile.',
+        mood: 'Readable, coherent, and suitable for internal review.',
+        art_direction: 'Consistent scale, palette, materials, and lighting.',
+        traversal: 'The player can reach every landmark and the exit.',
+        landmarks: 'Two distinctive landmarks anchor the route.',
+      },
+      character_source: {
+        reference_id: bound.request.references[1].id,
+        identity_digest_sha256: 'a'.repeat(64),
+      },
+      references: bound.request.references,
+      approved_intent_preview_sha256: 'b'.repeat(64),
+    }),
+    )
+    : undefined;
   if (profile === 'topdown-farm') {
     const run = await runWorldAssetProvider(PROCEDURAL_TOPDOWN_FARM_PROVIDER, bound);
     const pack = await buildAlpha9WorldAssetPack(
       run,
       bound.request,
       '2026-07-27T22:00:00.000Z',
+      layout,
     );
     return { byteLength: pack.bytes.byteLength, readBytes: () => pack.bytes.slice() };
   }
@@ -266,6 +304,8 @@ async function basePack(profile: WorldAssetProfile): Promise<ProductionReviewBas
       run,
       bound.request,
       '2026-07-27T22:00:00.000Z',
+      undefined,
+      layout,
     );
     return { byteLength: pack.bytes.byteLength, readBytes: () => pack.bytes.slice() };
   }
@@ -281,6 +321,8 @@ async function basePack(profile: WorldAssetProfile): Promise<ProductionReviewBas
     run,
     bound.request,
     '2026-07-27T22:00:00.000Z',
+    undefined,
+    layout,
   );
   return { byteLength: pack.bytes.byteLength, readBytes: () => pack.bytes.slice() };
 }
@@ -292,6 +334,36 @@ const cases = [
 ] as const;
 
 describe('three-profile production review pack builder', () => {
+  it('preserves a base layout and its seed in the final review pack', async () => {
+    const profile = 'side-platformer';
+    const [{ plan, inventory }, base] = await Promise.all([
+      productionInput(profile),
+      basePack(profile, true),
+    ]);
+    const review = await buildProductionReviewPack(plan, inventory, base, {
+      packId: 'neutral-side-layout-review',
+      title: 'Neutral Side Layout Review',
+      createdAt: '2026-07-27T23:00:00.000Z',
+    });
+    expect(review.manifest.provenance.seed).toBe('review-base-side-platformer-seed');
+    expect(review.manifest.layout).toMatchObject({
+      document_type: 'world-layout-plan',
+      path: 'world-layout-plan.json',
+    });
+    const validatePack = new Ajv2020({
+      strict: true,
+      strictTypes: false,
+      allErrors: true,
+    });
+    addFormats(validatePack);
+    const validate = validatePack.compile(reviewManifestSchema);
+    expect(validate(review.manifest), JSON.stringify(validate.errors)).toBe(true);
+    const archive = await JSZip.loadAsync(review.bytes);
+    const layoutPath = Object.keys(archive.files).find((path) =>
+      path.endsWith('/world-layout-plan.json'));
+    expect(layoutPath).toBeTruthy();
+  });
+
   it.each(cases)(
     'projects a complete deterministic %s model-art inventory into its Godot pack',
     async (profile) => {

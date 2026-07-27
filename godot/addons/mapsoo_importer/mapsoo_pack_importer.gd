@@ -5,6 +5,9 @@ const Pack07 = preload("res://addons/mapsoo_importer/mapsoo_pack_07.gd")
 const Pack08 = preload("res://addons/mapsoo_importer/mapsoo_pack_08.gd")
 const Pack09 = preload("res://addons/mapsoo_importer/mapsoo_pack_09.gd")
 const Pack10 = preload("res://addons/mapsoo_importer/mapsoo_pack_10.gd")
+const WorldLayoutAttachment = preload(
+	"res://addons/mapsoo_importer/mapsoo_world_layout_attachment.gd"
+)
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd")
 
 const LEGACY_SCHEMA_VERSION := "0.1.0"
@@ -81,16 +84,25 @@ static func import_pack(
 	warnings.assign(validation.warnings)
 	if not errors.is_empty():
 		return _result(false, errors, warnings)
+	var manifest_sha256: String = manifest_read.sha256
+	if manifest_sha256.is_empty():
+		errors.append("Unable to hash the validated manifest: %s" % local_manifest_path)
+		return _result(false, errors, warnings)
+	var layout_validation := WorldLayoutAttachment.validate_optional(
+		manifest,
+		pack_root,
+		manifest_sha256
+	)
+	if not layout_validation.ok:
+		errors.append(layout_validation.error)
+		return _result(false, errors, warnings)
+	validation.world_layout = layout_validation.layout
 
 	var pack_id: String = validation.pack_id
 	var output_dir := "%s/%s" % [OUTPUT_ROOT, pack_id]
 	var tileset_path := "%s/%s.tileset.tres" % [output_dir, pack_id]
 	var scene_path := "%s/%s.world.tscn" % [output_dir, pack_id]
 	var state_path := "%s/%s" % [output_dir, IMPORT_STATE_FILENAME]
-	var manifest_sha256: String = manifest_read.sha256
-	if manifest_sha256.is_empty():
-		errors.append("Unable to hash the validated manifest: %s" % local_manifest_path)
-		return _result(false, errors, warnings)
 	var source_snapshot := _capture_source_snapshot(local_manifest_path, pack_root, manifest, manifest_sha256)
 	if not source_snapshot.ok:
 		errors.append(source_snapshot.error)
@@ -103,7 +115,8 @@ static func import_pack(
 		scene_path,
 		state_path,
 		manifest_sha256,
-		validation.schema_version
+		validation.schema_version,
+		not validation.world_layout.is_empty()
 	)
 	warnings.append_array(existing.warnings)
 	if existing.status == "conflict":
@@ -157,6 +170,15 @@ static func import_pack(
 		_cleanup_transaction_directory(staging_dir, warnings)
 		errors.append(scene_build.error)
 		return _result(false, errors, warnings)
+	var layout_scene_binding := WorldLayoutAttachment.bind_scene(
+		scene_build.root,
+		validation.world_layout
+	)
+	if not layout_scene_binding.ok:
+		scene_build.root.free()
+		_cleanup_transaction_directory(staging_dir, warnings)
+		errors.append(layout_scene_binding.error)
+		return _result(false, errors, warnings)
 	var packed_scene := PackedScene.new()
 	var pack_error := packed_scene.pack(scene_build.root)
 	if pack_error != OK:
@@ -185,7 +207,8 @@ static func import_pack(
 		generated_hashes,
 		validation.cell_count,
 		validation.props.size(),
-		validation.schema_version
+		validation.schema_version,
+		not validation.world_layout.is_empty()
 	)
 	var state_write_error := _write_json_file(staged_state_path, import_state)
 	if state_write_error != OK:
@@ -200,7 +223,8 @@ static func import_pack(
 		validation.places.size(),
 		validation.structures.size(),
 		_has_structures(validation.schema_version),
-		validation.schema_version
+		validation.schema_version,
+		validation.world_layout
 	)
 	if not staged_validation.ok:
 		_cleanup_transaction_directory(staging_dir, warnings)
@@ -219,7 +243,8 @@ static func import_pack(
 		scene_path,
 		state_path,
 		manifest_sha256,
-		validation.schema_version
+		validation.schema_version,
+		not validation.world_layout.is_empty()
 	)
 	if baseline_check.status != operation_status or baseline_check.baseline_sha256 != existing.baseline_sha256:
 		_cleanup_transaction_directory(staging_dir, warnings)
@@ -281,7 +306,8 @@ static func _inspect_existing_import(
 	scene_path: String,
 	state_path: String,
 	manifest_sha256: String,
-	schema_version: String = ""
+	schema_version: String = "",
+	has_world_layout: bool = false
 ) -> Dictionary:
 	var errors: Array[String] = []
 	var warnings: Array[String] = []
@@ -377,7 +403,11 @@ static func _inspect_existing_import(
 		"state_file_sha256": _sha256_file(state_path),
 		"generated_files": current_hashes,
 	}, "", true))
-	var expected_importer_version := str(importer.get("version", "")) if schema_version.is_empty() else _importer_version_for_schema(schema_version)
+	var expected_importer_version := (
+		str(importer.get("version", ""))
+		if schema_version.is_empty()
+		else _importer_version_for_schema(schema_version, has_world_layout)
+	)
 	var same_generation: bool = (
 		state.get("manifest_sha256") == manifest_sha256
 		and importer.get("version") == expected_importer_version
@@ -393,13 +423,14 @@ static func _create_import_state(
 	generated_hashes: Dictionary,
 	cell_count: int,
 	prop_count: int,
-	schema_version: String
+	schema_version: String,
+	has_world_layout: bool = false
 ) -> Dictionary:
 	var state := _canonical_import_state_core({
 		"schema_version": IMPORT_STATE_SCHEMA_VERSION,
 		"importer": {
 			"id": "mapsoo_importer",
-			"version": _importer_version_for_schema(schema_version),
+			"version": _importer_version_for_schema(schema_version, has_world_layout),
 		},
 		"godot_serialization": _current_godot_serialization(),
 		"pack_id": pack_id,
@@ -412,14 +443,32 @@ static func _create_import_state(
 	return state
 
 
-static func _importer_version_for_schema(schema_version: String) -> String:
+static func _importer_version_for_schema(
+	schema_version: String,
+	has_world_layout: bool = false
+) -> String:
+	var version := ""
 	if schema_version == CONTROLLED_SCHEMA_VERSION:
-		return "1.0.0"
-	if schema_version == LAYERED_DEPTH_SCHEMA_VERSION:
-		return "0.1.0-alpha.12"
-	if schema_version == ISOMETRIC_ACTION_SCHEMA_VERSION:
-		return "0.1.0-alpha.11"
-	return "0.1.0-alpha.10" if schema_version in [COMPLETE_FARM_SCHEMA_VERSION, SIDE_PLATFORMER_SCHEMA_VERSION] else IMPORTER_VERSION
+		version = "1.0.0"
+	elif schema_version == LAYERED_DEPTH_SCHEMA_VERSION:
+		version = "0.1.0-alpha.12"
+	elif schema_version == ISOMETRIC_ACTION_SCHEMA_VERSION:
+		version = "0.1.0-alpha.11"
+	else:
+		version = (
+			"0.1.0-alpha.10"
+			if schema_version in [COMPLETE_FARM_SCHEMA_VERSION, SIDE_PLATFORMER_SCHEMA_VERSION]
+			else IMPORTER_VERSION
+		)
+	if has_world_layout and schema_version in [
+		COMPLETE_FARM_SCHEMA_VERSION,
+		SIDE_PLATFORMER_SCHEMA_VERSION,
+		ISOMETRIC_ACTION_SCHEMA_VERSION,
+		LAYERED_DEPTH_SCHEMA_VERSION,
+		CONTROLLED_SCHEMA_VERSION,
+	]:
+		return "%s-layout.1" % version
+	return version
 
 
 static func _canonical_import_state_core(state: Dictionary) -> Dictionary:
@@ -453,7 +502,8 @@ static func _validate_staged_resources(
 	expected_places: int = 0,
 	expected_structures: int = 0,
 	expect_structures_container: bool = false,
-	schema_version: String = ""
+	schema_version: String = "",
+	expected_world_layout: Dictionary = {}
 ) -> Dictionary:
 	var tile_set := ResourceLoader.load(tileset_path, "TileSet", ResourceLoader.CACHE_MODE_IGNORE_DEEP) as TileSet
 	if tile_set == null:
@@ -462,6 +512,13 @@ static func _validate_staged_resources(
 	if packed == null:
 		return {"ok": false, "error": "Staged scene could not be loaded before commit: %s" % scene_path}
 	var world := packed.instantiate()
+	var layout_validation := WorldLayoutAttachment.validate_bound_scene(
+		world,
+		expected_world_layout
+	)
+	if not layout_validation.ok:
+		world.free()
+		return {"ok": false, "error": layout_validation.error}
 	if schema_version == COMPLETE_FARM_SCHEMA_VERSION:
 		var ground_layer := world.get_node_or_null("Ground") as TileMapLayer
 		var alpha9_valid := ground_layer != null and world.get_node_or_null("Water") is TileMapLayer and world.get_node_or_null("Paths") is TileMapLayer and world.get_node_or_null("Soil") is TileMapLayer
@@ -772,6 +829,7 @@ static func _validate_and_prepare(
 		"tile_size": Vector2i.ZERO,
 		"cell_count": 0,
 		"schema_version": "",
+		"world_layout": {},
 	}
 
 	var schema_version_value: Variant = manifest.get("schema_version")

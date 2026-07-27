@@ -25,6 +25,11 @@ import {
   type Pack10Manifest,
   type Pack10RoleBinding,
 } from '../core/pack-manifest-1.0';
+import {
+  prepareWorldLayoutPackEntry,
+  WORLD_LAYOUT_PACK_PATH,
+} from '../core/world-layout-pack-binding';
+import type { WorldLayoutPlan } from '../core/world-layout-plan';
 
 const ZIP_DATE = new Date(Date.UTC(1980, 0, 1));
 const MANIFEST_PATH = 'mapsoo.manifest.json';
@@ -609,14 +614,25 @@ export async function buildPack10ProductionReviewCandidate(
   npc: Pack10CharacterReviewArtifact,
   environmentValue: Pack10ProductionEnvironmentArtifact,
   options: Pack10CharacterReviewCandidateOptions,
+  layoutPlan?: WorldLayoutPlan,
 ): Promise<Pack10ProductionReviewCandidate> {
-  const [characterCandidate, environment] = await Promise.all([
+  const [characterCandidate, environment, preparedLayout] = await Promise.all([
     buildPack10CharacterReviewCandidate(baseZipBytes, player, npc, options),
     checkEnvironment(environmentValue),
+    layoutPlan === undefined
+      ? Promise.resolve(undefined)
+      : prepareWorldLayoutPackEntry(
+        layoutPlan,
+        'layered-depth-2d',
+        layoutPlan.source.seed,
+      ),
   ]);
   const loaded = await loadCharacterCandidate(characterCandidate.bytes);
   const payloads = new Map<string, Uint8Array>([...loaded.payloads.entries()]
     .map(([path, bytes]) => [path, Uint8Array.from(bytes)] as const));
+  if (preparedLayout) {
+    payloads.set(WORLD_LAYOUT_PACK_PATH, Uint8Array.from(preparedLayout.bytes));
+  }
   for (const [path, bytes] of environment.payloads) payloads.set(path, Uint8Array.from(bytes));
   for (const [path, bytes] of environment.projectionPayloads) {
     payloads.set(path, Uint8Array.from(bytes));
@@ -657,6 +673,7 @@ export async function buildPack10ProductionReviewCandidate(
     planes: environment.planes,
     atlases,
     roles,
+    ...(preparedLayout ? { layout: preparedLayout.binding } : {}),
     files,
     provenance: Object.freeze({
       output_provenance: 'hybrid',

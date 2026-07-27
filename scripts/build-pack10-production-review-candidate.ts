@@ -33,6 +33,10 @@ import {
 import {
   materializeProductionArtRunInventory,
 } from '../src/adapters/materialize-production-art-run-inventory';
+import {
+  materializeWorldLayoutPlan,
+  type WorldLayoutPlan,
+} from '../src/core/world-layout-plan';
 
 // @ts-expect-error The public privacy helper is intentionally plain ESM.
 import { containsPrivateConsumerToken } from './lib/private-consumer-boundary.mjs';
@@ -43,6 +47,16 @@ const TASK_IDS = Object.freeze(createProductionArtPlan('layered-depth-2d', {
 }).tasks.map(({ task_id: taskId }) => taskId));
 
 const VALUE_FLAGS = new Set([
+  '--base-pack',
+  '--runs-manifest',
+  '--world-layout-plan',
+  '--out',
+  '--pack-id',
+  '--title',
+  '--version',
+  '--created-at',
+]);
+const REQUIRED_VALUE_FLAGS = Object.freeze([
   '--base-pack',
   '--runs-manifest',
   '--out',
@@ -56,6 +70,7 @@ interface Arguments {
   readonly help: boolean;
   readonly basePack: string;
   readonly runsManifest: string;
+  readonly worldLayoutPlan?: string;
   readonly out: string;
   readonly packId: string;
   readonly title: string;
@@ -71,6 +86,7 @@ function usage(): string {
     '  pnpm pack10:production-review:build -- \\',
     '    --base-pack tests/fixtures/pack10-public/mapsoo-pack10-public-fixture.zip \\',
     '    --runs-manifest review-input/layered-depth-run-set.json \\',
+    '    --world-layout-plan review-input/world-layout-plan.json \\',
     '    --out review-output/neutral-production-review.zip \\',
     '    --pack-id neutral-production-review-world \\',
     '    --title "Neutral Production Review World" \\',
@@ -79,6 +95,7 @@ function usage(): string {
     '',
     'The run-set JSON must map exactly 14 canonical task ids to local run',
     'directories containing source.png, normalized.png, output.json and evidence.json.',
+    '--world-layout-plan is optional and embeds one validated layered-depth plan.',
     'Paths are resolved relative to the run-set file and are never embedded.',
     'This command makes no remote request and never publishes a candidate.',
   ].join('\n');
@@ -107,13 +124,16 @@ function parseArguments(argv: readonly string[]): Arguments {
     values.set(flag, value);
     index += 1;
   }
-  if ([...VALUE_FLAGS].some((flag) => !values.has(flag))) {
+  if (REQUIRED_VALUE_FLAGS.some((flag) => !values.has(flag))) {
     throw new Error('Every documented Pack 1.0 production-review flag is required.');
   }
   return {
     help: false,
     basePack: values.get('--base-pack') as string,
     runsManifest: values.get('--runs-manifest') as string,
+    ...(values.has('--world-layout-plan')
+      ? { worldLayoutPlan: values.get('--world-layout-plan') as string }
+      : {}),
     out: values.get('--out') as string,
     packId: values.get('--pack-id') as string,
     title: values.get('--title') as string,
@@ -211,6 +231,12 @@ async function main(): Promise<void> {
     await readFile(runManifestPath),
     'Production run-set',
   ));
+  const worldLayoutPlan: WorldLayoutPlan | undefined = args.worldLayoutPlan
+    ? await materializeWorldLayoutPlan(parseJson<unknown>(
+      await readFile(resolve(args.worldLayoutPlan)),
+      'World layout plan',
+    ))
+    : undefined;
   const manifestDirectory = dirname(runManifestPath);
   const entries = await Promise.all(TASK_IDS.map(async (taskId) => [
     taskId,
@@ -265,6 +291,7 @@ async function main(): Promise<void> {
       version: args.version,
       createdAt: args.createdAt,
     },
+    worldLayoutPlan,
   );
   await assertPrivateBoundary(candidate.bytes);
   await mkdir(dirname(outputPath), { recursive: true });

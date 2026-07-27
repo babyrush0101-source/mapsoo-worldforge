@@ -32,6 +32,7 @@
         "navigation": { "$ref": "#/$defs/pathObject" }, "spawn": { "$ref": "#/$defs/point" }
       }
     },
+    "layout": { "$ref": "#/$defs/layoutBinding" },
     "files": { "type": "array", "minItems": 1, "maxItems": 512, "items": { "$ref": "#/$defs/file" } },
     "license": {
       "type": "object", "additionalProperties": false, "required": ["output"],
@@ -58,6 +59,7 @@
     "path": { "type": "string", "minLength": 1, "maxLength": 240, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*(?:/[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*)*$" },
     "point": { "type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": { "x": { "type": "integer", "minimum": 0, "maximum": 8191 }, "y": { "type": "integer", "minimum": 0, "maximum": 8191 } } },
     "pathObject": { "type": "object", "additionalProperties": false, "required": ["path"], "properties": { "path": { "$ref": "#/$defs/path" } } },
+    "layoutBinding": { "type": "object", "additionalProperties": false, "required": ["schema_version", "document_type", "plan_id", "path", "sha256"], "properties": { "schema_version": { "const": "1.0.0" }, "document_type": { "const": "world-layout-plan" }, "plan_id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }, "path": { "const": "world-layout-plan.json" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
     "layer": { "type": "object", "additionalProperties": false, "required": ["id", "order"], "properties": { "id": { "enum": ["void", "floor", "elevation", "walls", "props", "actors", "effects"] }, "order": { "type": "integer", "minimum": 0, "maximum": 6 } } },
     "atlas": { "type": "object", "additionalProperties": false, "required": ["id", "path"], "properties": { "id": { "enum": ["terrain", "hazards", "props", "structures", "collectibles", "effects", "shadows", "player", "enemy-melee", "enemy-ranged"] }, "path": { "$ref": "#/$defs/path" } } },
     "role": { "type": "object", "additionalProperties": false, "required": ["role", "path"], "properties": { "role": { "type": "string", "minLength": 1, "maxLength": 80 }, "path": { "$ref": "#/$defs/path" } } },

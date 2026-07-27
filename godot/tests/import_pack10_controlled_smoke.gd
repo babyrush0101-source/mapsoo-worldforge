@@ -32,6 +32,7 @@ const TEST_IDS := [
 	"neutral-pack10-url-rejection",
 	"neutral-pack10-absolute-rejection",
 	"neutral-pack10-traversal-rejection",
+	"neutral-pack10-layout-smoke",
 ]
 
 
@@ -59,6 +60,17 @@ func _run() -> void:
 		public_result.scene_path, "public", "CC0-1.0", "public",
 	):
 		_fail("Public Pack 1.0 import failed: %s" % public_result.errors)
+		return
+	var layout_path := _materialize(recipe, TEST_IDS[8], "public", "layout")
+	if layout_path.is_empty():
+		return
+	var layout_result := Importer.import_pack(layout_path)
+	var layout_state := _read_json(str(layout_result.get("state_path", "")))
+	var layout_importer: Dictionary = layout_state.get("importer", {})
+	if not layout_result.ok or not _validate_scene(
+		layout_result.scene_path, "public", "CC0-1.0", "public", true,
+	) or layout_importer.get("version") != "1.0.0-layout.1":
+		_fail("WorldLayoutPlan-bound Pack 1.0 import failed: %s" % layout_result.errors)
 		return
 
 	var internal_path := _materialize(recipe, TEST_IDS[1], "internal-review")
@@ -201,7 +213,22 @@ func _materialize(
 	paths.append("license-assets.md")
 
 	var manifest := _manifest(recipe, pack_id, distribution, paths, root)
-	if attack in ["script", "shader"]:
+	if attack == "layout":
+		var plan := _layout_plan()
+		if not _write_json(root.path_join("world-layout-plan.json"), plan):
+			return ""
+		var layout_record := _file_record(
+			root, "world-layout-plan.json", "application/json"
+		)
+		manifest.files.append(layout_record)
+		manifest.layout = {
+			"schema_version": "1.0.0",
+			"document_type": "world-layout-plan",
+			"plan_id": plan.plan_id,
+			"path": "world-layout-plan.json",
+			"sha256": layout_record.sha256,
+		}
+	elif attack in ["script", "shader"]:
 		var extension := "gd" if attack == "script" else "gdshader"
 		var payload_path := "payload.%s" % extension
 		var payload := "extends Node\n" if attack == "script" else "shader_type canvas_item;\n"
@@ -333,6 +360,155 @@ func _manifest(
 	}
 
 
+func _layout_plan() -> Dictionary:
+	var seed := "neutral-layered-layout-seed"
+	return {
+		"schema_version": "1.0.0",
+		"document_type": "world-layout-plan",
+		"status": "planned",
+		"plan_id": "neutral-layered-layout",
+		"profile": "layered-depth-2d",
+		"source": {
+			"intake_id": "neutral-layout-intake",
+			"session_revision": 4,
+			"intake_sha256": "1".repeat(64),
+			"map_layout_checkpoint_sha256": "2".repeat(64),
+			"seed": seed,
+			"seed_sha256": _sha256_bytes(JSON.stringify(seed).to_utf8_buffer()),
+		},
+		"bounds": {"width": 64, "height": 36, "unit": "logical-tile"},
+		"regions": [
+			_layout_region("spawn-region", 0, "spawn"),
+			_layout_region("route-region", 12, "route"),
+			_layout_region("landmark-a-region", 24, "landmark"),
+			_layout_region("landmark-b-region", 36, "landmark"),
+			{
+				"id": "exit-region", "x": 48, "y": 0,
+				"width": 16, "height": 36, "purpose": "exit",
+			},
+		],
+		"terrain_layout": {
+			"kind": "zones",
+			"zones": [
+				_layout_terrain("ground-a", 0, 28, 16, 8, "earth", "walkable"),
+				_layout_terrain("ground-b", 16, 26, 16, 10, "stone", "walkable"),
+				_layout_terrain("ground-c", 32, 24, 16, 12, "grass", "walkable"),
+				_layout_terrain("blocked-a", 48, 20, 16, 16, "rock", "blocked"),
+			],
+		},
+		"spawn": {"node_id": "spawn-node", "x": 4, "y": 28},
+		"exit": {"node_id": "exit-node", "x": 56, "y": 20},
+		"traversal": {
+			"nodes": [
+				_layout_node("spawn-node", "spawn", "spawn-region", 4, 28),
+				_layout_node("route-a-node", "route", "route-region", 16, 26),
+				_layout_node(
+					"landmark-a-node", "landmark", "landmark-a-region", 28, 24
+				),
+				_layout_node("route-b-node", "route", "route-region", 20, 22),
+				_layout_node(
+					"landmark-b-node", "landmark", "landmark-b-region", 40, 22
+				),
+				_layout_node("exit-node", "exit", "exit-region", 56, 20),
+			],
+			"edges": [
+				_layout_edge("edge-a", "spawn-node", "route-a-node"),
+				_layout_edge("edge-b", "route-a-node", "landmark-a-node"),
+				_layout_edge("edge-c", "landmark-a-node", "route-b-node"),
+				_layout_edge("edge-d", "route-b-node", "landmark-b-node"),
+				_layout_edge("edge-e", "landmark-b-node", "exit-node"),
+			],
+		},
+		"landmarks": [
+			_layout_landmark(
+				"landmark-a", "First landmark", "landmark-a-region",
+				"landmark-a-node", 28, 24
+			),
+			_layout_landmark(
+				"landmark-b", "Second landmark", "landmark-b-region",
+				"landmark-b-node", 40, 22
+			),
+		],
+		"collision_intent": {
+			"mode": "depth-lane-blockers",
+			"solid_terrain_ids": ["blocked-a"],
+			"one_way_terrain_ids": [],
+			"blocked_region_ids": [],
+		},
+		"navigation_intent": {
+			"mode": "depth-lanes",
+			"walkable_region_ids": [
+				"spawn-region", "route-region", "landmark-a-region",
+				"landmark-b-region", "exit-region",
+			],
+			"traversal_edge_ids": [
+				"edge-a", "edge-b", "edge-c", "edge-d", "edge-e",
+			],
+			"agent_radius": 0.5,
+		},
+	}
+
+
+func _layout_region(id: String, x: int, purpose: String) -> Dictionary:
+	return {
+		"id": id, "x": x, "y": 0, "width": 12, "height": 36,
+		"purpose": purpose,
+	}
+
+
+func _layout_terrain(
+	id: String,
+	x: int,
+	y: int,
+	width: int,
+	height: int,
+	material: String,
+	navigation: String,
+) -> Dictionary:
+	return {
+		"id": id, "x": x, "y": y, "width": width, "height": height,
+		"material": material, "navigation": navigation,
+	}
+
+
+func _layout_node(
+	id: String,
+	kind: String,
+	region: String,
+	x: int,
+	y: int,
+) -> Dictionary:
+	return {"id": id, "kind": kind, "region_id": region, "x": x, "y": y}
+
+
+func _layout_edge(id: String, from: String, to: String) -> Dictionary:
+	return {
+		"id": id, "from": from, "to": to, "kind": "walk",
+		"direction": "bidirectional",
+	}
+
+
+func _layout_landmark(
+	id: String,
+	label: String,
+	region: String,
+	node: String,
+	x: int,
+	y: int,
+) -> Dictionary:
+	return {
+		"id": id, "label": label, "region_id": region, "node_id": node,
+		"x": x, "y": y,
+	}
+
+
+func _sha256_bytes(bytes: PackedByteArray) -> String:
+	var context := HashingContext.new()
+	context.start(HashingContext.HASH_SHA256)
+	context.update(bytes)
+	return context.finish().hex_encode()
+
+
 func _character(id: String, atlas: String, actions: Array) -> Dictionary:
 	var clips: Array = []
 	var frame_index := 0
@@ -452,6 +628,7 @@ func _validate_scene(
 	distribution: String,
 	output_license: String,
 	grant_id: String,
+	expect_layout: bool = false,
 ) -> bool:
 	var packed := ResourceLoader.load(path, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE_DEEP) as PackedScene
 	if packed == null:
@@ -463,7 +640,18 @@ func _validate_scene(
 		and world.get_meta("mapsoo_authorization_grant", "") == grant_id \
 		and world.get_meta("mapsoo_data_only", false) == true \
 		and world.get_node_or_null("YSortedGameplay/Actors/Player") is CharacterBody2D \
-		and world.get_node_or_null("WorldTraversal") is Node2D
+		and world.get_node_or_null("WorldTraversal") is Node2D \
+		and (
+			(
+				world.get_meta("mapsoo_layout_plan_id", "") == "neutral-layered-layout"
+				and world.get_meta("mapsoo_layout_materialization", "")
+					== "planning-metadata-only"
+				and world.get_node_or_null("WorldLayoutPlan/Spawn") is Marker2D
+				and world.get_node_or_null("WorldLayoutPlan/Exit") is Marker2D
+			)
+			if expect_layout
+			else world.get_node_or_null("WorldLayoutPlan") == null
+		)
 	world.free()
 	return valid
 

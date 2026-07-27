@@ -4,6 +4,10 @@ import {
   LAYERED_DEPTH_PLAYER_ACTIONS,
   LAYERED_DEPTH_REQUIRED_ROLES,
 } from './layered-depth-asset-bundle';
+import {
+  validateWorldLayoutPackBinding,
+  type WorldLayoutPackBinding,
+} from './world-layout-pack-binding';
 
 export const PACK_1_0_SCHEMA_VERSION = '1.0.0-draft.1' as const;
 export const PACK_1_0_PLANE_BINDINGS = Object.freeze([
@@ -106,6 +110,7 @@ export interface Pack10Manifest {
     navigation: Readonly<{ path: string }>;
     spawn: Readonly<{ x: number; y: number }>;
   }>;
+  readonly layout?: Readonly<WorldLayoutPackBinding>;
   readonly files: readonly Pack10FileRecord[];
   readonly license: Readonly<{
     output: Readonly<{
@@ -477,6 +482,7 @@ export function validatePack10Manifest(manifest: Pack10Manifest): Pack10Manifest
       addIssue(issues, 'runtime.role-binding', `${role} must bind its exact runtime sidecar.`, role);
     }
   }
+  issues.push(...validateWorldLayoutPackBinding(manifest.layout, manifest.files));
   const previewBinding = roles.get('world.preview')?.binding;
   if (previewBinding?.kind !== 'file') {
     addIssue(issues, 'preview.role-binding', 'world.preview must bind a PNG file.');

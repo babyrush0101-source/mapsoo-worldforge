@@ -8,6 +8,10 @@ import {
   validatePackOutputAuthorization,
   type PackOutputLicense,
 } from './production-review-pack-license';
+import {
+  validateWorldLayoutPackBinding,
+  type WorldLayoutPackBinding,
+} from './world-layout-pack-binding';
 
 export const ALPHA10_PACK_SCHEMA_VERSION = '0.7.0' as const;
 export const ALPHA10_PACK_VERSION = '0.1.0-alpha.10' as const;
@@ -46,6 +50,7 @@ export interface Alpha10PackManifest {
   readonly roles: readonly Readonly<{ role: typeof SIDE_PLATFORMER_REQUIRED_ROLES[number]; path: string }>[];
   readonly character: Readonly<{ id: string; atlas: string; frame_size: readonly [number, number]; pivot: readonly [number, number]; clips: readonly Readonly<{ id: string; action: typeof SIDE_PLATFORMER_ACTIONS[number]; direction: typeof SIDE_PLATFORMER_DIRECTIONS[number]; fps: number; frames: readonly PixelPoint[] }>[] }>;
   readonly runtime: Readonly<{ scene: Readonly<{ path: string }>; collision: Readonly<{ path: string }>; navigation: Readonly<{ path: string }>; spawn: PixelPoint }>;
+  readonly layout?: Readonly<WorldLayoutPackBinding>;
   readonly files: readonly Readonly<{ path: string; media_type: 'image/png' | 'application/json' | 'application/schema+json' | 'text/markdown'; bytes: number; sha256: string }>[];
   readonly license: Readonly<{ output: Readonly<PackOutputLicense> }>;
   readonly provenance: Readonly<{ provider: Readonly<{ id: string; version: string }>; output_provenance: 'procedural' | 'generative-ai' | 'hybrid'; contains_generative_ai: boolean; model_provider: string | null; model: string | null; seed: string; human_curated: boolean }>;
@@ -73,8 +78,9 @@ export function validateAlpha10PackManifest(manifest: Alpha10PackManifest): Alph
   const paths = manifest.files.map((file) => file.path);
   if (duplicate(paths) || manifest.files.some((file) => !SAFE_PATH.test(file.path) || file.bytes < 1 || !Number.isSafeInteger(file.bytes) || !SHA256.test(file.sha256))) issues.push({ code: 'manifest.files', message: 'Files require unique safe paths and valid integrity metadata.' });
   const known = new Set(paths);
-  const referenced = [...manifest.atlases.map((x) => x.path), ...manifest.roles.map((x) => x.path), manifest.character.atlas, manifest.runtime.scene.path, manifest.runtime.collision.path, manifest.runtime.navigation.path, manifest.license.output.notice_path];
+  const referenced = [...manifest.atlases.map((x) => x.path), ...manifest.roles.map((x) => x.path), manifest.character.atlas, manifest.runtime.scene.path, manifest.runtime.collision.path, manifest.runtime.navigation.path, manifest.license.output.notice_path, ...(manifest.layout ? [manifest.layout.path] : [])];
   if (referenced.some((path) => !known.has(path))) issues.push({ code: 'manifest.file-reference', message: 'Every referenced path must exist in files.' });
+  issues.push(...validateWorldLayoutPackBinding(manifest.layout, manifest.files));
   for (const code of validatePackOutputAuthorization(manifest.license.output, manifest.provenance)) {
     issues.push({ code, message: 'Pack output license and provenance are not an authorized public or internal-review pair.' });
   }

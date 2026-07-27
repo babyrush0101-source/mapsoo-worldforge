@@ -33,6 +33,12 @@ import {
   createProductionArtPlan,
 } from '../core/production-art-contract';
 import {
+  buildWorldLayoutPlanFromConfirmedIntake,
+  fingerprintWorldLayoutPlan,
+  serializeCanonicalWorldLayoutPlan,
+  type WorldLayoutPlan,
+} from '../core/world-layout-plan';
+import {
   materializeCharacterProfileRevision,
   serializeCharacterProfileRevisionCanonical,
 } from '../core/character-profile-revision';
@@ -56,6 +62,7 @@ export interface PreparedWorldDeliveryWorkspace {
   readonly document_type: 'world-delivery-workspace';
   readonly intake_id: string;
   readonly intake_sha256: string;
+  readonly layout_plan_sha256: string;
   readonly profile: ConfirmedWorldCreationIntake['profile'];
   readonly target: ConfirmedWorldCreationIntake['target'];
   readonly character_id: string;
@@ -225,23 +232,38 @@ function assertSafeId(value: string, label: string, maximum = 80): string {
 
 function worldBrief(intake: ConfirmedWorldCreationIntake): string {
   const facts = intake.facts;
+  const concise = (value: string): string =>
+    Array.from(value).slice(0, 220).join('');
   return [
-    `Premise: ${facts.premise}`,
-    `Worldview: ${facts.worldview}`,
-    `Terrain: ${facts.terrain}`,
-    `Geography: ${facts.geography}`,
-    `Culture: ${facts.culture}`,
-    `Ecology: ${facts.ecology}`,
-    `Traversal: ${facts.traversal}`,
-    `Landmarks: ${facts.landmarks}`,
+    `Premise: ${concise(facts.premise)}`,
+    `Worldview: ${concise(facts.worldview)}`,
+    `Terrain: ${concise(facts.terrain)}`,
+    `Geography: ${concise(facts.geography)}`,
+    `Culture: ${concise(facts.culture)}`,
+    `Ecology: ${concise(facts.ecology)}`,
+    `Traversal: ${concise(facts.traversal)}`,
+    `Landmarks: ${concise(facts.landmarks)}`,
   ].join('\n');
 }
 
-function styleBible(intake: ConfirmedWorldCreationIntake): string {
+function styleBible(
+  intake: ConfirmedWorldCreationIntake,
+  layout: WorldLayoutPlan,
+): string {
+  const terrain = layout.terrain_layout.kind === 'bands'
+    ? layout.terrain_layout.bands
+    : layout.terrain_layout.zones;
   return [
     `Profile: ${intake.profile}`,
     `Mood and readability: ${intake.facts.mood}`,
     `Art direction: ${intake.facts.art_direction}`,
+    `Layout bounds: ${layout.bounds.width}x${layout.bounds.height} ${layout.bounds.unit}; spawn ${layout.spawn.x},${layout.spawn.y}; exit ${layout.exit.x},${layout.exit.y}.`,
+    `Layout terrain: ${terrain.map(({ id, x, y, width, height, navigation }) =>
+      `${id}@${x},${y}:${width}x${height}:${navigation}`).join('; ')}.`,
+    `Layout traversal: ${layout.traversal.edges.map(({ from, to, kind, direction }) =>
+      `${from}>${to}:${kind}:${direction}`).join('; ')}.`,
+    `Layout runtime intent: collision=${layout.collision_intent.mode}; navigation=${layout.navigation_intent.mode}; landmarks=${layout.landmarks.map(({ label, x, y }) =>
+      `${label}@${x},${y}`).join('; ')}.`,
     'Character rule: preserve recognizable identity cues while adapting proportions, materials, palette, lighting, and animation language to this world profile.',
     'Runtime rule: every gameplay role must remain readable at the declared camera scale; decorative detail must not obscure collision, hazards, exits, or interaction targets.',
     'Output rule: generate a coherent complete 2D set for internal review; do not introduce 3D assets, private product fields, text logos, signatures, or watermarks.',
@@ -319,6 +341,9 @@ export async function prepareWorldDeliveryWorkspace(
 ): Promise<PreparedWorldDeliveryWorkspace> {
   const intake = await materializeConfirmedWorldCreationIntake(input.intake);
   const projection = await projectConfirmedWorldCreationIntake(intake);
+  const layoutPlan = await buildWorldLayoutPlanFromConfirmedIntake(intake);
+  const layoutPlanSha256 = await fingerprintWorldLayoutPlan(layoutPlan);
+  const layoutPlanBytes = await serializeCanonicalWorldLayoutPlan(layoutPlan);
   const characterId = assertSafeId(input.characterId, 'Character id', 48);
   const quality = input.quality ?? 'medium';
   if (!['low', 'medium', 'high'].includes(quality)) {
@@ -362,6 +387,7 @@ export async function prepareWorldDeliveryWorkspace(
     request_budget: requestBudget,
     world_brief_file: resolve(workspace, 'world-brief.txt'),
     style_bible_file: resolve(workspace, 'style-bible.txt'),
+    world_layout_plan_file: resolve(workspace, 'world-layout-plan.json'),
     environment_reference: resolve(workspace, ...environment.name.split('/')),
     character_reference: resolve(workspace, ...character.name.split('/')),
     character_id: characterId,
@@ -381,8 +407,9 @@ export async function prepareWorldDeliveryWorkspace(
   const sourceFiles = new Map<string, Uint8Array>([
     ['confirmed-intake.json', jsonBytes(intake)],
     ['confirmed-intake-projection.json', jsonBytes(projection)],
+    ['world-layout-plan.json', layoutPlanBytes],
     ['world-brief.txt', textBytes(worldBrief(intake))],
-    ['style-bible.txt', textBytes(styleBible(intake))],
+    ['style-bible.txt', textBytes(styleBible(intake, layoutPlan))],
     ['production-art-workflow-job.json', jsonBytes(job)],
     ...referenceRecords.map(({ name, bytes }) => [name, bytes] as const),
   ]);
@@ -398,6 +425,7 @@ export async function prepareWorldDeliveryWorkspace(
     document_type: 'world-delivery-workspace',
     intake_id: intake.intake_id,
     intake_sha256: intakeSha256,
+    layout_plan_sha256: layoutPlanSha256,
     profile: intake.profile,
     target: intake.target,
     character_id: characterId,

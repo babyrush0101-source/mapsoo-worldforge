@@ -153,8 +153,10 @@ describe('world delivery workspace preparation', () => {
       'references/environment.png',
       'references/character.png',
       'style-bible.txt',
+      'world-layout-plan.json',
       'world-brief.txt',
     ]));
+    expect(manifest.layout_plan_sha256).toMatch(/^[a-f0-9]{64}$/u);
     const job = JSON.parse(await readFile(
       resolve(workspace, 'production-art-workflow-job.json'),
       'utf8',
@@ -162,6 +164,9 @@ describe('world delivery workspace preparation', () => {
     expect(job.profile).toBe(profile);
     expect(job.character_id).toBe('neutral-traveler');
     expect(String(job.environment_reference)).toContain(workspace);
+    expect(job.world_layout_plan_file).toBe(
+      resolve(workspace, 'world-layout-plan.json'),
+    );
     expect(job.private_output_root).toBe(
       resolve(root, 'private-workspace-production-art-output'),
     );

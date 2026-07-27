@@ -217,6 +217,31 @@ describe('Pack 1.0 semantic validator', () => {
     expect(value.characters[1].clips).toHaveLength(8);
   });
 
+  it('accepts an optional exact-byte WorldLayoutPlan binding and rejects mismatched integrity', () => {
+    const value = publicFixture();
+    value.layout = {
+      schema_version: '1.0.0',
+      document_type: 'world-layout-plan',
+      plan_id: 'neutral-layered-layout',
+      path: 'world-layout-plan.json',
+      sha256: HASH,
+    };
+    value.files.push({
+      path: 'world-layout-plan.json',
+      media_type: 'application/json',
+      bytes: 10,
+      sha256: HASH,
+    });
+    const ajv = new Ajv2020({ strict: true, allErrors: true });
+    addFormats(ajv);
+    const validate = ajv.compile(packSchema);
+    expect(validate(value), JSON.stringify(validate.errors)).toBe(true);
+    expect(validatePack10Manifest(value)).toEqual([]);
+
+    value.layout.sha256 = 'f'.repeat(64);
+    expect(issueCodes(value)).toContain('layout.file-record');
+  });
+
   it('enforces distinct internal-review, private and public authorization gates', () => {
     const internal = publicFixture();
     internal.distribution = 'internal-review';

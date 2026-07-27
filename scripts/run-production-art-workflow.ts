@@ -54,6 +54,10 @@ import {
   materializeCharacterProfileRevision,
 } from '../src/core/character-profile-revision';
 import { createProductionArtRunSet } from '../src/core/production-art-run-set';
+import {
+  materializeWorldLayoutPlan,
+  serializeCanonicalWorldLayoutPlan,
+} from '../src/core/world-layout-plan';
 
 const WORKFLOW_ROOT = 'docs/visual-qa/production-art/workflows';
 const MODEL_RUN_ROOT = 'docs/visual-qa/production-art/model-runs';
@@ -102,6 +106,7 @@ interface WorkflowJob {
   readonly request_budget: number;
   readonly world_brief_file: string;
   readonly style_bible_file: string;
+  readonly world_layout_plan_file?: string;
   readonly environment_reference: string;
   readonly character_reference: string;
   readonly character_id: string;
@@ -292,6 +297,10 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     value,
     'private_output_root',
   );
+  const hasWorldLayoutPlan = Object.prototype.hasOwnProperty.call(
+    value,
+    'world_layout_plan_file',
+  );
   if (
     !exactKeys(value, [
       'character_id',
@@ -306,6 +315,7 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
       'style_bible_file',
       'workflow_id',
       'world_brief_file',
+      ...(hasWorldLayoutPlan ? ['world_layout_plan_file'] : []),
       ...(hasApprovedDirection ? ['approved_direction'] : []),
       ...(hasPrivateOutputRoot ? ['private_output_root'] : []),
     ])
@@ -321,6 +331,7 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     || (value.request_budget as number) > 64
     || !safePathValue(value.world_brief_file)
     || !safePathValue(value.style_bible_file)
+    || (hasWorldLayoutPlan && !safePathValue(value.world_layout_plan_file))
     || !safePathValue(value.environment_reference)
     || !safePathValue(value.character_reference)
     || (hasApprovedDirection && !safePathValue(value.approved_direction))
@@ -430,6 +441,7 @@ function privateInputBinding(input: {
   readonly job: WorkflowJob;
   readonly worldBrief: string;
   readonly styleBible: string;
+  readonly worldLayoutPlan?: Uint8Array;
   readonly environmentReference: Uint8Array;
   readonly characterReference: Uint8Array;
 }): string {
@@ -455,6 +467,9 @@ function privateInputBinding(input: {
     ],
     ['world-brief', input.worldBrief],
     ['style-bible', input.styleBible],
+    ...(input.worldLayoutPlan
+      ? [['world-layout-plan', input.worldLayoutPlan] as const]
+      : []),
     ['environment-reference', input.environmentReference],
     ['character-reference', input.characterReference],
   ];
@@ -1017,22 +1032,44 @@ async function main(): Promise<void> {
   const [
     worldBrief,
     styleBible,
+    worldLayoutPlanBytes,
     environmentReference,
     characterReference,
     approvedDirection,
   ] = await Promise.all([
     readBoundedText(job.world_brief_file, 'World brief', 2_000),
     readBoundedText(job.style_bible_file, 'Style bible', 4_000),
+    job.world_layout_plan_file
+      ? readBoundedBinary(job.world_layout_plan_file, 'World layout plan')
+      : undefined,
     readBoundedBinary(job.environment_reference, 'Environment reference'),
     readBoundedBinary(job.character_reference, 'Character reference'),
     job.approved_direction
       ? readBoundedBinary(job.approved_direction, 'Approved direction')
       : undefined,
   ]);
+  if (worldLayoutPlanBytes) {
+    const layoutRecord = parseJsonRecord(worldLayoutPlanBytes, 'World layout plan');
+    const layout = await materializeWorldLayoutPlan(layoutRecord);
+    const canonicalBytes = await serializeCanonicalWorldLayoutPlan(layout);
+    if (
+      canonicalBytes.byteLength !== worldLayoutPlanBytes.byteLength
+      || canonicalBytes.some((byte, index) => byte !== worldLayoutPlanBytes[index])
+      || layout.profile !== job.profile
+      || layout.source.intake_sha256
+        !== job.private_input_binding.confirmed_intake_sha256
+      || layout.source.seed !== job.private_input_binding.seed
+    ) {
+      throw new Error(
+        'World layout plan must be canonical and bind the workflow profile, intake, and seed.',
+      );
+    }
+  }
   const inputBindingSha256 = privateInputBinding({
     job,
     worldBrief,
     styleBible,
+    ...(worldLayoutPlanBytes ? { worldLayoutPlan: worldLayoutPlanBytes } : {}),
     environmentReference,
     characterReference,
   });

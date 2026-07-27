@@ -64,8 +64,8 @@ engine physics.
 
 ## Integration points
 
-The intended insertion point is immediately after
-`materializeConfirmedWorldCreationIntake` and before any production-art
+The plan is built immediately after
+`materializeConfirmedWorldCreationIntake` and before the production-art
 workflow or exporter:
 
 ```ts
@@ -74,10 +74,46 @@ const verified = await materializeWorldLayoutPlan(plan, confirmedIntake);
 const planSha256 = await fingerprintWorldLayoutPlan(verified);
 ```
 
-Downstream systems may translate `regions`, `terrain_layout`,
-`collision_intent`, and `navigation_intent` to engine-specific formats. That
-translation is deliberately outside this contract. No exporter or importer is
-coupled to version 1.0 in this change.
+The delivery workspace writes canonical `world-layout-plan.json` bytes and
+binds their semantic fingerprint to the production-art manifest. When a
+confirmed plan is supplied to a Pack 0.6–1.0 exporter or Pack 1.0 production
+candidate assembler, the packager:
+
+- includes the canonical plan at the pack root;
+- records the file and its exact-byte SHA-256 in the pack manifest;
+- binds the manifest to the plan ID and schema version;
+- rejects a plan whose profile or seed does not match the pack.
+
+The attachment is optional so existing packs remain compatible. When present,
+the Godot importer verifies the manifest binding, exact file bytes, profile,
+seed digest, bounds, references, traversal graph, and source confirmation before
+committing an import. It then attaches planning metadata plus spawn, exit,
+region, terrain, traversal, and landmark nodes to the imported scene.
+
+Two hashes deliberately serve different boundaries:
+
+- `layout_plan_sha256` is the semantic fingerprint of canonical JSON content;
+- `manifest.layout.sha256` is the SHA-256 of the exact file bytes stored in the
+  pack, including the trailing newline.
+
+The public components remain provider-neutral and consumer-neutral. Private
+applications can adapt their own conversation state to the confirmed intake
+contract without placing application names, paths, accounts, prompts, or
+internal runtime details in this repository.
+
+## Current runtime boundary
+
+The Godot attachment is marked `planning-metadata-only`. It makes the confirmed
+layout safely available to a world runner, but it does not yet generate:
+
+- final TileMap cells from production sprites;
+- collision polygons or physics bodies;
+- navigation meshes or navigation regions;
+- profile-specific gameplay scripts.
+
+Those materializers are the next engine-specific layer. Until they exist and
+are tested, the importer must not report a plan attachment as a fully playable
+world.
 
 ## Fail-closed behavior
 

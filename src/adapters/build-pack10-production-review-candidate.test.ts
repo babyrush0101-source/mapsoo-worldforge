@@ -32,6 +32,8 @@ import {
   validatePack10Manifest,
   type Pack10Manifest,
 } from '../core/pack-manifest-1.0';
+import { createConfirmedWorldCreationIntake } from '../core/confirmed-world-creation-intake';
+import { buildWorldLayoutPlanFromConfirmedIntake } from '../core/world-layout-plan';
 
 // @ts-expect-error The public privacy helper is intentionally plain ESM.
 import { containsPrivateConsumerToken } from '../../scripts/lib/private-consumer-boundary.mjs';
@@ -47,6 +49,66 @@ async function sha256(bytes: Uint8Array): Promise<string> {
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
+}
+
+async function layeredLayoutPlan() {
+  const rights = {
+    basis: 'owned' as const,
+    license: 'CC0-1.0',
+    allowGenerativeAdaptation: true as const,
+    allowOutputRedistribution: true as const,
+    allowOutputCc0Dedication: true as const,
+  };
+  const references = [
+    {
+      id: 'environment-reference',
+      role: 'environment-style' as const,
+      path: 'references/environment.png',
+      mediaType: 'image/png' as const,
+      byteLength: 10,
+      width: 2,
+      height: 2,
+      sha256: '1'.repeat(64),
+      rights,
+    },
+    {
+      id: 'character-reference',
+      role: 'character' as const,
+      path: 'references/character.png',
+      mediaType: 'image/png' as const,
+      byteLength: 10,
+      width: 2,
+      height: 2,
+      sha256: '2'.repeat(64),
+      rights,
+    },
+  ] as const;
+  const intake = await createConfirmedWorldCreationIntake({
+    intake_id: 'neutral-layered-layout-intake',
+    session_revision: 4,
+    profile: 'layered-depth-2d',
+    target: 'raspberry-pi-4b',
+    seed: 'neutral-layered-layout-seed',
+    facts: {
+      premise: 'Restore a compact lantern route.',
+      worldview: 'Lantern guilds preserve safe passage.',
+      terrain: 'Stone lanes and shallow reed beds.',
+      geography: 'One readable route connects pier and gate.',
+      culture: 'Craft workers share a covered market.',
+      ecology: 'Rain, salt grass, gulls, and fog.',
+      mood: 'Quiet and readable.',
+      art_direction: 'Original hand-painted pixel art.',
+      traversal: 'Cross two landmarks before the exit.',
+      landmarks: 'Bell buoy; leaning tower',
+    },
+    character_source: {
+      reference_id: 'character-reference',
+      identity_digest_sha256: '3'.repeat(64),
+    },
+    references,
+    approved_intent_preview_sha256: '4'.repeat(64),
+  });
+  return buildWorldLayoutPlanFromConfirmedIntake(intake);
 }
 
 async function basePack(): Promise<Uint8Array> {
@@ -495,6 +557,46 @@ describe('Pack 1.0 complete production-art review candidate builder', () => {
     expect(allText.join('\n')).not.toMatch(
       /@[a-z0-9.-]+\.[a-z]{2,}|\b[A-Za-z]:[\\/]|\/(?:Users|home|root|tmp|var)\//i,
     );
+  }, PACK10_PRODUCTION_REVIEW_TEST_TIMEOUT_MS);
+
+  it('embeds a canonical optional WorldLayoutPlan with exact manifest bytes', async () => {
+    const [base, inputs, layoutPlan] = await Promise.all([
+      basePack(),
+      productionInputs(),
+      layeredLayoutPlan(),
+    ]);
+    const candidate = await buildPack10ProductionReviewCandidate(
+      base,
+      inputs.player,
+      inputs.npc,
+      inputs.environment,
+      OPTIONS,
+      layoutPlan,
+    );
+    expect(validatePack10Manifest(candidate.manifest)).toEqual([]);
+    expect(candidate.manifest.layout).toMatchObject({
+      schema_version: '1.0.0',
+      document_type: 'world-layout-plan',
+      plan_id: layoutPlan.plan_id,
+      path: 'world-layout-plan.json',
+    });
+
+    const archive = await JSZip.loadAsync(candidate.bytes, { checkCRC32: true });
+    const layoutBytes = await archive.file('world-layout-plan.json')!.async('uint8array');
+    const layoutRecord = candidate.manifest.files.find(
+      ({ path }) => path === 'world-layout-plan.json',
+    );
+    expect(JSON.parse(new TextDecoder().decode(layoutBytes))).toMatchObject({
+      plan_id: layoutPlan.plan_id,
+      profile: 'layered-depth-2d',
+      source: { seed: 'neutral-layered-layout-seed' },
+    });
+    expect(layoutRecord).toMatchObject({
+      media_type: 'application/json',
+      bytes: layoutBytes.byteLength,
+      sha256: await sha256(layoutBytes),
+    });
+    expect(candidate.manifest.layout?.sha256).toBe(await sha256(layoutBytes));
   }, PACK10_PRODUCTION_REVIEW_TEST_TIMEOUT_MS);
 
   it('rejects missing environment evidence and changed projected plane bytes', async () => {

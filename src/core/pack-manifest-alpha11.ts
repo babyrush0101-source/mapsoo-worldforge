@@ -9,6 +9,10 @@ import {
   validatePackOutputAuthorization,
   type PackOutputLicense,
 } from './production-review-pack-license';
+import {
+  validateWorldLayoutPackBinding,
+  type WorldLayoutPackBinding,
+} from './world-layout-pack-binding';
 
 export const ALPHA11_PACK_SCHEMA_VERSION = '0.8.0' as const;
 export const ALPHA11_PACK_VERSION = '0.1.0-alpha.11' as const;
@@ -116,6 +120,7 @@ export interface Alpha11PackManifest {
     navigation: Readonly<{ path: string }>;
     spawn: IsoPoint;
   }>;
+  readonly layout?: Readonly<WorldLayoutPackBinding>;
   readonly files: readonly Readonly<{
     path: string;
     media_type: 'image/png' | 'application/json' | 'application/schema+json' | 'text/markdown';
@@ -212,10 +217,12 @@ export function validateAlpha11PackManifest(manifest: Alpha11PackManifest): Alph
     manifest.runtime.collision.path,
     manifest.runtime.navigation.path,
     manifest.license.output.notice_path,
+    ...(manifest.layout ? [manifest.layout.path] : []),
   ];
   if (referenced.some((path) => !known.has(path))) {
     issues.push({ code: 'manifest.file-reference', message: 'Every referenced path must exist in files.' });
   }
+  issues.push(...validateWorldLayoutPackBinding(manifest.layout, manifest.files));
   for (const code of validatePackOutputAuthorization(manifest.license.output, manifest.provenance)) {
     issues.push({ code, message: 'Pack output license and provenance are not an authorized public or internal-review pair.' });
   }

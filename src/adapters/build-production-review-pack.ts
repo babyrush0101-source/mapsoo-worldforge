@@ -333,7 +333,10 @@ function transformManifest(
       contains_generative_ai: true,
       model_provider: provider,
       model,
-      seed: `review-${manifest.profile}-v1`,
+      // The base seed is also the portable WorldLayoutPlan binding key.
+      // Production provenance belongs in provider/model fields and the review
+      // record; changing this value would detach an otherwise unchanged plan.
+      seed: manifest.provenance.seed,
       human_curated: false,
     },
   };

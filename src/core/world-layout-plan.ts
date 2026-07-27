@@ -907,3 +907,13 @@ export async function buildWorldLayoutPlanFromConfirmedIntake(
 export async function fingerprintWorldLayoutPlan(value: unknown): Promise<string> {
   return sha256(await materializeWorldLayoutPlan(value));
 }
+
+/**
+ * Serializes a validated plan with recursively sorted object keys. The trailing
+ * newline is part of the portable file bytes, while fingerprintWorldLayoutPlan
+ * remains the semantic fingerprint of the newline-free canonical JSON value.
+ */
+export async function serializeCanonicalWorldLayoutPlan(value: unknown): Promise<Uint8Array> {
+  const plan = await materializeWorldLayoutPlan(value);
+  return new TextEncoder().encode(`${canonicalJson(plan)}\n`);
+}

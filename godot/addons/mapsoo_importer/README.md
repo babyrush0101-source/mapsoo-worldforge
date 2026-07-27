@@ -36,6 +36,29 @@ The pack cannot grant itself access. Scripts, shaders, executables, URLs,
 absolute/traversal paths, undeclared files and embedded source-reference or
 raw-prompt fields are rejected.
 
+## Optional WorldLayoutPlan 1.0 attachment
+
+Pack `0.6.0` through `1.0.0-draft.1` may include a provider-neutral
+`world-layout-plan.json` file and a top-level `layout` binding. The binding
+must name that exact path and match its manifest `files` byte length and
+SHA-256 record. The importer also validates the plan profile, generation seed,
+bounds, regions, terrain grammar, spawn/exit nodes, traversal reachability,
+landmark references, collision intent and navigation intent before staging
+derived resources.
+
+Pack `0.6.0` through `0.9.0` additionally bind the plan seed to manifest
+provenance. Pack `1.0.0-draft.1` has no manifest seed field, so its canonical
+plan source must carry a matching self-hash and is bound to the pack by the
+exact-byte `layout` and `files` SHA-256 records.
+
+When valid, the generated scene contains a `WorldLayoutPlan` metadata node with
+logical `Spawn` and `Exit` markers. Regions, terrain, traversal,
+collision intent and navigation intent remain queryable as metadata. The scene
+is marked `planning-metadata-only`: the attachment does not replace the
+pack-authored scene sidecars and does not claim to generate a TileMap,
+collision geometry, or a navigation mesh. Packs without the optional binding
+retain their existing import behavior and bytes.
+
 ## Safe re-import contract (`alpha.7`)
 
 Each managed output directory contains exactly three files:
