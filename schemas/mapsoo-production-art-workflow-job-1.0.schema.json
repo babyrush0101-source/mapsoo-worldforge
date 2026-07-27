@@ -38,7 +38,8 @@
       "maxLength": 48,
       "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
     },
-    "approved_direction": { "$ref": "#/$defs/localPath" }
+    "approved_direction": { "$ref": "#/$defs/localPath" },
+    "private_output_root": { "$ref": "#/$defs/localPath" }
   },
   "$defs": {
     "safeId": {

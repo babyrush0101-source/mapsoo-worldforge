@@ -102,6 +102,23 @@ its per-task authorization. Copy
 to a private location and point its fields at local files. The job file itself
 contains private paths and must not be committed.
 
+Private consumers should normally generate that job through the neutral bridge:
+
+```bash
+pnpm world-delivery:workspace -- prepare \
+  --intake <confirmed-intake.json> \
+  --reference-root <private-reference-root> \
+  --workspace <private-workspace-outside-this-repository> \
+  --character-id <portable-character-id>
+```
+
+The generated job declares an absolute `private_output_root` outside this
+repository. The workflow writes its append-only states under
+`<private_output-root>/workflows/` and all source/normalized candidates under
+`<private_output-root>/model-runs/`. The job parser rejects an in-repository
+private output root. The legacy ignored repository paths remain available only
+for the repository's own public visual-QA fixtures.
+
 Inspect or initialize the workflow without a credential, upload, or model call:
 
 ```bash
@@ -121,11 +138,11 @@ pnpm production-art:workflow -- \
 ```
 
 The first task is always `scene-direction`. Review its generated
-`normalized.png`, then add its exact path to the private job:
+`normalized.png`, then add its exact private path to the private job:
 
 ```json
 {
-  "approved_direction": "docs/visual-qa/production-art/model-runs/layered-depth-2d/scene-direction/<run>/normalized.png"
+  "approved_direction": "<private-output-root>/model-runs/layered-depth-2d/scene-direction/<run>/normalized.png"
 }
 ```
 
@@ -144,7 +161,7 @@ run files were written, reconcile them without another request:
 pnpm production-art:workflow -- \
   --job private/workflow.json \
   --reconcile-task <task-id> \
-  --run-directory docs/visual-qa/production-art/model-runs/<profile>/<task>/<run>
+  --run-directory <profile>/<task>/<run>
 ```
 
 Only when reconciliation is impossible may an operator explicitly accept the
@@ -225,10 +242,12 @@ pnpm production-art:model -- \
   --allow-remote-upload
 ```
 
-Those private input paths never enter the output records. The model candidate is
-written under the ignored
-`docs/visual-qa/production-art/model-runs/<profile>/<task>/<request>/`
-directory as:
+Those private input paths never enter the output records. For a bridge-created
+job, the model candidate is written under
+`<private-output-root>/model-runs/<profile>/<task>/<request>/`. Repository
+visual-QA jobs retain the ignored
+`docs/visual-qa/production-art/model-runs/<profile>/<task>/<request>/` default.
+Each run contains:
 
 - `source.png`: the immutable model response;
 - `normalized.png`: deterministic output at the plan's exact dimensions;

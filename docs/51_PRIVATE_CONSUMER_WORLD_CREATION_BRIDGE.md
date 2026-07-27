@@ -1,7 +1,8 @@
 # Private consumer world-creation bridge
 
-Status: public, consumer-neutral intake and World Runner delivery contracts
-implemented; the private consumer adapter remains outside this repository
+Status: public, consumer-neutral intake, private-workspace CLI, and verified
+World Runner delivery implemented; the private consumer adapter remains
+outside this repository
 
 This integration lets a private product open a “create world” flow, ask several
 Agent-guided questions, generate a complete Mapsoo world pack, bind a separately
@@ -33,6 +34,74 @@ private create-world UI and Agent
 The private system remains the only truth source for the conversation, user,
 character identity, world admission, permissions, and completion. Mapsoo never
 turns “files exist” or “smoke passed” into a private product transaction.
+
+## Executable neutral bridge
+
+The public CLI accepts only `ConfirmedWorldCreationIntake 1.0`. It does not
+know a consumer product name, account, daemon route, internal character record,
+NPC record, or launch transport.
+
+First, prepare a private workspace:
+
+```bash
+pnpm world-delivery:workspace -- prepare \
+  --intake <confirmed-intake.json> \
+  --reference-root <private-reference-root> \
+  --workspace <absolute-private-workspace-outside-this-repository> \
+  --character-id <portable-character-id>
+```
+
+This command:
+
+- re-materializes and fingerprints the confirmed ten-fact intake;
+- re-reads both reference images under the declared root and verifies their
+  media type, dimensions, byte length, SHA-256, role, and rights;
+- derives the canonical four-profile production task inventory and exact
+  default request budget;
+- writes the confirmed intake, projection, world brief, style bible, copied
+  references, production-art job, and a hash inventory atomically;
+- configures workflow state and generated candidates in a sibling private
+  output directory outside the public checkout;
+- performs zero uploads and zero remote requests.
+
+Existing output is accepted only when every file is byte-identical. A changed
+intake, reference, generated job, or inventory is never merged over prior
+state. The generated job can be inspected locally with:
+
+```bash
+pnpm production-art:workflow -- \
+  --job <private-workspace>/production-art-workflow-job.json
+```
+
+That invocation is dry-run by default. A real image request still requires the
+separate `--execute --allow-remote-upload` authorization, one reviewed task at
+a time. Scene direction and every later asset remain human-review gates.
+
+After art approval, deterministic pack projection, Godot import, a real
+headless smoke, and runtime artifact build, finalize the handoff:
+
+```bash
+pnpm world-delivery:workspace -- finalize \
+  --intake <confirmed-intake.json> \
+  --bundle-root <staged-bundle-root> \
+  --world-pack packs/world.zip \
+  --runtime-artifact runtime/world.pck \
+  --runtime-kind godot-pck \
+  --architecture arm64 \
+  --runtime-contract runtime/contract.json \
+  --character-revision characters/revision.json \
+  --verification-report evidence/smoke.json \
+  --delivery-id <delivery-id> \
+  --spawn-id <spawn-id> \
+  --player-slot-id <player-slot-id> \
+  --out <private-delivery.json>
+```
+
+Finalization streams and hashes the staged pack and runtime artifact, requires
+canonical character-revision bytes, verifies the declared atlas bytes and
+identity digest, validates the runtime contract, and requires a strict
+`mapsoo-godot-headless-smoke-report-1.0` document bound to those exact pack and
+runtime hashes. Different existing output is never overwritten.
 
 ## Agent conversation intake
 
@@ -153,8 +222,12 @@ Implemented in this repository:
 
 - strict confirmed-intake materializer, canonical fingerprint, and projection;
 - strict JSON Schema and positive/negative tests for all four profiles;
+- zero-request private-workspace preparation CLI with atomic/idempotent output;
+- external private workflow-state and candidate-art roots, proven by a real
+  workflow dry run;
 - portable runtime and character-profile contracts;
 - strict World Runner delivery materializer and JSON Schema;
+- exact-byte delivery finalizer plus strict Godot headless-smoke report schema;
 - enforced PCK fast path for Raspberry Pi 4B;
 - deterministic three-profile production review-pack projection plus the
   existing layered-depth Pack 1.0 path.
@@ -163,10 +236,13 @@ The internal review archives use their own review-manifest schema. They do not
 rewrite or widen the published Pack 0.6, 0.7, or 0.8 schemas, so public release
 fixtures remain byte-for-byte immutable.
 
-Still required outside this repository:
+Still required in the private consumer or trusted build environment:
 
 - connect the private create-world entry to its own Agent and truth/commit flow;
-- convert a confirmed private projection into the public intake document;
+- translate the private confirmed projection into the public intake document;
+- run paid model tasks only after the product obtains explicit upload consent
+  and the user approves each direction/candidate;
+- build the reviewed pack and real Godot runtime artifact on a trusted host;
 - register accepted pack/profile digests in the private asset store;
 - adapt the neutral runtime messages to the private launch channels;
 - perform physical Raspberry Pi staging, launch, render, performance, rollback,

@@ -67,6 +67,14 @@ profiles and bind a matching revision plus atlas afterward, including through
 fixed `res://mapsoo_characters/<revision-id>/` launch arguments. Switching
 worlds clears the active character binding; the world pack remains immutable
 and internal-review/private character rights stay separate.
+The consumer-neutral `world-delivery:workspace` CLI now turns a confirmed
+ten-fact intake into an atomic private production workspace for all four
+profiles. Its references, briefs, workflow state, and generated candidates are
+forced outside the public repository. After review and a trusted Godot build,
+the same CLI finalizes an exact-byte delivery by binding the world pack, runtime
+artifact, portable contract, created-character revision, and headless-smoke
+report. No private product record or launch protocol enters this repository;
+see the [private-consumer bridge](docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md).
 The projector rejects occupied undeclared cells, empty, duplicate, mirrored,
 border-touching and mis-anchored frames. Layered-depth player and NPC tasks also
 project into exact Pack 1.0 `48 × 72` Godot atlases with complete two-frame clip

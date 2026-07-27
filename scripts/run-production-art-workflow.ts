@@ -8,8 +8,9 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises';
-import { relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 import { parseStrictJsonDocument } from '../src/adapters/import-world-spec';
 import {
@@ -52,6 +53,7 @@ import { createProductionArtRunSet } from '../src/core/production-art-run-set';
 
 const WORKFLOW_ROOT = 'docs/visual-qa/production-art/workflows';
 const MODEL_RUN_ROOT = 'docs/visual-qa/production-art/model-runs';
+const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SAFE_SHA256 = /^[a-f0-9]{64}$/;
 const MAX_JOB_BYTES = 128 * 1024;
@@ -96,6 +98,7 @@ interface WorkflowJob {
   readonly character_reference: string;
   readonly character_id: string;
   readonly approved_direction?: string;
+  readonly private_output_root?: string;
 }
 
 interface TaskRunnerSummary {
@@ -136,7 +139,8 @@ function usage(): string {
     '  - only one task runs at a time and the default invocation limit is one;',
     '  - interrupted tasks never retry automatically;',
     '  - scene-direction output needs an exact human-approved digest before later tasks;',
-    '  - private paths and source contents are not copied into workflow state or run-set JSON.',
+    '  - private paths and source contents are not copied into workflow state or run-set JSON;',
+    '  - jobs created by world-delivery:workspace keep state and candidate bytes outside the repository.',
   ].join('\n');
 }
 
@@ -221,11 +225,25 @@ function safePathValue(value: unknown): value is string {
     && !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 }
 
+function isInsideRepository(pathValue: string): boolean {
+  const fromRepository = relative(REPOSITORY_ROOT, resolve(pathValue));
+  return fromRepository.length === 0
+    || (
+      fromRepository !== '..'
+      && !fromRepository.startsWith(`..${sep}`)
+      && !isAbsolute(fromRepository)
+    );
+}
+
 function parseWorkflowJob(value: unknown): WorkflowJob {
   if (!isPlainObject(value)) throw new Error('Workflow job root must be an object.');
   const hasApprovedDirection = Object.prototype.hasOwnProperty.call(
     value,
     'approved_direction',
+  );
+  const hasPrivateOutputRoot = Object.prototype.hasOwnProperty.call(
+    value,
+    'private_output_root',
   );
   if (
     !exactKeys(value, [
@@ -241,6 +259,7 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
       'workflow_id',
       'world_brief_file',
       ...(hasApprovedDirection ? ['approved_direction'] : []),
+      ...(hasPrivateOutputRoot ? ['private_output_root'] : []),
     ])
     || value.schema_version !== '1.0.0'
     || value.document_type !== 'production-art-workflow-job'
@@ -257,6 +276,14 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     || !safePathValue(value.environment_reference)
     || !safePathValue(value.character_reference)
     || (hasApprovedDirection && !safePathValue(value.approved_direction))
+    || (hasPrivateOutputRoot && !safePathValue(value.private_output_root))
+    || (
+      hasPrivateOutputRoot
+      && (
+        !isAbsolute(value.private_output_root as string)
+        || isInsideRepository(value.private_output_root as string)
+      )
+    )
     || typeof value.character_id !== 'string'
     || value.character_id.length > 48
     || !SAFE_ID.test(value.character_id)
@@ -358,8 +385,12 @@ function privateInputBinding(input: {
   return hash.digest('hex');
 }
 
-function safeWorkflowDirectory(profile: WorldAssetProfile, workflowId: string): string {
-  const root = resolve(WORKFLOW_ROOT);
+function safeWorkflowDirectory(
+  workflowRoot: string,
+  profile: WorldAssetProfile,
+  workflowId: string,
+): string {
+  const root = resolve(workflowRoot);
   const target = resolve(root, profile, workflowId);
   if (!target.startsWith(`${root}${sep}`)) {
     throw new Error('Workflow directory escaped its fixed local root.');
@@ -521,6 +552,12 @@ function taskArguments(
   if (isPlayerCharacterTask(task)) {
     values.push('--character-id', job.character_id);
   }
+  if (job.private_output_root) {
+    values.push(
+      '--output-root',
+      resolve(job.private_output_root, 'model-runs'),
+    );
+  }
   values.push('--execute', '--allow-remote-upload');
   return values;
 }
@@ -621,9 +658,14 @@ async function verifyRunDirectory(
   runDirectory: string,
   expectedCharacterId: string,
   allowProjectionRejected = false,
+  privateOutputRoot?: string,
 ): Promise<ProductionArtWorkflowArtifact> {
-  const root = resolve(MODEL_RUN_ROOT);
-  const directory = resolve(runDirectory);
+  const root = privateOutputRoot
+    ? resolve(privateOutputRoot, 'model-runs')
+    : resolve(MODEL_RUN_ROOT);
+  const directory = privateOutputRoot
+    ? resolve(root, runDirectory)
+    : resolve(runDirectory);
   if (!directory.startsWith(`${root}${sep}`)) {
     throw new Error('Run directory must stay under the fixed ignored model-run root.');
   }
@@ -678,7 +720,10 @@ async function verifyRunDirectory(
     throw new Error('Run directory hashes or task bindings are invalid.');
   }
   const artifact: ProductionArtWorkflowArtifact = {
-    run_directory: relative(process.cwd(), directory).replaceAll('\\', '/'),
+    run_directory: relative(
+      privateOutputRoot ? root : process.cwd(),
+      directory,
+    ).replaceAll('\\', '/'),
     source_sha256: sourceSha256,
     normalized_sha256: normalizedSha256,
   };
@@ -774,14 +819,18 @@ async function writeRunSet(
   directory: string,
   state: ProductionArtWorkflowState,
   plan: ProductionArtPlan,
+  privateOutputRoot?: string,
 ): Promise<string | undefined> {
   if (!state.tasks.every(({ status }) => status === 'succeeded')) return undefined;
   const runs = Object.fromEntries(state.tasks.map((task) => {
     const runDirectory = task.attempts.at(-1)?.artifact?.run_directory;
     if (!runDirectory) throw new Error('Successful workflow task has no frozen run directory.');
+    const absoluteRunDirectory = privateOutputRoot
+      ? resolve(privateOutputRoot, 'model-runs', runDirectory)
+      : resolve(runDirectory);
     return [
       task.task_id,
-      relative(directory, resolve(runDirectory)).replaceAll('\\', '/'),
+      relative(directory, absoluteRunDirectory).replaceAll('\\', '/'),
     ];
   }));
   const runSet = createProductionArtRunSet(plan, runs);
@@ -874,7 +923,10 @@ async function main(): Promise<void> {
   const approvedDirectionSha256 = approvedDirection
     ? digestBytes(approvedDirection)
     : undefined;
-  const directory = safeWorkflowDirectory(job.profile, job.workflow_id);
+  const workflowRoot = job.private_output_root
+    ? resolve(job.private_output_root, 'workflows')
+    : resolve(WORKFLOW_ROOT);
+  const directory = safeWorkflowDirectory(workflowRoot, job.profile, job.workflow_id);
   const releaseLock = await acquireWorkflowLock(directory);
   try {
     let state = await readLatestState(directory, plan)
@@ -911,6 +963,8 @@ async function main(): Promise<void> {
         args.reconcileTask,
         args.runDirectory,
         job.character_id,
+        false,
+        job.private_output_root,
       );
       state = reconcileProductionArtWorkflowTask(state, plan, {
         expectedStateRevision: state.state_revision,
@@ -918,7 +972,7 @@ async function main(): Promise<void> {
         artifact,
       });
       await persistState(directory, state);
-      const runSet = await writeRunSet(directory, state, plan);
+      const runSet = await writeRunSet(directory, state, plan, job.private_output_root);
       console.log(JSON.stringify(workflowSummary(
         state,
         plan,
@@ -930,7 +984,7 @@ async function main(): Promise<void> {
     }
 
     if (!args.execute) {
-      const runSet = await writeRunSet(directory, state, plan);
+      const runSet = await writeRunSet(directory, state, plan, job.private_output_root);
       console.log(JSON.stringify(workflowSummary(
         state,
         plan,
@@ -989,6 +1043,7 @@ async function main(): Promise<void> {
           job.character_id,
           result.exitCode === 2
             || summary.status === 'candidate-written-projection-rejected',
+          job.private_output_root,
         );
         if (
           artifact.source_sha256 !== summary.source_sha256
@@ -1027,7 +1082,7 @@ async function main(): Promise<void> {
         break;
       }
     }
-    const runSet = await writeRunSet(directory, state, plan);
+    const runSet = await writeRunSet(directory, state, plan, job.private_output_root);
     const summary = workflowSummary(
       state,
       plan,

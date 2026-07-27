@@ -44,7 +44,7 @@ import {
   type WorldAssetProfile,
 } from '../src/core/asset-profile';
 
-const OUTPUT_ROOT = 'docs/visual-qa/production-art/model-runs';
+const DEFAULT_OUTPUT_ROOT = 'docs/visual-qa/production-art/model-runs';
 const SAFE_CHARACTER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VALUE_FLAGS = new Set([
   '--profile',
@@ -56,6 +56,7 @@ const VALUE_FLAGS = new Set([
   '--character-reference',
   '--approved-direction',
   '--character-id',
+  '--output-root',
 ]);
 const BOOLEAN_FLAGS = new Set([
   '--execute',
@@ -76,6 +77,8 @@ interface Arguments {
   readonly characterReference?: string;
   readonly approvedDirection?: string;
   readonly characterId?: string;
+  readonly outputRoot: string;
+  readonly outputRootIsCustom: boolean;
 }
 
 function usage(): string {
@@ -103,7 +106,8 @@ function usage(): string {
     '  - Non-scene tasks require --approved-direction from the accepted scene-direction round.',
     '  - Player animation tasks require a portable --character-id; it is not a private display name.',
     '  - Each invocation can make at most one remote request.',
-    `  - Candidate files stay ignored under ${OUTPUT_ROOT}/ until human review.`,
+    `  - Candidate files default to ignored ${DEFAULT_OUTPUT_ROOT}/ until human review.`,
+    '  - --output-root can keep all candidate bytes in a private workspace outside the repository.',
   ].join('\n');
 }
 
@@ -153,6 +157,8 @@ function parseArguments(argv: readonly string[]): Arguments {
     ...(values.has('--character-id')
       ? { characterId: values.get('--character-id') }
       : {}),
+    outputRoot: resolve(values.get('--output-root') ?? DEFAULT_OUTPUT_ROOT),
+    outputRootIsCustom: values.has('--output-root'),
   });
 }
 
@@ -309,8 +315,13 @@ function dryRunSummary(args: Arguments, task: ProductionArtTask): object {
   };
 }
 
-function safeRunDirectory(profile: WorldAssetProfile, taskId: string, runId: string): string {
-  const root = resolve(OUTPUT_ROOT);
+function safeRunDirectory(
+  outputRoot: string,
+  profile: WorldAssetProfile,
+  taskId: string,
+  runId: string,
+): string {
+  const root = resolve(outputRoot);
   const target = resolve(root, profile, taskId, runId);
   if (!target.startsWith(`${root}${sep}`)) throw new Error('Resolved model-run directory escaped its fixed root.');
   return target;
@@ -399,7 +410,7 @@ async function main(): Promise<void> {
   }
   const runId = normalized.evidence.provider_request_id
     ?? normalized.evidence.source.sha256.slice(0, 20);
-  const directory = safeRunDirectory(args.profile, task.task_id, runId);
+  const directory = safeRunDirectory(args.outputRoot, args.profile, task.task_id, runId);
   await mkdir(resolve(directory, '..'), { recursive: true });
   await mkdir(directory, { recursive: false });
   const writes: Promise<unknown>[] = [
@@ -491,7 +502,10 @@ async function main(): Promise<void> {
       ? { pack10_projection_error_code: pack10ProjectionErrorCode }
       : {}),
     human_review: 'required',
-    output_directory: relative(process.cwd(), directory).replaceAll('\\', '/'),
+    output_directory: relative(
+      args.outputRootIsCustom ? args.outputRoot : process.cwd(),
+      directory,
+    ).replaceAll('\\', '/'),
   }, null, 2));
   if (projectionRejected) process.exitCode = 2;
 }

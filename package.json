@@ -116,6 +116,7 @@
     "production-art:workflow:verify": "node scripts/verify-production-art-workflow.mjs",
     "production-art:run-set:verify": "vite-node scripts/verify-production-art-run-set.ts",
     "production-art:review-pack:build": "vite-node scripts/build-production-review-pack.ts",
+    "world-delivery:workspace": "vite-node scripts/run-world-delivery-workspace.ts",
     "pi4:runtime:build": "node scripts/build-pi4-runtime.mjs",
     "pi4:runtime:verify": "node scripts/verify-pi4-runtime.mjs",
     "pi4:production-review:build": "node scripts/build-pi4-runtime.mjs --extra-world-set=config/pi4-worlds/layered-depth-2d-production-v1.json --out=release/pi4-runtime/mapsoo-pi4-arm64-alpha12-production-review.zip",
@@ -147,6 +148,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/node": "22.0.0",
     "@types/react": "^18.3.24",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.10.2",
