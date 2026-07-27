@@ -159,6 +159,10 @@ Implemented in this repository:
 - deterministic three-profile production review-pack projection plus the
   existing layered-depth Pack 1.0 path.
 
+The internal review archives use their own review-manifest schema. They do not
+rewrite or widen the published Pack 0.6, 0.7, or 0.8 schemas, so public release
+fixtures remain byte-for-byte immutable.
+
 Still required outside this repository:
 
 - connect the private create-world entry to its own Agent and truth/commit flow;

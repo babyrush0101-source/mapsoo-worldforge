@@ -3,10 +3,8 @@ import addFormats from 'ajv-formats';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 
-import pack06Schema from '../../schemas/mapsoo-pack-0.6.schema.json';
-import pack07Schema from '../../schemas/mapsoo-pack-0.7.schema.json';
-import pack08Schema from '../../schemas/mapsoo-pack-0.8.schema.json';
 import reviewSchema from '../../schemas/mapsoo-production-art-pack-review-1.0.schema.json';
+import reviewManifestSchema from '../../schemas/mapsoo-production-review-pack-manifest-1.0.schema.json';
 import { encodeRgbaPng } from './canvas/encode-png';
 import {
   buildProductionReviewPack,
@@ -288,15 +286,15 @@ async function basePack(profile: WorldAssetProfile): Promise<ProductionReviewBas
 }
 
 const cases = [
-  ['topdown-farm', pack06Schema],
-  ['side-platformer', pack07Schema],
-  ['isometric-action', pack08Schema],
+  'topdown-farm',
+  'side-platformer',
+  'isometric-action',
 ] as const;
 
 describe('three-profile production review pack builder', () => {
   it.each(cases)(
     'projects a complete deterministic %s model-art inventory into its Godot pack',
-    async (profile, packSchema) => {
+    async (profile) => {
       const [{ plan, inventory }, base] = await Promise.all([
         productionInput(profile),
         basePack(profile),
@@ -333,7 +331,7 @@ describe('three-profile production review pack builder', () => {
 
       const ajv = new Ajv2020({ strict: true, strictTypes: false, allErrors: true });
       addFormats(ajv);
-      const validatePack = ajv.compile(packSchema);
+      const validatePack = ajv.compile(reviewManifestSchema);
       const validateReview = ajv.compile(reviewSchema);
       expect(validatePack(first.manifest), JSON.stringify(validatePack.errors)).toBe(true);
       expect(validateReview(first.review), JSON.stringify(validateReview.errors)).toBe(true);
@@ -347,6 +345,8 @@ describe('three-profile production review pack builder', () => {
         ...first.manifest.files.map(({ path }) => `${root}${path}`),
       ].sort());
       expect(names).not.toContain(`${root}generation-receipt.json`);
+      expect(names.some((name) => /\/schema\/mapsoo-pack-0\.[678]\.schema\.json$/.test(name))).toBe(false);
+      expect(names).toContain(`${root}schema/mapsoo-production-review-pack-manifest-1.0.schema.json`);
       const reviewText = await archive.file(`${root}production-art-review.json`)!.async('string');
       const licenseText = await archive.file(`${root}license-assets.md`)!.async('string');
       expect(JSON.parse(reviewText)).toEqual(first.review);

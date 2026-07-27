@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 
 import reviewSchema from '../../schemas/mapsoo-production-art-pack-review-1.0.schema.json';
+import reviewManifestSchema from '../../schemas/mapsoo-production-review-pack-manifest-1.0.schema.json';
 import type { ProductionArtRunInventory } from './materialize-production-art-run-inventory';
 import {
   projectProductionReviewPackVisuals,
@@ -36,6 +37,11 @@ import { containsPrivateConsumerToken } from '../../scripts/lib/private-consumer
 const ZIP_DATE = new Date(Date.UTC(1980, 0, 1));
 const SAFE_PACK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SAFE_MODEL_TEXT = /^[\u0020-\u007e]{1,160}$/;
+const PUBLISHED_PACK_SCHEMA_PATHS: Readonly<Record<ProductionReviewPackProfile, string>> = Object.freeze({
+  'topdown-farm': 'schema/mapsoo-pack-0.6.schema.json',
+  'side-platformer': 'schema/mapsoo-pack-0.7.schema.json',
+  'isometric-action': 'schema/mapsoo-pack-0.8.schema.json',
+});
 
 interface FileRecord {
   readonly path: string;
@@ -410,10 +416,14 @@ export async function buildProductionReviewPack(
     'schema/mapsoo-production-art-pack-review-1.0.schema.json',
     json(reviewSchema),
   );
+  replacements.set(
+    'schema/mapsoo-production-review-pack-manifest-1.0.schema.json',
+    json(reviewManifestSchema),
+  );
 
   const outputBytes = new Map<string, Uint8Array>();
   for (const [path, bytes] of Object.entries(base.files)) {
-    if (path === 'generation-receipt.json') continue;
+    if (path === 'generation-receipt.json' || path === PUBLISHED_PACK_SCHEMA_PATHS[plan.profile]) continue;
     outputBytes.set(path, Uint8Array.from(replacements.get(path) ?? bytes));
   }
   for (const [path, bytes] of replacements) outputBytes.set(path, Uint8Array.from(bytes));

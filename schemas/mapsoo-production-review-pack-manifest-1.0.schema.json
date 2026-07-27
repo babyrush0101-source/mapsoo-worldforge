@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-production-review-pack-manifest-1.0.schema.json",
+  "title": "Mapsoo production review pack manifest 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "pack",
+    "profile",
+    "completeness_policy",
+    "compatibility",
+    "layers",
+    "atlases",
+    "roles",
+    "runtime",
+    "files",
+    "license",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": { "enum": ["0.6.0", "0.7.0", "0.8.0"] },
+    "pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "version", "generator", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/text" },
+        "version": {
+          "enum": ["0.1.0-alpha.9", "0.1.0-alpha.10", "0.1.0-alpha.11"]
+        },
+        "generator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "const": "Mapsoo Worldsmith" },
+            "version": {
+              "enum": ["0.1.0-alpha.9", "0.1.0-alpha.10", "0.1.0-alpha.11"]
+            }
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "profile": {
+      "enum": ["topdown-farm", "side-platformer", "isometric-action"]
+    },
+    "completeness_policy": {
+      "enum": [
+        "topdown-farm-complete-v1",
+        "side-platformer-complete-v1",
+        "isometric-action-complete-v1"
+      ]
+    },
+    "compatibility": { "type": "object" },
+    "layers": { "type": "array", "minItems": 1 },
+    "atlases": { "type": "array", "minItems": 1 },
+    "roles": { "type": "array", "minItems": 1 },
+    "character": { "type": "object" },
+    "characters": { "type": "array", "minItems": 1 },
+    "runtime": { "type": "object" },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "media_type", "bytes", "sha256"],
+        "properties": {
+          "path": { "$ref": "#/$defs/path" },
+          "media_type": {
+            "enum": [
+              "image/png",
+              "application/json",
+              "application/schema+json",
+              "text/markdown"
+            ]
+          },
+          "bytes": { "type": "integer", "minimum": 1, "maximum": 134217728 },
+          "sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output"],
+      "properties": {
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "notice_path", "permits_redistribution"],
+          "properties": {
+            "id": { "const": "LicenseRef-UNRELEASED" },
+            "notice_path": { "const": "license-assets.md" },
+            "permits_redistribution": { "const": false }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "output_provenance",
+        "contains_generative_ai",
+        "model_provider",
+        "model",
+        "seed",
+        "human_curated"
+      ],
+      "properties": {
+        "provider": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version"],
+          "properties": {
+            "id": { "const": "mapsoo-production-review" },
+            "version": { "const": "1.0.0" }
+          }
+        },
+        "output_provenance": { "const": "hybrid" },
+        "contains_generative_ai": { "const": true },
+        "model_provider": { "$ref": "#/$defs/text" },
+        "model": { "$ref": "#/$defs/text" },
+        "seed": { "$ref": "#/$defs/text" },
+        "human_curated": { "const": false }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "schema_version": { "const": "0.6.0" },
+        "profile": { "const": "topdown-farm" },
+        "completeness_policy": { "const": "topdown-farm-complete-v1" },
+        "character": { "type": "object" },
+        "pack": {
+          "properties": {
+            "version": { "const": "0.1.0-alpha.9" },
+            "generator": {
+              "properties": { "version": { "const": "0.1.0-alpha.9" } }
+            }
+          }
+        }
+      },
+      "required": ["character"]
+    },
+    {
+      "properties": {
+        "schema_version": { "const": "0.7.0" },
+        "profile": { "const": "side-platformer" },
+        "completeness_policy": { "const": "side-platformer-complete-v1" },
+        "character": { "type": "object" },
+        "pack": {
+          "properties": {
+            "version": { "const": "0.1.0-alpha.10" },
+            "generator": {
+              "properties": { "version": { "const": "0.1.0-alpha.10" } }
+            }
+          }
+        }
+      },
+      "required": ["character"]
+    },
+    {
+      "properties": {
+        "schema_version": { "const": "0.8.0" },
+        "profile": { "const": "isometric-action" },
+        "completeness_policy": { "const": "isometric-action-complete-v1" },
+        "characters": { "type": "array", "minItems": 1 },
+        "pack": {
+          "properties": {
+            "version": { "const": "0.1.0-alpha.11" },
+            "generator": {
+              "properties": { "version": { "const": "0.1.0-alpha.11" } }
+            }
+          }
+        }
+      },
+      "required": ["characters"]
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    },
+    "path": {
+      "type": "string",
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}
