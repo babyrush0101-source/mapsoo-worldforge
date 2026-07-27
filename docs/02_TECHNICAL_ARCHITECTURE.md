@@ -250,7 +250,9 @@ WorldForge 只自研决定项目差异化和可验证交付的核心：
 confirmed world
   -> confirmed WorldLayoutConstraints
   -> profile solver
-  -> WorldLayoutPlan + ProductionArtPlan
+  -> WorldLayoutPlan
+  -> provider-neutral AssetRequirements
+  -> ProductionArtPlan
   -> ProductionArtProvider port
        -> built-in offline adapter
        -> optional server-only SpriteCook adapter (implemented)
@@ -275,6 +277,13 @@ SpriteCook 只允许两种薄接入方式，不成为运行时依赖：
 可以直接吸收的工作流优点包括：批量生成前检查额度、把可复用资产 ID 保存到本地私有运行记录、用参考资产维持风格、默认紧裁切透明边界、按显式下载清单落盘，以及把动画帧和 Godot 资源分开物化。它们是 adapter 的操作策略，不是新的核心领域对象。WorldForge 不复制 SpriteCook 的账户、素材库、编辑器、计费或 MCP 会话管理。
 
 核心不调用 SpriteCook MCP、不加载其插件，也不把第三方 `.tres` 直接当作可信 pack 内容。四类 profile 共用同一套候选和逻辑材质端口，不为每个供应商或 profile 复制一套 importer。
+
+`AssetRequirements 1.0` 同样不建立第二套角色目录。它直接复用四类
+profile 已有的 canonical role inventory：先保留完整基线角色，再把路线、
+规模、垂直度、水域、聚落、危险度和地标数量编译为小型结构需求。当前
+profile 没有诚实可用的角色时，需求必须标记为 `unresolved`，不能借用
+无关贴图伪装覆盖。Provider 仍只负责候选生成，不能修改这些需求或决定
+世界完整性。
 
 已经审核并组装完成的 Pack 同样只走薄适配层，不再复制投影器：
 

@@ -219,13 +219,32 @@ a different world.
 The current solver intentionally selects only material IDs already backed by
 each profile's canonical `terrain.*` asset roles. It will not invent a
 `volcanic-floor`, `reed-wetland`, or cultural building material and silently
-reuse an unrelated tile. Compiling new semantic materials, buildings, props,
-NPCs, and hazards into a typed `AssetRequirements` inventory is the next
-separate core step. The browser now presents and hashes the structured
-constraint choices at the map-layout checkpoint, carries the frozen intent
-through the application handoff, displays it again beside the reference
-generator, and invalidates that handoff when the user returns to an earlier
-round.
+reuse an unrelated tile.
+
+`AssetRequirements 1.0` now compiles the verified constraints and plan into a
+provider-neutral, canonical JSON inventory. It reuses
+`requiredProductionArtRoles(profile)` as the only complete visual-role source,
+then appends narrowly scoped requirements for route shape, scale, verticality,
+water, settlement density, hazard level, and landmark count. Every structural
+axis changes the semantic inventory rather than only changing a document hash.
+When a profile has no honest canonical role for a requested feature—for
+example, side-view water or a top-down hazard—the requirement is explicitly
+`unresolved`; an unrelated tile cannot silently satisfy it. Runtime-only
+scene, collision, and navigation roles never become image tasks.
+
+The artifact contains the constraints and plan digests plus coarse layout
+values, but excludes landmark labels, raw dialogue, prompts, references,
+filesystem paths, provider/model fields, credentials, and private image
+digests. The next application step is binding the requirements digest and
+variant slots into `ProductionArtPlan` and workflow state. Until that is
+implemented, the existing profile-complete production plan remains the
+execution path and the new artifact is not presented as proof that world-
+specific art has been generated.
+
+The browser now presents and hashes the structured constraint choices at the
+map-layout checkpoint, carries the frozen intent through the application
+handoff, displays it again beside the reference generator, and invalidates
+that handoff when the user returns to an earlier round.
 
 ## Fail-closed behavior
 

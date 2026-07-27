@@ -47,6 +47,15 @@ the exact landmark-node list, binds the visible values into its checkpoint,
 and shows the frozen intent again before reference-based generation. Returning
 to an earlier round invalidates the old browser handoff.
 
+The verified constraints and layout can now also compile to
+`AssetRequirements 1.0`: one provider-neutral, privacy-minimized inventory
+that reuses the existing four-profile role catalogs instead of defining new
+SpriteCook-specific roles. All seven structural axes change concrete
+requirements; unsupported combinations remain explicitly unresolved rather
+than borrowing an unrelated tile. Production-workflow binding is the next
+step, so this contract does not yet claim that world-specific final art has
+been generated.
+
 The fourth-round image is explicitly an **intent preview**, not final artwork.
 After references and complete assets are generated, the browser instead shows
 the exact `scene.previewAssetId` PNG included in the downloadable pack. An
