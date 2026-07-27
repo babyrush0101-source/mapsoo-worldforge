@@ -667,6 +667,51 @@ uploads, absence of `input_fidelity`, opaque output requests, authorization
 failure, secret redaction, chroma normalization, cell checks, and evidence
 binding without making a paid API call.
 
+## Operator-imported model candidates
+
+An image provider can return attractive subjects in the requested reading
+order while missing the exact engineering grid. Discarding the image can waste
+a paid request; silently treating it as a compliant atlas can bind the wrong
+role or animation. Worldforge therefore provides an explicit, local-only
+operator boundary:
+
+```bash
+pnpm production-art:operator-import -- \
+  --profile side-platformer \
+  --task terrain-sheet \
+  --source /private/review/terrain-rgba.png \
+  --mode component-reading-order \
+  --out /private/review/terrain-candidate.png \
+  --report /private/review/terrain-candidate.json
+```
+
+`proportional-grid` accepts a source whose logical grid already matches the
+canonical task and resizes it with nearest-neighbor sampling.
+`component-reading-order` detects significant isolated subjects, requires the
+exact canonical subject count, orders them by visual row and column, and
+re-packs them into the declared terrain, prop, effect, or character cells.
+Unexpected subject counts, empty mapped cells, populated undeclared cells and
+padding violations fail before output is written.
+
+The report records only source/output basenames, dimensions and SHA-256 values;
+it never copies an absolute operator path. Tiny ignored fragments, component
+bounds, every target cell and every semantic character pose are recorded for
+review. The command makes zero remote requests and does not weaken any model
+workflow authorization.
+
+This is deliberately a salvage and review boundary, not an automatic approval:
+
+- reading order cannot prove that the model followed the requested role order;
+- a technically valid pose cell cannot prove direction, action or identity;
+- reflowed candidates are not automatically admitted to a production run-set;
+- the output remains `UNRELEASED` and requires human art and rights review.
+
+Run its fail-closed contract test with:
+
+```bash
+pnpm production-art:operator-import:verify
+```
+
 ## What remains
 
 This source adapter is a real provider implementation, but the following work is
