@@ -247,6 +247,36 @@
         }
       }
     },
+    "runtimeDirectionTransform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "directions", "provenance"],
+      "properties": {
+        "strategy": { "const": "horizontal-flip" },
+        "directions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["left", "right"] }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["basis", "source_reference_ids"],
+          "properties": {
+            "basis": { "const": "operator-declared-direction-equivalence" },
+            "source_reference_ids": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/id" }
+            }
+          }
+        }
+      }
+    },
     "revision": {
       "type": "object",
       "additionalProperties": false,
@@ -279,8 +309,26 @@
           "items": { "$ref": "#/$defs/clip" }
         },
         "source_identity": { "$ref": "#/$defs/sourceIdentity" },
+        "runtime_direction_transform": {
+          "$ref": "#/$defs/runtimeDirectionTransform"
+        },
         "rights": { "$ref": "#/$defs/rights" }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "runtime_direction_transform": {} },
+            "required": ["runtime_direction_transform"]
+          },
+          "then": {
+            "properties": {
+              "profile": {
+                "enum": ["side-platformer", "layered-depth-2d"]
+              }
+            }
+          }
+        }
+      ]
     },
     "bindPayload": {
       "type": "object",

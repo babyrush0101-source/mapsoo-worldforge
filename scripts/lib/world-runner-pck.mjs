@@ -498,7 +498,7 @@ async function inspectCharacterBinding(bundleRoot, revisionInput, atlasInput, pr
   } catch (error) {
     throw new Error(`Character revision is not valid JSON: ${error.message}`);
   }
-  exactKeys(revision, [
+  const revisionKeys = [
     'schema_version',
     'document_type',
     'profile_revision_id',
@@ -510,7 +510,11 @@ async function inspectCharacterBinding(bundleRoot, revisionInput, atlasInput, pr
     'clips',
     'source_identity',
     'rights',
-  ], 'Character revision');
+  ];
+  if (revision.runtime_direction_transform !== undefined) {
+    revisionKeys.push('runtime_direction_transform');
+  }
+  exactKeys(revision, revisionKeys, 'Character revision');
   if (revision.schema_version !== '1.0.0'
       || revision.document_type !== 'character-profile-revision'
       || revision.profile !== profile
@@ -524,6 +528,44 @@ async function inspectCharacterBinding(bundleRoot, revisionInput, atlasInput, pr
       || !SHA256.test(revision.atlas.sha256 ?? '')
       || revision.atlas.sha256 !== sha256Bytes(atlasBytes)) {
     throw new Error('Character atlas bytes do not match the revision descriptor.');
+  }
+  if (revision.runtime_direction_transform !== undefined) {
+    const transform = revision.runtime_direction_transform;
+    exactKeys(
+      transform,
+      ['strategy', 'directions', 'provenance'],
+      'Character runtime direction transform',
+    );
+    exactKeys(
+      transform.provenance,
+      ['basis', 'source_reference_ids'],
+      'Character runtime direction transform provenance',
+    );
+    const sourceReferences = revision.source_identity?.source_reference_ids;
+    if (
+      !['side-platformer', 'layered-depth-2d'].includes(revision.profile)
+      || transform.strategy !== 'horizontal-flip'
+      || !Array.isArray(transform.directions)
+      || transform.directions.length !== 1
+      || !['left', 'right'].includes(transform.directions[0])
+      || transform.provenance.basis !== 'operator-declared-direction-equivalence'
+      || !Array.isArray(transform.provenance.source_reference_ids)
+      || transform.provenance.source_reference_ids.length < 1
+      || transform.provenance.source_reference_ids.length > 8
+      || new Set(transform.provenance.source_reference_ids).size
+        !== transform.provenance.source_reference_ids.length
+      || !Array.isArray(sourceReferences)
+      || transform.provenance.source_reference_ids.some(
+        (referenceId) => (
+          typeof referenceId !== 'string'
+          || referenceId.length > 100
+          || !SAFE_ID.test(referenceId)
+          || !sourceReferences.includes(referenceId)
+        ),
+      )
+    ) {
+      throw new Error('Character runtime direction transform is invalid or unbound.');
+    }
   }
   return Object.freeze({
     revisionPath,

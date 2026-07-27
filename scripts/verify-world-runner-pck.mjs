@@ -104,7 +104,7 @@ function pngChunk(type, data) {
   return Buffer.concat([length, typeBytes, data, checksum]);
 }
 
-function characterFixture() {
+function characterFixture(directionTransform = false) {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(1, 0);
   header.writeUInt32BE(1, 4);
@@ -151,6 +151,18 @@ function characterFixture() {
       identity_digest_sha256: 'c'.repeat(64),
       source_reference_ids: ['ci-character-reference'],
     },
+    ...(directionTransform
+      ? {
+        runtime_direction_transform: {
+          strategy: 'horizontal-flip',
+          directions: ['left'],
+          provenance: {
+            basis: 'operator-declared-direction-equivalence',
+            source_reference_ids: ['ci-character-reference'],
+          },
+        },
+      }
+      : {}),
     rights: {
       distribution: 'internal-review',
       license: 'LicenseRef-Proprietary',
@@ -229,7 +241,7 @@ async function writeFixture(root, options = {}) {
   if (options.character) {
     const character = join(bundle, 'character');
     await mkdir(character, { recursive: true });
-    const fixture = characterFixture();
+    const fixture = characterFixture(options.directionTransform === true);
     await Promise.all([
       writeFile(
         join(character, 'character-profile-revision.json'),
@@ -392,7 +404,11 @@ async function verifyMetricsProbe(godotBin, pckPath, arguments_) {
 async function main() {
   const root = await mkdtemp(join(tmpdir(), 'mapsoo-world-runner-pck-'));
   try {
-    const valid = await writeFixture(root, { name: 'valid', character: true });
+    const valid = await writeFixture(root, {
+      name: 'valid',
+      character: true,
+      directionTransform: true,
+    });
     const inspected = await inspectWorldRunnerPckInput({
       bundleRoot: valid.bundle,
       worldPackPath: valid.pack,
@@ -460,6 +476,27 @@ async function main() {
       characterRevisionPath: wrongCharacter.characterRevision,
       characterAtlasPath: wrongCharacter.characterAtlas,
     }), 'does not match the world');
+    const wrongDirectionTransform = await writeFixture(root, {
+      name: 'wrong-direction-transform',
+      character: true,
+      directionTransform: true,
+    });
+    const changedDirectionRevision = JSON.parse(
+      await readFile(wrongDirectionTransform.characterRevision, 'utf8'),
+    );
+    changedDirectionRevision.runtime_direction_transform.directions = ['left', 'right'];
+    await writeFile(
+      wrongDirectionTransform.characterRevision,
+      `${JSON.stringify(changedDirectionRevision, null, 2)}\n`,
+    );
+    await rejects(() => inspectWorldRunnerPckInput({
+      bundleRoot: wrongDirectionTransform.bundle,
+      worldPackPath: wrongDirectionTransform.pack,
+      importedWorldDir: wrongDirectionTransform.imported,
+      worldId: WORLD_ID,
+      characterRevisionPath: wrongDirectionTransform.characterRevision,
+      characterAtlasPath: wrongDirectionTransform.characterAtlas,
+    }), 'direction transform is invalid');
     const outside = join(root, 'outside.zip');
     await copyFile(valid.pack, outside);
     await rejects(() => inspectWorldRunnerPckInput({

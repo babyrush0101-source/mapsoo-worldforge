@@ -245,7 +245,11 @@ async function writeCandidates(root: string): Promise<readonly ProductionArtTask
   return plan.tasks;
 }
 
-async function runAdmission(candidateRoot: string, outputRoot: string): Promise<CommandResult> {
+async function runAdmission(
+  candidateRoot: string,
+  outputRoot: string,
+  runtimeDirectionTransform: 'none' | 'horizontal-flip-left' = 'horizontal-flip-left',
+): Promise<CommandResult> {
   const viteNode = resolve('node_modules/vite-node/vite-node.mjs');
   const runner = resolve('scripts/admit-operator-production-art-run-set.ts');
   const child = spawn(process.execPath, [
@@ -256,6 +260,7 @@ async function runAdmission(candidateRoot: string, outputRoot: string): Promise<
     '--out', outputRoot,
     '--admission', ADMISSION,
     '--model', MODEL,
+    '--runtime-direction-transform', runtimeDirectionTransform,
   ], {
     cwd: process.cwd(),
     shell: false,
@@ -306,6 +311,7 @@ async function verifyPositive(
     || summary.remote_request_count !== 0
     || summary.public_release !== 'prohibited'
     || summary.private_paths_embedded !== false
+    || summary.runtime_direction_transform !== 'horizontal-flip-left'
   ) {
     fail('Admission summary does not retain the offline internal-review boundary.');
   }
@@ -341,6 +347,7 @@ async function verifyPositive(
     remote_request_count?: number;
     private_paths_embedded?: boolean;
     gates?: { rights?: string; public_release?: string };
+    runtime_direction_transform_declaration?: string;
     tasks?: readonly unknown[];
   };
   if (
@@ -349,13 +356,25 @@ async function verifyPositive(
     || admission.private_paths_embedded !== false
     || admission.gates?.rights !== 'pending'
     || admission.gates.public_release !== 'prohibited'
+    || admission.runtime_direction_transform_declaration !== 'horizontal-flip-left'
     || admission.tasks?.length !== tasks.length
   ) {
     fail('Run-set admission record weakens rights, privacy or release gates.');
   }
   const characterRevision = JSON.parse(
     await readFile(join(outputRoot, 'character', 'character-profile-revision.json'), 'utf8'),
-  ) as { document_type?: string; profile_revision_id?: string };
+  ) as {
+    document_type?: string;
+    profile_revision_id?: string;
+    runtime_direction_transform?: {
+      strategy?: string;
+      directions?: readonly string[];
+      provenance?: {
+        basis?: string;
+        source_reference_ids?: readonly string[];
+      };
+    };
+  };
   const characterAtlas = Uint8Array.from(
     await readFile(join(outputRoot, 'character', 'character-profile-atlas.png')),
   );
@@ -364,6 +383,12 @@ async function verifyPositive(
   if (
     characterRevision.document_type !== 'character-profile-revision'
     || typeof characterRevision.profile_revision_id !== 'string'
+    || characterRevision.runtime_direction_transform?.strategy !== 'horizontal-flip'
+    || characterRevision.runtime_direction_transform.directions?.join(',') !== 'left'
+    || characterRevision.runtime_direction_transform.provenance?.basis
+      !== 'operator-declared-direction-equivalence'
+    || characterRevision.runtime_direction_transform.provenance.source_reference_ids?.join(',')
+      !== 'operator-character-reference'
     || !characterTask
     || sha256(characterAtlas) !== sha256(candidatePng(characterTask))
   ) {
@@ -436,6 +461,28 @@ async function verifyRightsReportNegative(sourceRoot: string, root: string): Pro
   }
 }
 
+async function verifyExplicitNoneDoesNotInfer(
+  candidateRoot: string,
+  outputRoot: string,
+): Promise<void> {
+  const result = await runAdmission(candidateRoot, outputRoot, 'none');
+  if (result.exitCode !== 0) {
+    fail(`Explicit-none admission failed.\n${result.stdout}\n${result.stderr}`);
+  }
+  const revision = JSON.parse(
+    await readFile(join(outputRoot, 'character', 'character-profile-revision.json'), 'utf8'),
+  ) as Record<string, unknown>;
+  const admission = JSON.parse(
+    await readFile(join(outputRoot, 'operator-admission.json'), 'utf8'),
+  ) as Record<string, unknown>;
+  if (
+    'runtime_direction_transform' in revision
+    || admission.runtime_direction_transform_declaration !== 'none'
+  ) {
+    fail('Explicit-none admission inferred a direction transform from candidate pixels.');
+  }
+}
+
 async function main(): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), 'private-consumer-fixture-operator-admission-'));
   try {
@@ -444,11 +491,14 @@ async function main(): Promise<void> {
     const tasks = await writeCandidates(candidateRoot);
     if (tasks.length !== 9) fail(`Expected 9 side-platformer tasks, received ${tasks.length}.`);
     await verifyPositive(candidateRoot, outputRoot, tasks);
+    await verifyExplicitNoneDoesNotInfer(candidateRoot, join(root, 'independent-output'));
     await verifyTamperNegative(candidateRoot, root);
     await verifyRightsReportNegative(candidateRoot, root);
     console.log(
       'MAPSOO_OPERATOR_RUN_SET_ADMISSION_OK '
       + 'profile=side-platformer tasks=9 character_projection=true '
+      + 'direction_transform=horizontal-flip-left explicit_opt_in=true '
+      + 'explicit_none_no_inference=true '
       + 'path_privacy=true remote_requests=0 public_release=prohibited '
       + 'negative_tamper=true negative_rights_report=true',
     );

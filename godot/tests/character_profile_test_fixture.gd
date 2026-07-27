@@ -1,7 +1,10 @@
 extends RefCounted
 
 
-static func create(profile: String) -> Dictionary:
+static func create(
+	profile: String,
+	horizontal_flip_directions: Array[String] = []
+) -> Dictionary:
 	var actions := _actions(profile)
 	var directions := _directions(profile)
 	var clip_ids: Array[String] = []
@@ -74,6 +77,15 @@ static func create(profile: String) -> Dictionary:
 			"license": "LicenseRef-Proprietary",
 		},
 	}
+	if not horizontal_flip_directions.is_empty():
+		revision["runtime_direction_transform"] = {
+			"strategy": "horizontal-flip",
+			"directions": horizontal_flip_directions.duplicate(),
+			"provenance": {
+				"basis": "operator-declared-direction-equivalence",
+				"source_reference_ids": ["character-reference"],
+			},
+		}
 	var revision_bytes := JSON.stringify(revision).to_utf8_buffer()
 	return {
 		"ok": true,

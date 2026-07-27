@@ -60,6 +60,15 @@ export interface CharacterProfileClip {
   }>[];
 }
 
+export interface CharacterProfileRuntimeDirectionTransform {
+  readonly strategy: 'horizontal-flip';
+  readonly directions: readonly ['left' | 'right'];
+  readonly provenance: Readonly<{
+    readonly basis: 'operator-declared-direction-equivalence';
+    readonly source_reference_ids: readonly string[];
+  }>;
+}
+
 export interface CharacterProfileRevision {
   readonly schema_version: typeof CHARACTER_PROFILE_REVISION_VERSION;
   readonly document_type: 'character-profile-revision';
@@ -90,6 +99,11 @@ export interface CharacterProfileRevision {
     identity_digest_sha256: string;
     source_reference_ids: readonly string[];
   }>;
+  /**
+   * Optional, revision-bound runtime presentation policy. Its absence means
+   * every direction is independently rendered and no runtime flip is applied.
+   */
+  readonly runtime_direction_transform?: CharacterProfileRuntimeDirectionTransform;
   readonly rights: CharacterProfileRights;
 }
 
@@ -298,7 +312,7 @@ export function materializeCharacterProfileRevision(value: unknown): CharacterPr
     'clips',
     'source_identity',
     'rights',
-  ]);
+  ], ['runtime_direction_transform']);
   if (
     value.schema_version !== CHARACTER_PROFILE_REVISION_VERSION
     || value.document_type !== 'character-profile-revision'
@@ -443,6 +457,94 @@ export function materializeCharacterProfileRevision(value: unknown): CharacterPr
     source_reference_ids: Object.freeze(sourceReferenceIds),
   });
 
+  let runtimeDirectionTransform: CharacterProfileRuntimeDirectionTransform | undefined;
+  if (value.runtime_direction_transform !== undefined) {
+    if (!isRecord(value.runtime_direction_transform)) {
+      fail(
+        'character-profile.invalid-shape',
+        'Character runtime direction transform must be an object.',
+      );
+    }
+    exactKeys(
+      value.runtime_direction_transform,
+      ['strategy', 'directions', 'provenance'],
+    );
+    if (value.runtime_direction_transform.strategy !== 'horizontal-flip') {
+      fail(
+        'character-profile.invalid-value',
+        'Character runtime direction transform strategy is unsupported.',
+      );
+    }
+    if (
+      profile !== 'side-platformer'
+      && profile !== 'layered-depth-2d'
+    ) {
+      fail(
+        'character-profile.invalid-value',
+        'Horizontal direction transforms are supported only by side and layered profiles.',
+      );
+    }
+    const directionValues = value.runtime_direction_transform.directions;
+    if (
+      !Array.isArray(directionValues)
+      || directionValues.length !== 1
+      || directionValues.some((direction) => direction !== 'left' && direction !== 'right')
+    ) {
+      fail(
+        'character-profile.invalid-value',
+        'Horizontal direction transform requires exactly one left/right direction.',
+      );
+    }
+    const directions = directionValues as ['left' | 'right'];
+    unique(directions, 'Character runtime transform directions');
+
+    const provenanceValue = value.runtime_direction_transform.provenance;
+    if (!isRecord(provenanceValue)) {
+      fail(
+        'character-profile.invalid-shape',
+        'Character runtime direction transform provenance must be an object.',
+      );
+    }
+    exactKeys(provenanceValue, ['basis', 'source_reference_ids']);
+    if (provenanceValue.basis !== 'operator-declared-direction-equivalence') {
+      fail(
+        'character-profile.invalid-value',
+        'Character runtime direction transform requires explicit operator provenance.',
+      );
+    }
+    if (
+      !Array.isArray(provenanceValue.source_reference_ids)
+      || provenanceValue.source_reference_ids.length < 1
+      || provenanceValue.source_reference_ids.length > 8
+    ) {
+      fail(
+        'character-profile.invalid-value',
+        'Character runtime direction transform requires bounded provenance references.',
+      );
+    }
+    const provenanceReferenceIds = provenanceValue.source_reference_ids.map(
+      (referenceId, index) => id(
+        referenceId,
+        `Character runtime direction transform provenance reference ${index} id`,
+      ),
+    );
+    unique(provenanceReferenceIds, 'Character runtime direction transform provenance references');
+    if (provenanceReferenceIds.some((referenceId) => !sourceReferenceIds.includes(referenceId))) {
+      fail(
+        'character-profile.invalid-reference',
+        'Character runtime direction transform provenance must bind existing source references.',
+      );
+    }
+    runtimeDirectionTransform = Object.freeze({
+      strategy: 'horizontal-flip',
+      directions: Object.freeze([directions[0]] as const),
+      provenance: Object.freeze({
+        basis: 'operator-declared-direction-equivalence',
+        source_reference_ids: Object.freeze(provenanceReferenceIds),
+      }),
+    });
+  }
+
   return Object.freeze({
     schema_version: CHARACTER_PROFILE_REVISION_VERSION,
     document_type: 'character-profile-revision',
@@ -454,6 +556,9 @@ export function materializeCharacterProfileRevision(value: unknown): CharacterPr
     pivot,
     clips: Object.freeze(clips),
     source_identity: sourceIdentity,
+    ...(runtimeDirectionTransform
+      ? { runtime_direction_transform: runtimeDirectionTransform }
+      : {}),
     rights: materializeRights(value.rights),
   });
 }

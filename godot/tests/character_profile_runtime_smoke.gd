@@ -4,6 +4,12 @@ const CharacterRuntime = preload(
 	"res://addons/mapsoo_importer/runtime/mapsoo_character_profile_runtime.gd"
 )
 const CharacterFixture = preload("res://tests/character_profile_test_fixture.gd")
+const SideController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd"
+)
+const LayeredController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd"
+)
 const PROFILES := [
 	"side-platformer",
 	"topdown-farm",
@@ -47,9 +53,11 @@ func _run() -> void:
 			return
 		world.free()
 
+	if not _direction_transform_cases():
+		return
 	if not _negative_cases():
 		return
-	print("MAPSOO_CHARACTER_PROFILE_RUNTIME_OK profiles=4 negative=7")
+	print("MAPSOO_CHARACTER_PROFILE_RUNTIME_OK profiles=4 transforms=2 negative=9")
 	quit(0)
 
 
@@ -98,6 +106,41 @@ func _verify_bound(
 			or str(visual.get_meta("mapsoo_character_atlas_sha256", "")) != str(fixture.atlas_sha256):
 		_fail("%s profile runtime binding metadata is incomplete." % profile)
 		return false
+	if not (visual.get_meta("mapsoo_horizontal_flip_directions", []) as Array).is_empty() \
+			or visual.flip_h:
+		_fail("%s profile unexpectedly enabled a direction transform." % profile)
+		return false
+	return true
+
+
+func _direction_transform_cases() -> bool:
+	for profile: String in ["side-platformer", "layered-depth-2d"]:
+		var fixture := CharacterFixture.create(profile, ["left"])
+		var world := _world(profile, true)
+		var visual := _visual(world, profile)
+		var player := visual.get_parent() as CharacterBody2D
+		player.set_script(
+			SideController if profile == "side-platformer" else LayeredController
+		)
+		var result := CharacterRuntime.bind_player(
+			world,
+			fixture.revision_bytes,
+			fixture.revision_sha256,
+			fixture.atlas_bytes
+		)
+		if not result.ok \
+				or visual.get_meta("mapsoo_horizontal_flip_directions", []) != ["left"]:
+			_fail("%s explicit direction transform did not bind: %s" % [profile, result])
+			return false
+		player.call("_play_animation", "idle_left")
+		if not visual.flip_h:
+			_fail("%s left animation did not apply its declared horizontal flip." % profile)
+			return false
+		player.call("_play_animation", "idle_right")
+		if visual.flip_h:
+			_fail("%s right animation inherited an undeclared horizontal flip." % profile)
+			return false
+		world.free()
 	return true
 
 
@@ -179,9 +222,48 @@ func _negative_cases() -> bool:
 	if result.ok or result.code != "binding.player-slot":
 		_fail("Ambiguous neutral player slots were not rejected: %s" % result)
 		return false
+
+	var bad_transform := CharacterFixture.create("side-platformer", ["left"])
+	bad_transform.revision.runtime_direction_transform.provenance.source_reference_ids = [
+		"unbound-direction-review",
+	]
+	var bad_transform_bytes := JSON.stringify(bad_transform.revision).to_utf8_buffer()
+	var transform_world := _world("side-platformer", true)
+	result = CharacterRuntime.bind_player(
+		transform_world,
+		bad_transform_bytes,
+		CharacterFixture.sha256(bad_transform_bytes),
+		bad_transform.atlas_bytes
+	)
+	if result.ok or result.code != "revision.direction-transform":
+		_fail("Unbound direction transform provenance was not rejected: %s" % result)
+		return false
+
+	var unsupported_transform := CharacterFixture.create("topdown-farm")
+	unsupported_transform.revision["runtime_direction_transform"] = {
+		"strategy": "horizontal-flip",
+		"directions": ["left"],
+		"provenance": {
+			"basis": "operator-declared-direction-equivalence",
+			"source_reference_ids": ["character-reference"],
+		},
+	}
+	var unsupported_bytes := JSON.stringify(unsupported_transform.revision).to_utf8_buffer()
+	var topdown_world := _world("topdown-farm", true)
+	result = CharacterRuntime.bind_player(
+		topdown_world,
+		unsupported_bytes,
+		CharacterFixture.sha256(unsupported_bytes),
+		unsupported_transform.atlas_bytes
+	)
+	if result.ok or result.code != "revision.direction-transform":
+		_fail("Unsupported profile direction transform was not rejected: %s" % result)
+		return false
 	world.free()
 	empty_world.free()
 	ambiguous_world.free()
+	transform_world.free()
+	topdown_world.free()
 	return true
 
 

@@ -138,6 +138,10 @@ binding; omitted runtime arguments use those embedded IDs, while supplied IDs
 must match them exactly. The runtime resolves one `PlayerSpawn` and one
 character-capable `Player`, moves the player to the spawn, and rejects missing,
 duplicate or mismatched bindings before readiness.
+
+An optional revision-bound horizontal direction transform is copied into the
+PCK only after its profile, single direction and opaque provenance reference
+are validated; the PCK builder does not infer direction from atlas pixels.
 Only after that launch succeeds does it write
 `mapsoo-godot-headless-smoke-report-1.0` and the build receipt.
 

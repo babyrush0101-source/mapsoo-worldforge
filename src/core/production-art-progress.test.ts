@@ -42,6 +42,13 @@ function initial(productionPlan: ProductionArtPlan): ProductionArtWorkflowState 
       quality: 'medium',
     },
     inputBindingSha256: INPUT_SHA,
+    privateInputBinding: {
+      confirmed_intake_sha256: SOURCE_SHA,
+      seed: 'progress-seed',
+      character_identity_digest_sha256: DIRECTION_SHA,
+      environment_reference_id: 'progress-environment',
+      character_reference_id: 'progress-character',
+    },
     requestBudget: productionPlan.tasks.length,
   });
 }

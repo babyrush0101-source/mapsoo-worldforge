@@ -41,6 +41,13 @@ function initial(requestBudget = 14) {
         quality: 'medium',
       },
       inputBindingSha256: SHA_A,
+      privateInputBinding: {
+        confirmed_intake_sha256: SHA_B,
+        seed: 'mist-harbor-seed',
+        character_identity_digest_sha256: SHA_C,
+        environment_reference_id: 'mist-harbor-environment',
+        character_reference_id: 'neutral-traveler-reference',
+      },
       requestBudget,
     }),
   };

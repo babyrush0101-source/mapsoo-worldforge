@@ -237,6 +237,91 @@ describe('CharacterProfileRevision 1.0', () => {
     expect(text).not.toContain('\n');
     expect(hex).toBe(await fingerprintCharacterProfileRevision(value));
   });
+
+  it('binds an explicit operator-declared horizontal transform without changing legacy canonical bytes', async () => {
+    const legacy = revision();
+    const legacyBytes = serializeCharacterProfileRevisionCanonical(legacy);
+    expect(new TextDecoder().decode(legacyBytes))
+      .not.toContain('runtime_direction_transform');
+    expect(await fingerprintCharacterProfileRevision(legacy))
+      .toBe('f3da79c8f13847ac70492a0b44b3741aab5debf6a218c676d89a242550b0caeb');
+    const transformed = {
+      ...legacy,
+      runtime_direction_transform: {
+        strategy: 'horizontal-flip',
+        directions: ['left'],
+        provenance: {
+          basis: 'operator-declared-direction-equivalence',
+          source_reference_ids: ['synthetic-reference-one'],
+        },
+      },
+    } as const;
+    const materialized = materializeCharacterProfileRevision(transformed);
+    expect(materialized.runtime_direction_transform).toEqual(
+      transformed.runtime_direction_transform,
+    );
+    expect(await fingerprintCharacterProfileRevision(materialized))
+      .not.toBe(await fingerprintCharacterProfileRevision(legacy));
+    const validate = new Ajv2020({ strict: true, allErrors: true })
+      .compile(characterProfileSchema);
+    expect(validate(materialized), JSON.stringify(validate.errors)).toBe(true);
+  });
+
+  it('rejects inferred, unsupported or unbound direction transforms', () => {
+    const value = revision();
+    expect(() => materializeCharacterProfileRevision({
+      ...value,
+      runtime_direction_transform: {
+        strategy: 'horizontal-flip',
+        directions: ['left'],
+        provenance: {
+          basis: 'operator-declared-direction-equivalence',
+          source_reference_ids: ['not-bound-to-source-identity'],
+        },
+      },
+    })).toThrowError(expect.objectContaining({
+      code: 'character-profile.invalid-reference',
+    }));
+    expect(() => materializeCharacterProfileRevision({
+      ...revision('topdown-farm'),
+      runtime_direction_transform: {
+        strategy: 'horizontal-flip',
+        directions: ['left'],
+        provenance: {
+          basis: 'human-reviewed-direction-equivalence',
+          source_reference_ids: ['synthetic-reference-one'],
+        },
+      },
+    })).toThrowError(expect.objectContaining({
+      code: 'character-profile.invalid-value',
+    }));
+    expect(() => materializeCharacterProfileRevision({
+      ...value,
+      runtime_direction_transform: {
+        strategy: 'horizontal-flip',
+        directions: ['left', 'right'],
+        provenance: {
+          basis: 'operator-declared-direction-equivalence',
+          source_reference_ids: ['synthetic-reference-one'],
+        },
+      },
+    })).toThrowError(expect.objectContaining({
+      code: 'character-profile.invalid-value',
+    }));
+    expect(() => materializeCharacterProfileRevision({
+      ...value,
+      runtime_direction_transform: {
+        strategy: 'horizontal-flip',
+        directions: ['left'],
+        provenance: {
+          basis: 'model-inferred',
+          source_reference_ids: ['synthetic-reference-one'],
+        },
+      },
+    })).toThrowError(expect.objectContaining({
+      code: 'character-profile.invalid-value',
+    }));
+  });
 });
 
 describe('CharacterProfileRevision neutral bind', () => {

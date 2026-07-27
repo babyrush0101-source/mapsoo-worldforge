@@ -76,6 +76,22 @@ The runtime metadata records only portable IDs and SHA-256 values. It does not
 contain user records, character display names, source paths, prompts, host
 addresses, device IDs or private service fields.
 
+## Optional direction presentation transform
+
+Independent left/right artwork remains the default. A side-platformer or
+layered-depth revision may explicitly declare one `horizontal-flip` direction
+when an operator has established that those clips intentionally reuse the
+opposite-facing presentation. The declaration includes only a bounded opaque
+source reference already present in `source_identity`; no provider or private
+path is exposed.
+
+The declaration is part of canonical revision bytes and therefore changes
+both the revision ID seed and SHA-256. The binder stores the declared direction
+on the neutral visual, while the trusted side/layered controller applies
+`flip_h` only to the matching animation. Omitted, malformed, inferred,
+multi-direction, unbound-provenance or unsupported-profile declarations fail
+closed or apply no transform. Atlas pixels remain unchanged.
+
 ## Rights boundary
 
 World-pack rights and character-revision rights remain independent. A public
@@ -153,6 +169,7 @@ portable metadata. Negative tests reject:
 - corrupted PNG bytes;
 - missing player slots;
 - ambiguous player slots;
+- malformed or unbound direction transforms;
 - binding before a world is loaded;
 - unsafe runtime-shell artifact paths.
 

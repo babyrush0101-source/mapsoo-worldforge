@@ -46,6 +46,14 @@ export interface ProductionArtWorkflowTaskState {
   readonly attempts: readonly ProductionArtWorkflowAttempt[];
 }
 
+export interface ProductionArtPrivateInputBinding {
+  readonly confirmed_intake_sha256: string;
+  readonly seed: string;
+  readonly character_identity_digest_sha256: string;
+  readonly environment_reference_id: string;
+  readonly character_reference_id: string;
+}
+
 export interface ProductionArtWorkflowState {
   readonly schema_version: typeof PRODUCTION_ART_WORKFLOW_VERSION;
   readonly document_type: 'production-art-workflow-state';
@@ -63,6 +71,12 @@ export interface ProductionArtWorkflowState {
    * contents, paths, filenames, or individual raw digests in this state.
    */
   readonly input_binding_sha256: string;
+  /**
+   * Neutral lineage fields copied from the confirmed intake. These values are
+   * safe to persist, while source paths, source bytes, and raw image digests
+   * remain outside workflow state.
+   */
+  readonly private_input_binding: ProductionArtPrivateInputBinding;
   readonly approved_direction_sha256?: string;
   readonly request_budget: number;
   readonly requests_started: number;
@@ -92,6 +106,7 @@ export interface CreateProductionArtWorkflowInput {
     readonly quality: ProductionArtWorkflowQuality;
   };
   readonly inputBindingSha256: string;
+  readonly privateInputBinding: ProductionArtPrivateInputBinding;
   readonly requestBudget: number;
 }
 
@@ -159,6 +174,35 @@ function validPositiveInteger(value: unknown, maximum = Number.MAX_SAFE_INTEGER)
 
 function validNonNegativeInteger(value: unknown): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+function validPrivateInputBinding(
+  value: unknown,
+): value is ProductionArtPrivateInputBinding {
+  return isPlainObject(value)
+    && exactKeys(value, [
+      'character_identity_digest_sha256',
+      'character_reference_id',
+      'confirmed_intake_sha256',
+      'environment_reference_id',
+      'seed',
+    ])
+    && typeof value.confirmed_intake_sha256 === 'string'
+    && SHA256.test(value.confirmed_intake_sha256)
+    && typeof value.character_identity_digest_sha256 === 'string'
+    && SHA256.test(value.character_identity_digest_sha256)
+    && typeof value.seed === 'string'
+    && value.seed.length >= 1
+    && value.seed.length <= 160
+    && value.seed.trim() === value.seed
+    && !/[\u0000-\u001f\u007f-\u009f]/u.test(value.seed)
+    && typeof value.environment_reference_id === 'string'
+    && value.environment_reference_id.length <= 80
+    && SAFE_ID.test(value.environment_reference_id)
+    && typeof value.character_reference_id === 'string'
+    && value.character_reference_id.length <= 80
+    && SAFE_ID.test(value.character_reference_id)
+    && value.environment_reference_id !== value.character_reference_id;
 }
 
 function safeArtifactDirectory(value: unknown): value is string {
@@ -294,6 +338,7 @@ export function parseProductionArtWorkflowState(
       'document_type',
       'input_binding_sha256',
       'plan_id',
+      'private_input_binding',
       'profile',
       'provider',
       'request_budget',
@@ -316,6 +361,7 @@ export function parseProductionArtWorkflowState(
     || value.profile !== plan.profile
     || typeof value.input_binding_sha256 !== 'string'
     || !SHA256.test(value.input_binding_sha256)
+    || !validPrivateInputBinding(value.private_input_binding)
     || (value.approved_direction_sha256 !== undefined
       && (
         typeof value.approved_direction_sha256 !== 'string'
@@ -475,6 +521,7 @@ export function createProductionArtWorkflowState(
     || input.provider.model.length > 80
     || !PRODUCTION_ART_WORKFLOW_QUALITIES.includes(input.provider.quality)
     || !SHA256.test(input.inputBindingSha256)
+    || !validPrivateInputBinding(input.privateInputBinding)
     || !validPositiveInteger(input.requestBudget, MAX_REQUEST_BUDGET)
   ) {
     fail('workflow.invalid-input', 'Production-art workflow input is invalid.');
@@ -492,6 +539,9 @@ export function createProductionArtWorkflowState(
       quality: input.provider.quality,
     },
     input_binding_sha256: input.inputBindingSha256,
+    private_input_binding: {
+      ...input.privateInputBinding,
+    },
     request_budget: input.requestBudget,
     requests_started: 0,
     tasks: plan.tasks.map(({ task_id: taskId }) => ({

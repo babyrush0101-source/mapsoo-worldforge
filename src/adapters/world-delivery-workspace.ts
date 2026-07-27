@@ -351,6 +351,7 @@ export async function prepareWorldDeliveryWorkspace(
     descriptor.role === 'environment-style')!;
   const character = referenceRecords.find(({ descriptor }) =>
     descriptor.role === 'character')!;
+  const intakeSha256 = await fingerprintConfirmedWorldCreationIntake(intake);
   const workspace = resolve(input.workspace);
   const job = {
     schema_version: '1.0.0',
@@ -364,6 +365,14 @@ export async function prepareWorldDeliveryWorkspace(
     environment_reference: resolve(workspace, ...environment.name.split('/')),
     character_reference: resolve(workspace, ...character.name.split('/')),
     character_id: characterId,
+    private_input_binding: {
+      confirmed_intake_sha256: intakeSha256,
+      seed: intake.seed,
+      character_identity_digest_sha256:
+        intake.character_source.identity_digest_sha256,
+      environment_reference_id: environment.descriptor.id,
+      character_reference_id: character.descriptor.id,
+    },
     private_output_root: resolve(
       dirname(workspace),
       `${basename(workspace)}-production-art-output`,
@@ -388,7 +397,7 @@ export async function prepareWorldDeliveryWorkspace(
     schema_version: '1.0.0',
     document_type: 'world-delivery-workspace',
     intake_id: intake.intake_id,
-    intake_sha256: await fingerprintConfirmedWorldCreationIntake(intake),
+    intake_sha256: intakeSha256,
     profile: intake.profile,
     target: intake.target,
     character_id: characterId,

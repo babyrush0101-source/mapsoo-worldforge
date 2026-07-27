@@ -722,7 +722,8 @@ pnpm production-art:operator-admit -- \
   --candidate-root /private/review/side-platformer \
   --out /private/review/side-platformer-admitted \
   --admission internal-technical-review-only \
-  --model bounded-source-label
+  --model bounded-source-label \
+  --runtime-direction-transform none
 ```
 
 Admission re-hashes and decodes all nine PNGs, re-checks dimensions and alpha
@@ -733,6 +734,15 @@ hash binding. The run-set admission deliberately retains `rights: pending`,
 `public_release: prohibited`, `human_review: required`, and
 `remote_request_count: 0`; it never embeds candidate or output absolute paths.
 It does not turn an operator candidate into a publishable asset.
+
+The admission command never guesses character direction from pixels. Keep
+`--runtime-direction-transform none` for independently rendered directional
+frames. A side or layered candidate whose operator has explicitly established
+that the left clips reuse right-facing artwork may instead declare
+`--runtime-direction-transform horizontal-flip-left`. That declaration is
+bound into the character revision, its canonical fingerprint and the
+projection record with an opaque provenance reference. The trusted Godot
+runtime applies `flip_h` only while a declared left animation is active.
 
 The offline CI verifier constructs a complete nine-task side-platformer
 candidate in a temporary directory and confirms the standard run-set,

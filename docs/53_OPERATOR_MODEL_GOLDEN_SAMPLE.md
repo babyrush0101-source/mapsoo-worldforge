@@ -108,8 +108,25 @@ The final nine-task inventory passed the standard production-art run-set
 verifier and produced an internal Pack 0.7 review archive at SHA-256
 `7303221de8cb88f3e3c9580430d3aa9f26cc74609427ca4dc510047fbbe07694`.
 Godot imported that archive and passed the Pack 0.7 playable smoke. The exact
-World Runner PCK was rebuilt byte-identically at 826,272 bytes and SHA-256
+baseline World Runner PCK was rebuilt byte-identically at 826,272 bytes and SHA-256
 `06aab6d371987f9dca4f479923edb0b0c96484d92d3e87941a34ed4d52e7ec06`.
+
+The admitted atlas still contains right-facing pixels in its nominal left
+cells, so a later explicit operator declaration adds a revision-bound
+`horizontal-flip` transform for `left`. This is not inferred from the bitmap,
+does not modify the atlas, and does not claim the source sheet passed semantic
+direction review. The revised internal Review Pack is SHA-256
+`3b0871a4e7a4103fb05f99c5fe3287ee992b44ad8701828a837fee04f8466cdc`.
+Its embedded character revision has canonical fingerprint
+`8019d68a07966de45f8185c7129544313bf4f9ebe876ff6109f0f9f9ae7f9fcd`,
+file SHA-256
+`f639bf5cf525d997f2eff2a482d39792649e8ef77079148a7aba43a89b41d374`,
+and the unchanged atlas SHA-256
+`621ea4932cedb9aadee20d5f5649cd7fdc58f0d280c8936ebfe0b4bdc5a157f2`.
+The resulting 831,488-byte PCK is SHA-256
+`364b3125f56e1e7e86224435ffc1ce1af8ce389203474150329b7f78e60ad19f`.
+It passed the Godot 4.3 build smoke and emitted the exact ready marker under
+Godot 4.7 with the embedded spawn, player-slot and character-revision binding.
 
 Windowed OpenGL3 captures from Godot 4.3 and 4.7 were byte-identical:
 `1280 x 720`, 1,349,106 bytes, SHA-256
@@ -128,7 +145,8 @@ Current AI pre-review:
 - canonical task and role coverage: pass;
 - exact atlas dimensions and undeclared-cell transparency: pass;
 - character identity: pass;
-- character left/right direction semantics: revise;
+- source-sheet character left/right direction semantics: revise;
+- explicitly declared runtime left-facing presentation: technical pass;
 - temporal animation quality: review;
 - terrain and prop semantic ordering: review;
 - foreground coverage at spawn and exit: pass after revision;

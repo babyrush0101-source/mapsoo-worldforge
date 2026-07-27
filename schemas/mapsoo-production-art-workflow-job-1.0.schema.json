@@ -15,7 +15,8 @@
     "style_bible_file",
     "environment_reference",
     "character_reference",
-    "character_id"
+    "character_id",
+    "private_input_binding"
   ],
   "properties": {
     "schema_version": { "const": "1.0.0" },
@@ -38,6 +39,7 @@
       "maxLength": 48,
       "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
     },
+    "private_input_binding": { "$ref": "#/$defs/privateInputBinding" },
     "approved_direction": { "$ref": "#/$defs/localPath" },
     "private_output_root": { "$ref": "#/$defs/localPath" }
   },
@@ -55,6 +57,33 @@
         "isometric-action",
         "layered-depth-2d"
       ]
+    },
+    "privateInputBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confirmed_intake_sha256",
+        "seed",
+        "character_identity_digest_sha256",
+        "environment_reference_id",
+        "character_reference_id"
+      ],
+      "properties": {
+        "confirmed_intake_sha256": { "$ref": "#/$defs/sha256" },
+        "seed": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+        },
+        "character_identity_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "environment_reference_id": { "$ref": "#/$defs/safeId" },
+        "character_reference_id": { "$ref": "#/$defs/safeId" }
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
     },
     "localPath": {
       "type": "string",

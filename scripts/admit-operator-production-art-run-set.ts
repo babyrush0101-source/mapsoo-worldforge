@@ -49,6 +49,7 @@ const FLAGS = new Set([
   '--out',
   '--admission',
   '--model',
+  '--runtime-direction-transform',
 ]);
 
 interface Arguments {
@@ -56,6 +57,7 @@ interface Arguments {
   readonly candidateRoot: string;
   readonly outputRoot: string;
   readonly model: string;
+  readonly runtimeDirectionTransform: 'none' | 'horizontal-flip-left';
 }
 
 interface CandidateReport {
@@ -103,7 +105,8 @@ function usage(): string {
     '  --candidate-root <ignored-candidate-directory> \\',
     '  --out <ignored-run-set-directory> \\',
     `  --admission ${ADMISSION} \\`,
-    '  --model <bounded-source-label>',
+    '  --model <bounded-source-label> \\',
+    '  --runtime-direction-transform none|horizontal-flip-left',
     '',
     'This command makes zero remote requests. Admission is only for internal',
     'technical assembly; human art, semantic direction, rights, runtime and',
@@ -130,16 +133,31 @@ function parseArguments(argv: readonly string[]): Arguments {
   }
   const profile = values.get('--profile');
   const model = values.get('--model')!;
+  const runtimeDirectionTransform = values.get('--runtime-direction-transform');
   if (!isWorldAssetProfile(profile)) throw new Error('Production-art profile is unsupported.');
   if (values.get('--admission') !== ADMISSION) {
     throw new Error(`Explicit --admission ${ADMISSION} is required.`);
   }
   if (!SAFE_MODEL.test(model)) throw new Error('Model source label is invalid.');
+  if (
+    runtimeDirectionTransform !== 'none'
+    && runtimeDirectionTransform !== 'horizontal-flip-left'
+  ) {
+    throw new Error('Runtime direction transform declaration is unsupported.');
+  }
+  if (
+    runtimeDirectionTransform === 'horizontal-flip-left'
+    && profile !== 'side-platformer'
+    && profile !== 'layered-depth-2d'
+  ) {
+    throw new Error('Horizontal flip admission requires a side or layered profile.');
+  }
   return {
     profile,
     candidateRoot: resolve(values.get('--candidate-root')!),
     outputRoot: resolve(values.get('--out')!),
     model,
+    runtimeDirectionTransform,
   };
 }
 
@@ -430,6 +448,14 @@ async function main(): Promise<void> {
         characterResult.output.sha256,
       ),
       characterReferenceIds: ['operator-character-reference'],
+      ...(args.runtimeDirectionTransform === 'horizontal-flip-left'
+        ? {
+          runtimeDirectionTransform: {
+            horizontalFlipDirections: ['left'] as const,
+            provenanceReferenceIds: ['operator-character-reference'],
+          },
+        }
+        : {}),
     },
   );
   await writeExclusiveOrIdentical(
@@ -475,6 +501,7 @@ async function main(): Promise<void> {
       },
       private_paths_embedded: false,
       character_identity_basis: 'admitted-operator-character-sheet-sha256',
+      runtime_direction_transform_declaration: args.runtimeDirectionTransform,
       remote_request_count: 0,
     }),
     'run-set operator admission',
@@ -489,6 +516,7 @@ async function main(): Promise<void> {
     rights: 'pending',
     public_release: 'prohibited',
     character_profile_revision_id: characterProjection.revision.profile_revision_id,
+    runtime_direction_transform: args.runtimeDirectionTransform,
     private_paths_embedded: false,
     remote_request_count: 0,
     manifest: join(args.outputRoot, 'production-art-run-set.json'),

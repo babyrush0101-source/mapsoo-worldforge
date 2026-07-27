@@ -81,6 +81,11 @@ static func bind_player(
 	visual.set_meta("mapsoo_profile_revision_sha256", revision_sha256)
 	visual.set_meta("mapsoo_character_atlas_sha256", actual_sha256)
 	visual.set_meta("mapsoo_profile_character_id", str(validated.character_id))
+	visual.set_meta(
+		"mapsoo_horizontal_flip_directions",
+		validated.horizontal_flip_directions.duplicate()
+	)
+	visual.flip_h = false
 	var actor := visual.get_parent()
 	if actor != null:
 		actor.set_meta("mapsoo_character_profile_revision_id", str(validated.profile_revision_id))
@@ -99,7 +104,7 @@ static func _validate_revision(value: Variant) -> Dictionary:
 		"schema_version", "document_type", "profile_revision_id", "character_id",
 		"profile", "atlas", "frame_geometry", "pivot", "clips",
 		"source_identity", "rights",
-	]):
+	], ["runtime_direction_transform"]):
 		return _failure("revision.shape", "Character revision contains missing or unknown fields.")
 	if str(revision.get("schema_version", "")) != CONTRACT_VERSION \
 			or str(revision.get("document_type", "")) != DOCUMENT_TYPE:
@@ -124,6 +129,13 @@ static func _validate_revision(value: Variant) -> Dictionary:
 	var identity_result := _validate_source_identity(revision.get("source_identity"))
 	if not identity_result.ok:
 		return identity_result
+	var transform_result := _validate_runtime_direction_transform(
+		revision.get("runtime_direction_transform"),
+		profile,
+		identity_result.source_reference_ids
+	)
+	if not transform_result.ok:
+		return transform_result
 	var rights_result := _validate_rights(revision.get("rights"))
 	if not rights_result.ok:
 		return rights_result
@@ -148,6 +160,7 @@ static func _validate_revision(value: Variant) -> Dictionary:
 		"clips": clips_result.clips,
 		"clip_ids": clips_result.clip_ids,
 		"default_animation": _default_animation(profile),
+		"horizontal_flip_directions": transform_result.directions,
 	}
 
 
@@ -230,7 +243,83 @@ static func _validate_source_identity(value: Variant) -> Dictionary:
 		if not _is_safe_id(id, 100) or seen.has(id):
 			return _failure("revision.source-identity", "Source identity references must be unique opaque ids.")
 		seen[id] = true
-	return {"ok": true}
+	return {"ok": true, "source_reference_ids": ids.duplicate()}
+
+
+static func _validate_runtime_direction_transform(
+	value: Variant,
+	profile: String,
+	source_reference_ids: Array
+) -> Dictionary:
+	if value == null:
+		return {"ok": true, "directions": []}
+	if not value is Dictionary:
+		return _failure(
+			"revision.direction-transform",
+			"Character runtime direction transform must be a dictionary."
+		)
+	var transform: Dictionary = value
+	if not _exact_keys(transform, ["strategy", "directions", "provenance"]) \
+			or str(transform.get("strategy", "")) != "horizontal-flip":
+		return _failure(
+			"revision.direction-transform",
+			"Character runtime direction transform is not exact or supported."
+		)
+	if profile not in ["side-platformer", "layered-depth-2d"]:
+		return _failure(
+			"revision.direction-transform",
+			"Horizontal direction transforms require a side or layered profile."
+		)
+	var directions_value: Variant = transform.get("directions")
+	if not directions_value is Array \
+			or directions_value.is_empty() \
+			or directions_value.size() != 1:
+		return _failure(
+			"revision.direction-transform",
+			"Horizontal direction transform directions are invalid."
+		)
+	var directions: Array[String] = []
+	for direction_value: Variant in directions_value:
+		var direction := str(direction_value)
+		if direction not in ["left", "right"] or directions.has(direction):
+			return _failure(
+				"revision.direction-transform",
+				"Horizontal direction transform requires exactly one left/right value."
+			)
+		directions.append(direction)
+	var provenance_value: Variant = transform.get("provenance")
+	if not provenance_value is Dictionary:
+		return _failure(
+			"revision.direction-transform",
+			"Character runtime direction transform provenance must be a dictionary."
+		)
+	var provenance: Dictionary = provenance_value
+	if not _exact_keys(provenance, ["basis", "source_reference_ids"]) \
+			or str(provenance.get("basis", "")) != "operator-declared-direction-equivalence":
+		return _failure(
+			"revision.direction-transform",
+			"Character runtime direction transform requires explicit operator provenance."
+		)
+	var reference_values: Variant = provenance.get("source_reference_ids")
+	if not reference_values is Array \
+			or reference_values.is_empty() \
+			or reference_values.size() > 8:
+		return _failure(
+			"revision.direction-transform",
+			"Character runtime direction transform provenance references are invalid."
+		)
+	var seen := {}
+	for reference_value: Variant in reference_values:
+		var reference_id := str(reference_value)
+		if not _is_safe_id(reference_id, 100) \
+				or seen.has(reference_id) \
+				or not source_reference_ids.has(reference_id):
+			return _failure(
+				"revision.direction-transform",
+				"Direction transform provenance must bind unique existing source references."
+			)
+		seen[reference_id] = true
+	return {"ok": true, "directions": directions}
 
 
 static func _validate_rights(value: Variant) -> Dictionary:

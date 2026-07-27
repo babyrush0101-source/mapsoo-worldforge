@@ -44,6 +44,14 @@ export interface ProductionCharacterProfileProjectionOptions {
   readonly characterId: string;
   readonly identityDigestSha256: string;
   readonly characterReferenceIds: readonly string[];
+  /**
+   * Explicit operator-reviewed runtime transform. Omit for independently
+   * rendered directional frames; the projector never infers this from pixels.
+  */
+  readonly runtimeDirectionTransform?: Readonly<{
+    readonly horizontalFlipDirections: readonly ['left' | 'right'];
+    readonly provenanceReferenceIds: readonly string[];
+  }>;
 }
 
 export interface ProductionCharacterProfileProjectionRecord {
@@ -76,6 +84,7 @@ export interface ProductionCharacterProfileProjectionRecord {
     readonly rows: number;
     readonly normalized_bytes_preserved: true;
   };
+  readonly runtime_direction_transform?: CharacterProfileRevision['runtime_direction_transform'];
   readonly checks: {
     readonly pose_count: number;
     readonly distinct_pose_count: number;
@@ -152,6 +161,30 @@ function assertOptions(
       'projection.invalid-options',
       'Character projection options require a safe character id, identity digest, and bound opaque reference ids.',
     );
+  }
+  const transform = options.runtimeDirectionTransform;
+  if (transform !== undefined) {
+    if (
+      !['side-platformer', 'layered-depth-2d'].includes(normalized.output.profile)
+      || transform.horizontalFlipDirections.length !== 1
+      || new Set(transform.horizontalFlipDirections).size
+        !== transform.horizontalFlipDirections.length
+      || transform.horizontalFlipDirections.some(
+        (direction) => direction !== 'left' && direction !== 'right',
+      )
+      || transform.provenanceReferenceIds.length < 1
+      || transform.provenanceReferenceIds.length > 8
+      || new Set(transform.provenanceReferenceIds).size
+        !== transform.provenanceReferenceIds.length
+      || transform.provenanceReferenceIds.some(
+        (referenceId) => !options.characterReferenceIds.includes(referenceId),
+      )
+    ) {
+      fail(
+        'projection.invalid-options',
+        'Runtime direction transforms require explicit side/layered directions and bound provenance references.',
+      );
+    }
   }
 }
 
@@ -415,6 +448,7 @@ export async function projectProductionCharacterProfile(
     normalized_sha256: normalizedSha256,
     identity_digest_sha256: options.identityDigestSha256,
     character_reference_ids: options.characterReferenceIds,
+    runtime_direction_transform: options.runtimeDirectionTransform,
     rights: plan.rights,
   }));
   const profileRevisionId = `${options.characterId}-${plan.profile}-${
@@ -450,6 +484,20 @@ export async function projectProductionCharacterProfile(
       identity_digest_sha256: options.identityDigestSha256,
       source_reference_ids: [...options.characterReferenceIds],
     },
+    ...(options.runtimeDirectionTransform
+      ? {
+        runtime_direction_transform: {
+          strategy: 'horizontal-flip',
+          directions: [...options.runtimeDirectionTransform.horizontalFlipDirections],
+          provenance: {
+            basis: 'operator-declared-direction-equivalence',
+            source_reference_ids: [
+              ...options.runtimeDirectionTransform.provenanceReferenceIds,
+            ],
+          },
+        },
+      }
+      : {}),
     rights: { ...plan.rights },
   });
   const revisionSha256 = await fingerprintCharacterProfileRevision(revision);
@@ -489,6 +537,9 @@ export async function projectProductionCharacterProfile(
       rows,
       normalized_bytes_preserved: true,
     }),
+    ...(revision.runtime_direction_transform
+      ? { runtime_direction_transform: revision.runtime_direction_transform }
+      : {}),
     checks: Object.freeze({
       pose_count: frames.length,
       distinct_pose_count: frames.length,

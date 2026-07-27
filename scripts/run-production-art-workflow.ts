@@ -33,6 +33,7 @@ import {
   selectNextProductionArtWorkflowTask,
   type ProductionArtWorkflowArtifact,
   type ProductionArtWorkflowQuality,
+  type ProductionArtPrivateInputBinding,
   type ProductionArtWorkflowState,
 } from '../src/core/production-art-workflow';
 import {
@@ -104,6 +105,7 @@ interface WorkflowJob {
   readonly environment_reference: string;
   readonly character_reference: string;
   readonly character_id: string;
+  readonly private_input_binding: ProductionArtPrivateInputBinding;
   readonly approved_direction?: string;
   readonly private_output_root?: string;
 }
@@ -297,6 +299,7 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
       'document_type',
       'environment_reference',
       'profile',
+      'private_input_binding',
       'quality',
       'request_budget',
       'schema_version',
@@ -332,6 +335,31 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     || typeof value.character_id !== 'string'
     || value.character_id.length > 48
     || !SAFE_ID.test(value.character_id)
+    || !isPlainObject(value.private_input_binding)
+    || !exactKeys(value.private_input_binding, [
+      'character_identity_digest_sha256',
+      'character_reference_id',
+      'confirmed_intake_sha256',
+      'environment_reference_id',
+      'seed',
+    ])
+    || typeof value.private_input_binding.confirmed_intake_sha256 !== 'string'
+    || !SAFE_SHA256.test(value.private_input_binding.confirmed_intake_sha256)
+    || typeof value.private_input_binding.character_identity_digest_sha256 !== 'string'
+    || !SAFE_SHA256.test(value.private_input_binding.character_identity_digest_sha256)
+    || typeof value.private_input_binding.seed !== 'string'
+    || value.private_input_binding.seed.length < 1
+    || value.private_input_binding.seed.length > 160
+    || value.private_input_binding.seed.trim() !== value.private_input_binding.seed
+    || /[\u0000-\u001f\u007f-\u009f]/u.test(value.private_input_binding.seed)
+    || typeof value.private_input_binding.environment_reference_id !== 'string'
+    || value.private_input_binding.environment_reference_id.length > 80
+    || !SAFE_ID.test(value.private_input_binding.environment_reference_id)
+    || typeof value.private_input_binding.character_reference_id !== 'string'
+    || value.private_input_binding.character_reference_id.length > 80
+    || !SAFE_ID.test(value.private_input_binding.character_reference_id)
+    || value.private_input_binding.environment_reference_id
+      === value.private_input_binding.character_reference_id
   ) {
     throw new Error('Workflow job shape or values are invalid.');
   }
@@ -411,6 +439,20 @@ function privateInputBinding(input: {
     ['profile', input.job.profile],
     ['quality', input.job.quality],
     ['character-id', input.job.character_id],
+    ['confirmed-intake-sha256', input.job.private_input_binding.confirmed_intake_sha256],
+    ['seed', input.job.private_input_binding.seed],
+    [
+      'character-identity-digest-sha256',
+      input.job.private_input_binding.character_identity_digest_sha256,
+    ],
+    [
+      'environment-reference-id',
+      input.job.private_input_binding.environment_reference_id,
+    ],
+    [
+      'character-reference-id',
+      input.job.private_input_binding.character_reference_id,
+    ],
     ['world-brief', input.worldBrief],
     ['style-bible', input.styleBible],
     ['environment-reference', input.environmentReference],
@@ -552,6 +594,15 @@ function assertStateMatchesJob(
     || state.provider.quality !== job.quality
     || state.request_budget !== job.request_budget
     || state.input_binding_sha256 !== inputBindingSha256
+    || state.private_input_binding.confirmed_intake_sha256
+      !== job.private_input_binding.confirmed_intake_sha256
+    || state.private_input_binding.seed !== job.private_input_binding.seed
+    || state.private_input_binding.character_identity_digest_sha256
+      !== job.private_input_binding.character_identity_digest_sha256
+    || state.private_input_binding.environment_reference_id
+      !== job.private_input_binding.environment_reference_id
+    || state.private_input_binding.character_reference_id
+      !== job.private_input_binding.character_reference_id
   ) {
     throw new Error(
       'Workflow job no longer matches its immutable state; create a new workflow id for changed inputs.',
@@ -585,17 +636,31 @@ function taskArguments(
     values.push(
       '--environment-reference',
       job.environment_reference,
+      '--environment-reference-id',
+      job.private_input_binding.environment_reference_id,
       '--character-reference',
       job.character_reference,
+      '--character-reference-id',
+      job.private_input_binding.character_reference_id,
     );
   } else {
     values.push('--approved-direction', job.approved_direction!);
     if (task.reference_roles.includes('character')) {
-      values.push('--character-reference', job.character_reference);
+      values.push(
+        '--character-reference',
+        job.character_reference,
+        '--character-reference-id',
+        job.private_input_binding.character_reference_id,
+      );
     }
   }
   if (isPlayerCharacterTask(task)) {
-    values.push('--character-id', job.character_id);
+    values.push(
+      '--character-id',
+      job.character_id,
+      '--character-identity-digest-sha256',
+      job.private_input_binding.character_identity_digest_sha256,
+    );
   }
   if (job.private_output_root) {
     values.push(
@@ -990,6 +1055,7 @@ async function main(): Promise<void> {
           quality: job.quality,
         },
         inputBindingSha256,
+        privateInputBinding: job.private_input_binding,
         requestBudget: job.request_budget,
       });
     assertStateMatchesJob(state, job, inputBindingSha256);

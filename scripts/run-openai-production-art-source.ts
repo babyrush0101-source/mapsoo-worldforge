@@ -46,6 +46,8 @@ import {
 
 const DEFAULT_OUTPUT_ROOT = 'docs/visual-qa/production-art/model-runs';
 const SAFE_CHARACTER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SAFE_REFERENCE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SHA256 = /^[a-f0-9]{64}$/;
 const VALUE_FLAGS = new Set([
   '--profile',
   '--task',
@@ -53,7 +55,10 @@ const VALUE_FLAGS = new Set([
   '--world-brief-file',
   '--style-bible-file',
   '--environment-reference',
+  '--environment-reference-id',
   '--character-reference',
+  '--character-reference-id',
+  '--character-identity-digest-sha256',
   '--approved-direction',
   '--character-id',
   '--output-root',
@@ -74,7 +79,10 @@ interface Arguments {
   readonly worldBriefFile?: string;
   readonly styleBibleFile?: string;
   readonly environmentReference?: string;
+  readonly environmentReferenceId: string;
   readonly characterReference?: string;
+  readonly characterReferenceId: string;
+  readonly characterIdentityDigestSha256?: string;
   readonly approvedDirection?: string;
   readonly characterId?: string;
   readonly outputRoot: string;
@@ -148,8 +156,18 @@ function parseArguments(argv: readonly string[]): Arguments {
     ...(values.has('--environment-reference')
       ? { environmentReference: values.get('--environment-reference') }
       : {}),
+    environmentReferenceId:
+      values.get('--environment-reference-id') ?? 'environment-reference',
     ...(values.has('--character-reference')
       ? { characterReference: values.get('--character-reference') }
+      : {}),
+    characterReferenceId:
+      values.get('--character-reference-id') ?? 'character-reference',
+    ...(values.has('--character-identity-digest-sha256')
+      ? {
+        characterIdentityDigestSha256:
+          values.get('--character-identity-digest-sha256'),
+      }
       : {}),
     ...(values.has('--approved-direction')
       ? { approvedDirection: values.get('--approved-direction') }
@@ -210,6 +228,26 @@ function assertExecutionArguments(args: Arguments, task: ProductionArtTask): voi
     && (!SAFE_CHARACTER_ID.test(args.characterId) || args.characterId.length > 48)) {
     throw new Error('--character-id must be a lowercase portable id of at most 48 characters.');
   }
+  if (
+    !SAFE_REFERENCE_ID.test(args.environmentReferenceId)
+    || args.environmentReferenceId.length > 80
+    || !SAFE_REFERENCE_ID.test(args.characterReferenceId)
+    || args.characterReferenceId.length > 80
+    || args.environmentReferenceId === args.characterReferenceId
+  ) {
+    throw new Error('Reference ids must be distinct lowercase portable ids of at most 80 characters.');
+  }
+  if (
+    args.characterIdentityDigestSha256 !== undefined
+    && !SHA256.test(args.characterIdentityDigestSha256)
+  ) {
+    throw new Error('--character-identity-digest-sha256 must be canonical SHA-256.');
+  }
+  if (args.characterIdentityDigestSha256 && !isPlayerCharacterTask) {
+    throw new Error(
+      '--character-identity-digest-sha256 is accepted only for a player animation task.',
+    );
+  }
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
@@ -262,14 +300,14 @@ async function loadReferences(args: Arguments, task: ProductionArtTask): Promise
   if (args.environmentReference) {
     references.push(await loadReference(
       args.environmentReference,
-      'environment-reference',
+      args.environmentReferenceId,
       'environment-style',
     ));
   }
   if (task.reference_roles.includes('character') && args.characterReference) {
     references.push(await loadReference(
       args.characterReference,
-      'character-reference',
+      args.characterReferenceId,
       'character',
     ));
   }
@@ -376,13 +414,14 @@ async function main(): Promise<void> {
     && task.role_mappings[0].role === 'character.player.atlas';
   if (isPlayerCharacterTask) {
     const characterReference = references.find(({ descriptor }) =>
-      descriptor.id === 'character-reference');
+      descriptor.role === 'character');
     if (!characterReference || !args.characterId) {
       throw new Error('Player projection requires the validated character reference and character id.');
     }
-    const identityDigestSha256 = await deriveCharacterIdentityDigestSha256(
-      characterReference.descriptor.sha256,
-    );
+    const identityDigestSha256 = args.characterIdentityDigestSha256
+      ?? await deriveCharacterIdentityDigestSha256(
+        characterReference.descriptor.sha256,
+      );
     try {
       characterProfileProjection = await projectProductionCharacterProfile(plan, normalized, {
         characterId: args.characterId,

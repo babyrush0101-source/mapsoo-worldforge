@@ -78,6 +78,13 @@ const job = {
   environment_reference: environmentPath,
   character_reference: characterPath,
   character_id: 'neutral-traveler',
+  private_input_binding: {
+    confirmed_intake_sha256: 'a'.repeat(64),
+    seed: 'workflow-smoke-seed',
+    character_identity_digest_sha256: 'b'.repeat(64),
+    environment_reference_id: 'smoke-environment',
+    character_reference_id: 'smoke-character',
+  },
 };
 
 try {

@@ -1,0 +1,398 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-layout-plan-1.0.schema.json",
+  "title": "Mapsoo WorldLayoutPlan 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "status",
+    "plan_id",
+    "profile",
+    "source",
+    "bounds",
+    "regions",
+    "terrain_layout",
+    "spawn",
+    "exit",
+    "traversal",
+    "landmarks",
+    "collision_intent",
+    "navigation_intent"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "world-layout-plan" },
+    "status": { "const": "planned" },
+    "plan_id": { "$ref": "#/$defs/id" },
+    "profile": {
+      "enum": ["side-platformer", "isometric-action", "topdown-farm", "layered-depth-2d"]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intake_id",
+        "session_revision",
+        "intake_sha256",
+        "map_layout_checkpoint_sha256",
+        "seed",
+        "seed_sha256"
+      ],
+      "properties": {
+        "intake_id": { "$ref": "#/$defs/id" },
+        "session_revision": { "type": "integer", "minimum": 4 },
+        "intake_sha256": { "$ref": "#/$defs/sha256" },
+        "map_layout_checkpoint_sha256": { "$ref": "#/$defs/sha256" },
+        "seed": { "$ref": "#/$defs/text160" },
+        "seed_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "unit"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 16, "maximum": 512 },
+        "height": { "type": "integer", "minimum": 12, "maximum": 512 },
+        "unit": { "const": "logical-tile" }
+      }
+    },
+    "regions": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/region" }
+    },
+    "terrain_layout": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "bands"],
+          "properties": {
+            "kind": { "const": "bands" },
+            "bands": {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 64,
+              "items": { "$ref": "#/$defs/terrain" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "zones"],
+          "properties": {
+            "kind": { "const": "zones" },
+            "zones": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 64,
+              "items": { "$ref": "#/$defs/terrain" }
+            }
+          }
+        }
+      ]
+    },
+    "spawn": { "$ref": "#/$defs/endpoint" },
+    "exit": { "$ref": "#/$defs/endpoint" },
+    "traversal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodes", "edges"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/node" }
+        },
+        "edges": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 128,
+          "items": { "$ref": "#/$defs/edge" }
+        }
+      }
+    },
+    "landmarks": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/landmark" }
+    },
+    "collision_intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "solid_terrain_ids",
+        "one_way_terrain_ids",
+        "blocked_region_ids"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "side-solids",
+            "topdown-obstacles",
+            "isometric-footprints",
+            "depth-lane-blockers"
+          ]
+        },
+        "solid_terrain_ids": { "$ref": "#/$defs/idArray" },
+        "one_way_terrain_ids": { "$ref": "#/$defs/idArray" },
+        "blocked_region_ids": { "$ref": "#/$defs/idArray" }
+      }
+    },
+    "navigation_intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "walkable_region_ids",
+        "traversal_edge_ids",
+        "agent_radius"
+      ],
+      "properties": {
+        "mode": {
+          "enum": ["platform-links", "orthogonal-grid", "diamond-grid", "depth-lanes"]
+        },
+        "walkable_region_ids": { "$ref": "#/$defs/idArray" },
+        "traversal_edge_ids": { "$ref": "#/$defs/idArray" },
+        "agent_radius": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 8
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "profile": { "const": "side-platformer" } },
+        "required": ["profile"]
+      },
+      "then": {
+        "properties": {
+          "terrain_layout": {
+            "type": "object",
+            "properties": { "kind": { "const": "bands" } },
+            "required": ["kind"]
+          },
+          "collision_intent": {
+            "type": "object",
+            "properties": { "mode": { "const": "side-solids" } },
+            "required": ["mode"]
+          },
+          "navigation_intent": {
+            "type": "object",
+            "properties": { "mode": { "const": "platform-links" } },
+            "required": ["mode"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "profile": { "const": "topdown-farm" } },
+        "required": ["profile"]
+      },
+      "then": {
+        "properties": {
+          "terrain_layout": {
+            "type": "object",
+            "properties": { "kind": { "const": "zones" } },
+            "required": ["kind"]
+          },
+          "collision_intent": {
+            "type": "object",
+            "properties": { "mode": { "const": "topdown-obstacles" } },
+            "required": ["mode"]
+          },
+          "navigation_intent": {
+            "type": "object",
+            "properties": { "mode": { "const": "orthogonal-grid" } },
+            "required": ["mode"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "profile": { "const": "isometric-action" } },
+        "required": ["profile"]
+      },
+      "then": {
+        "properties": {
+          "terrain_layout": {
+            "type": "object",
+            "properties": { "kind": { "const": "zones" } },
+            "required": ["kind"]
+          },
+          "collision_intent": {
+            "type": "object",
+            "properties": { "mode": { "const": "isometric-footprints" } },
+            "required": ["mode"]
+          },
+          "navigation_intent": {
+            "type": "object",
+            "properties": { "mode": { "const": "diamond-grid" } },
+            "required": ["mode"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "profile": { "const": "layered-depth-2d" } },
+        "required": ["profile"]
+      },
+      "then": {
+        "properties": {
+          "terrain_layout": {
+            "type": "object",
+            "properties": { "kind": { "const": "zones" } },
+            "required": ["kind"]
+          },
+          "collision_intent": {
+            "type": "object",
+            "properties": { "mode": { "const": "depth-lane-blockers" } },
+            "required": ["mode"]
+          },
+          "navigation_intent": {
+            "type": "object",
+            "properties": { "mode": { "const": "depth-lanes" } },
+            "required": ["mode"]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "text120": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    },
+    "text160": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    },
+    "rectangle": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "x": { "type": "integer", "minimum": 0, "maximum": 511 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 511 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 512 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 512 }
+      }
+    },
+    "region": {
+      "allOf": [
+        { "$ref": "#/$defs/rectangle" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "x", "y", "width", "height", "purpose"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "x": { "type": "integer", "minimum": 0, "maximum": 511 },
+            "y": { "type": "integer", "minimum": 0, "maximum": 511 },
+            "width": { "type": "integer", "minimum": 1, "maximum": 512 },
+            "height": { "type": "integer", "minimum": 1, "maximum": 512 },
+            "purpose": { "enum": ["spawn", "route", "landmark", "exit"] }
+          }
+        }
+      ]
+    },
+    "terrain": {
+      "allOf": [
+        { "$ref": "#/$defs/rectangle" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "x", "y", "width", "height", "material", "navigation"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "x": { "type": "integer", "minimum": 0, "maximum": 511 },
+            "y": { "type": "integer", "minimum": 0, "maximum": 511 },
+            "width": { "type": "integer", "minimum": 1, "maximum": 512 },
+            "height": { "type": "integer", "minimum": 1, "maximum": 512 },
+            "material": { "$ref": "#/$defs/id" },
+            "navigation": { "enum": ["walkable", "blocked", "one-way"] }
+          }
+        }
+      ]
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_id", "x", "y"],
+      "properties": {
+        "node_id": { "$ref": "#/$defs/id" },
+        "x": { "type": "integer", "minimum": 0, "maximum": 511 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 511 }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "region_id", "x", "y"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["spawn", "route", "landmark", "exit"] },
+        "region_id": { "$ref": "#/$defs/id" },
+        "x": { "type": "integer", "minimum": 0, "maximum": 511 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 511 }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "from", "to", "kind", "direction"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "from": { "$ref": "#/$defs/id" },
+        "to": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["walk", "jump", "drop", "climb", "portal"] },
+        "direction": { "enum": ["forward", "bidirectional"] }
+      }
+    },
+    "landmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "region_id", "node_id", "x", "y"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/text120" },
+        "region_id": { "$ref": "#/$defs/id" },
+        "node_id": { "$ref": "#/$defs/id" },
+        "x": { "type": "integer", "minimum": 0, "maximum": 511 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 511 }
+      }
+    },
+    "idArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 128,
+      "items": { "$ref": "#/$defs/id" }
+    }
+  }
+}

@@ -54,7 +54,9 @@ foreach ($consolePath in $GodotConsoles) {
         throw "Godot $version character-profile runtime smoke failed."
     }
     $sentinel = $output |
-        Where-Object { $_ -eq 'MAPSOO_CHARACTER_PROFILE_RUNTIME_OK profiles=4 negative=7' } |
+        Where-Object {
+            $_ -eq 'MAPSOO_CHARACTER_PROFILE_RUNTIME_OK profiles=4 transforms=2 negative=9'
+        } |
         Select-Object -Last 1
     if (-not $sentinel) {
         throw "Godot $version character-profile runtime sentinel is missing."
@@ -62,7 +64,8 @@ foreach ($consolePath in $GodotConsoles) {
     $results += [ordered]@{
         godot = $version
         profiles = 4
-        negative_cases = 7
+        direction_transform_profiles = 2
+        negative_cases = 9
         status = 'technical-runtime-pass'
         physical_raspberry_pi = 'not-tested'
     }

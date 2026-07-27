@@ -308,6 +308,50 @@ describe('four-profile production character projection', () => {
       .not.toBe(first.record.profile_revision_sha256);
   });
 
+  it('projects a direction transform only from an explicit provenance-bound option', async () => {
+    const plan = reviewPlan('side-platformer');
+    const task = playerTask(plan);
+    const normalized = await normalizedFixture(plan, task);
+    const common = {
+      characterId: 'neutral-traveler',
+      identityDigestSha256: 'b'.repeat(64),
+      characterReferenceIds: ['character-reference'],
+    } as const;
+    const independent = await projectProductionCharacterProfile(plan, normalized, common);
+    expect(independent.revision.runtime_direction_transform).toBeUndefined();
+    expect(independent.record.runtime_direction_transform).toBeUndefined();
+
+    const transformed = await projectProductionCharacterProfile(plan, normalized, {
+      ...common,
+      runtimeDirectionTransform: {
+        horizontalFlipDirections: ['left'],
+        provenanceReferenceIds: ['character-reference'],
+      },
+    });
+    expect(transformed.revision.runtime_direction_transform).toEqual({
+      strategy: 'horizontal-flip',
+      directions: ['left'],
+      provenance: {
+        basis: 'operator-declared-direction-equivalence',
+        source_reference_ids: ['character-reference'],
+      },
+    });
+    expect(transformed.record.runtime_direction_transform)
+      .toEqual(transformed.revision.runtime_direction_transform);
+    expect(transformed.revision.profile_revision_id)
+      .not.toBe(independent.revision.profile_revision_id);
+    expect(transformed.record.profile_revision_sha256)
+      .not.toBe(independent.record.profile_revision_sha256);
+
+    await expect(projectProductionCharacterProfile(plan, normalized, {
+      ...common,
+      runtimeDirectionTransform: {
+        horizontalFlipDirections: ['left'],
+        provenanceReferenceIds: ['unbound-review'],
+      },
+    })).rejects.toMatchObject({ code: 'projection.invalid-options' });
+  });
+
   it.each([
     ['duplicate', 'projection.duplicate-frame'],
     ['mirrored', 'projection.mirrored-frame'],

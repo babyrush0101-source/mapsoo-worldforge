@@ -75,8 +75,23 @@ func _play_animation(animation_name: String) -> void:
 	var visual := get_node_or_null("Visual") as AnimatedSprite2D
 	if visual == null or visual.sprite_frames == null or not visual.sprite_frames.has_animation(animation_name):
 		return
+	_apply_declared_direction_transform(visual, animation_name)
 	if visual.animation != animation_name or not visual.is_playing():
 		visual.play(animation_name)
+
+
+func _apply_declared_direction_transform(
+	visual: AnimatedSprite2D,
+	animation_name: String
+) -> void:
+	var directions_value: Variant = visual.get_meta("mapsoo_horizontal_flip_directions", [])
+	var directions: Array = directions_value if directions_value is Array else []
+	var direction := ""
+	if animation_name.ends_with("_left"):
+		direction = "left"
+	elif animation_name.ends_with("_right"):
+		direction = "right"
+	visual.flip_h = not direction.is_empty() and directions.has(direction)
 
 
 func _connect_hazards() -> void:
