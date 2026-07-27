@@ -42,7 +42,14 @@ confirmed style samples, continuity checks, and human approval.
 The first optional **server-only image-model source adapter** is now implemented
 behind that boundary. It converts one explicitly authorized production task into
 a hash-bound internal-review PNG candidate and deterministic normalized output;
-it is dry-run by default and never stores the API key. Player tasks for all four
+it is dry-run by default and never stores the API key. A resumable operator
+workflow now schedules those single-task calls under an immutable private-input
+binding, append-only state journal, exact scene-direction approval, total
+request budget and per-invocation cap. Interrupted work never retries
+automatically; frozen run files can be reconciled without another request, and
+any retry requires explicit duplicate-cost acknowledgement. Private input
+paths, contents and individual reference digests are excluded from workflow
+state and the completed source-free run set. Player tasks for all four
 profiles now additionally project into portable, complete
 `CharacterProfileRevision` artifacts while preserving normalized atlas bytes.
 The reusable Godot runtime shell can now load any of the four generated world

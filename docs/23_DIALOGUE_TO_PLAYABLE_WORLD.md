@@ -86,7 +86,9 @@ Initial constraints:
 ## Next implementation slice
 
 1. Render implemented previews from the exported scene and atlas data, not from an independent composition.
-2. Turn the reviewed production-art tasks into one resumable, cost-bounded
-   workflow instead of requiring one manual command per image.
-3. Collect playtest feedback and branch a new revision without overwriting the playable one.
-4. Test the reproducible ARM64 runtime artifact on a physical Raspberry Pi 4B and record frame time, memory, temperature and display-driver results.
+2. Connect completed model workflow run sets to the full provider bundle
+   builders for all four profiles, not only the layered-depth review assembler.
+3. Split large character pose inventories into smaller continuity-bound review
+   batches before assembling the canonical atlas.
+4. Collect playtest feedback and branch a new revision without overwriting the playable one.
+5. Test the reproducible ARM64 runtime artifact on a physical Raspberry Pi 4B and record frame time, memory, temperature and display-driver results.

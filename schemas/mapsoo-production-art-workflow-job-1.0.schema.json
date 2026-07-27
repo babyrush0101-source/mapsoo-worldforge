@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.example/schemas/mapsoo-production-art-workflow-job-1.0.schema.json",
+  "title": "Mapsoo production-art workflow job 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "workflow_id",
+    "profile",
+    "quality",
+    "request_budget",
+    "world_brief_file",
+    "style_bible_file",
+    "environment_reference",
+    "character_reference",
+    "character_id"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "production-art-workflow-job" },
+    "workflow_id": { "$ref": "#/$defs/safeId" },
+    "profile": { "$ref": "#/$defs/profile" },
+    "quality": { "enum": ["low", "medium", "high"] },
+    "request_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "world_brief_file": { "$ref": "#/$defs/localPath" },
+    "style_bible_file": { "$ref": "#/$defs/localPath" },
+    "environment_reference": { "$ref": "#/$defs/localPath" },
+    "character_reference": { "$ref": "#/$defs/localPath" },
+    "character_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 48,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "approved_direction": { "$ref": "#/$defs/localPath" }
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "localPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+    }
+  }
+}

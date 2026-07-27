@@ -1,7 +1,7 @@
 # Model-backed production art
 
-Status: **implemented source adapter; internal-review only; not yet a complete
-automatic production pack**
+Status: **implemented source adapter and resumable workflow; internal-review
+only; not yet an automatically approved production pack**
 
 This document describes the first real image-model boundary in Mapsoo
 Worldforge. It turns one approved production-art task and its reference images
@@ -18,7 +18,9 @@ time.
 ```text
 world dialogue
   -> provider-neutral ProductionArtPlan
-  -> choose exactly one task
+  -> immutable private-input binding and request budget
+  -> append-only resumable task journal
+  -> choose exactly one task at a time
   -> explicit remote-upload authorization
   -> GPT Image 2 image-edit request
   -> bounded source PNG
@@ -46,7 +48,15 @@ The relevant code is:
   a local replay provider bound to the plan, task, source SHA-256, ordered
   reference ids, and private reference digests;
 - [`scripts/run-openai-production-art-source.ts`](../scripts/run-openai-production-art-source.ts):
-  the local, one-task CLI.
+  the local, one-task CLI;
+- [`src/core/production-art-workflow.ts`](../src/core/production-art-workflow.ts):
+  provider-bound request accounting, direction approval, state transitions,
+  interruption/retry policy, and artifact bindings;
+- [`schemas/mapsoo-production-art-workflow-job-1.0.schema.json`](../schemas/mapsoo-production-art-workflow-job-1.0.schema.json)
+  and [`schemas/mapsoo-production-art-workflow-state-1.0.schema.json`](../schemas/mapsoo-production-art-workflow-state-1.0.schema.json):
+  portable strict schemas for operator input and the privacy-minimized journal;
+- [`scripts/run-production-art-workflow.ts`](../scripts/run-production-art-workflow.ts):
+  the resumable multi-task operator CLI.
 
 The adapter uses the pinned `gpt-image-2-2026-04-21` snapshot rather than a
 moving alias. OpenAI documents GPT Image 2 as its current image generation and
@@ -83,6 +93,83 @@ Every CLI invocation authorizes at most one request for exactly one provider,
 task, and ordered reference-id list. Existing permission to adapt or
 redistribute a reference image does **not** imply permission to upload it to a
 third-party model service.
+
+## Resumable, cost-bounded complete workflow
+
+The workflow CLI schedules the existing single-task runner; it does not weaken
+its per-task authorization. Copy
+[`config/production-art-workflow.example.json`](../config/production-art-workflow.example.json)
+to a private location and point its fields at local files. The job file itself
+contains private paths and must not be committed.
+
+Inspect or initialize the workflow without a credential, upload, or model call:
+
+```bash
+pnpm production-art:workflow -- --job private/workflow.json
+```
+
+For `layered-depth-2d`, a `request_budget` of `14` permits exactly one attempt
+for each canonical task. A larger bound permits only explicitly acknowledged
+retries; it never causes a retry by itself. Start at most one paid task:
+
+```bash
+pnpm production-art:workflow -- \
+  --job private/workflow.json \
+  --execute \
+  --allow-remote-upload \
+  --max-requests 1
+```
+
+The first task is always `scene-direction`. Review its generated
+`normalized.png`, then add its exact path to the private job:
+
+```json
+{
+  "approved_direction": "docs/visual-qa/production-art/model-runs/layered-depth-2d/scene-direction/<run>/normalized.png"
+}
+```
+
+The CLI hashes that file and unlocks later tasks only when its bytes match the
+successful scene-direction artifact. Changing the world brief, style bible,
+profile, quality, character id, or either original reference under an existing
+workflow id fails closed. Use a new workflow id for changed creative inputs.
+
+Each task start is written to an append-only local state journal before the
+remote process launches and immediately consumes one request from the total
+budget. If the process is interrupted or its files cannot be verified, the
+task becomes `uncertain`; it is never retried automatically. If the immutable
+run files were written, reconcile them without another request:
+
+```bash
+pnpm production-art:workflow -- \
+  --job private/workflow.json \
+  --reconcile-task <task-id> \
+  --run-directory docs/visual-qa/production-art/model-runs/<profile>/<task>/<run>
+```
+
+Only when reconciliation is impossible may an operator explicitly accept the
+duplicate-cost risk:
+
+```bash
+pnpm production-art:workflow -- \
+  --job private/workflow.json \
+  --retry-task <task-id> \
+  --acknowledge-duplicate-cost-risk \
+  --execute \
+  --allow-remote-upload
+```
+
+The journal stores one combined private-input binding, not source contents,
+paths, filenames, individual reference digests, prompts, or credentials.
+Concurrent processes are rejected by a per-workflow lock. Once every canonical
+task succeeds, the CLI writes a source-free `production-art-run-set.json`
+accepted by the deterministic Pack 1.0 review assembler. A passing player task
+must also contain a verified profile-matched character revision and atlas, so
+the workflow result can be staged for the reusable Godot runtime shell.
+
+`pnpm production-art:workflow:verify` exercises dry-run, privacy projection,
+duplicate-key rejection, immutable-input rejection, credential/budget
+preflight and concurrency locking without making a remote request.
 
 ## Dialogue and approval rounds
 
@@ -281,8 +368,9 @@ runtime dimensions.
 The `640 × 360` target matches the current low-memory Raspberry Pi review
 resolution; it is not a physical Pi performance result. Horizontal seam quality
 and visual composition remain `required` human-review gates. The plane
-projector is implemented and tested, but the multi-run disk assembler is still
-required before the complete environment can replace the base pack.
+projector and multi-run disk assembler are implemented and tested. Real model
+runs, visual approval and a rendered Godot review are still required before
+the complete environment can replace the base pack.
 
 ## Layered-depth runtime environment atlas projection
 
@@ -316,8 +404,9 @@ terrain `32,64`, prop/structure/collectible `48,88`, and effect `32,32`.
 Terrain source boundaries may remain visible for tile continuity, so tile
 seams still need visual review. The projection record remains source-free and
 marks `seam_review: required` and `human_review: required`. The complete
-environment still needs the multi-run disk assembler and real Godot review
-before it can replace the synthetic base environment.
+environment can enter the implemented multi-run disk assembler, but still
+needs real model output, human review and a rendered Godot review before it can
+replace the synthetic base environment.
 
 ## Assemble the complete visible Pack 1.0 candidate
 
