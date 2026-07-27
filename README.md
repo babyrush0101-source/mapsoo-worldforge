@@ -98,6 +98,10 @@ runs into one deterministic Pack 1.0 ZIP that replaces all eight planes, all
 five gameplay atlases and both character atlases while keeping every release
 gate pending and the license `LicenseRef-UNRELEASED`. See
 [Model-backed production art](docs/49_MODEL_BACKED_PRODUCTION_ART.md).
+The provider-neutral
+[live-model four-profile direction review](docs/52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md)
+catches world-landmark and character-identity drift before one profile is
+selected and later asset tasks are unlocked.
 
 A separately labelled **synthetic technical fixture** now exercises that full
 path without a model call. Its deterministic candidate passed real headless
@@ -208,6 +212,7 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 - [Private-consumer world creation and World Runner bridge](docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md)
 - [Generation Provider SDK](docs/09_PROVIDER_SDK.md)
 - [Model-backed production art and safe single-task CLI](docs/49_MODEL_BACKED_PRODUCTION_ART.md)
+- [Live-model four-profile direction review](docs/52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md)
 - [10-minute first Godot import](docs/10_FIRST_GODOT_IMPORT.md)
 - [Safe Godot re-import contract](docs/11_SAFE_GODOT_REIMPORT.md)
 - [Alpha.9 reference-to-farm scope and acceptance](docs/19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)

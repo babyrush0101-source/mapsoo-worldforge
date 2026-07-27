@@ -202,6 +202,13 @@ The intended workflow is deliberately staged:
 5. After all mandatory roles pass, project them into the existing deterministic
    pack and Godot import path.
 
+Before selecting a profile, operators may run the provider-neutral
+[four-profile direction review](52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md).
+It freezes one world identity and one portable character identity across four
+independent direction candidates, catches camera-specific landmark or identity
+drift, and still unlocks no downstream task until a human approves the exact
+selected direction bytes.
+
 All non-scene CLI tasks fail closed unless `--approved-direction` is supplied.
 Character tasks also require the original character reference so recognizable
 identity cues can be reviewed against both the approved world style and source
