@@ -5,6 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $godotRoot = Join-Path $repoRoot 'godot'
+$sentinel = 'MAPSOO_WORLD_LAYOUT_MATERIALIZER_OK profiles=4 deterministic=4 persisted=4 absent=1 tamper=2'
 
 if ($GodotConsoles.Count -eq 0) {
     $candidates = @(
@@ -22,7 +23,10 @@ if ($GodotConsoles.Count -eq 0) {
     }
     $GodotConsoles = @(
         $candidates |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) } |
+            Where-Object {
+                -not [string]::IsNullOrWhiteSpace($_) -and
+                (Test-Path -LiteralPath $_ -PathType Leaf)
+            } |
             Select-Object -Unique
     )
     if ($GodotConsoles.Count -eq 0) {
@@ -33,7 +37,10 @@ if ($GodotConsoles.Count -eq 0) {
 $runs = @()
 foreach ($consolePath in $GodotConsoles) {
     $consoleResolved = (Resolve-Path -LiteralPath $consolePath).Path
-    $versionOutput = @(& $consoleResolved --version 2>&1 | ForEach-Object { $_.ToString() })
+    $versionOutput = @(
+        & $consoleResolved --version 2>&1 |
+            ForEach-Object { $_.ToString() }
+    )
     if ($LASTEXITCODE -ne 0 -or $versionOutput.Count -lt 1) {
         throw "Cannot read Godot version: $consoleResolved"
     }
@@ -42,32 +49,45 @@ foreach ($consolePath in $GodotConsoles) {
         & $consoleResolved `
             --headless `
             --path $godotRoot `
-            --script 'res://tests/world_layout_attachment_smoke.gd' 2>&1 |
+            --script 'res://tests/world_layout_materializer_smoke.gd' 2>&1 |
             ForEach-Object { $_.ToString() }
     )
     $exitCode = $LASTEXITCODE
     $output | ForEach-Object { Write-Host $_ }
     if ($exitCode -ne 0 -or $output -match '^(?:SCRIPT )?ERROR:') {
-        throw "Godot $version WorldLayoutPlan attachment smoke failed."
+        throw "Godot $version WorldLayoutPlan materializer smoke failed."
     }
-    if (-not ($output -contains 'MAPSOO_WORLD_LAYOUT_ATTACHMENT_OK profiles=4 absent=1 negative=8')) {
-        throw "Godot $version WorldLayoutPlan attachment sentinel is missing."
+    if (-not ($output -contains $sentinel)) {
+        throw "Godot $version WorldLayoutPlan materializer sentinel is missing."
     }
     $runs += [ordered]@{
         godot = $version
         profiles = 4
+        deterministic_replays = 4
+        persisted_scenes = 4
         absent_compatibility = 1
-        negative_cases = 8
-        status = 'verified-layout-binding-pass'
+        tamper_cases = 2
+        status = 'profile-layout-v1-pass'
     }
 }
 
 [ordered]@{
-    schema_version = 'mapsoo-world-layout-attachment-qa/1.0'
-    status = 'verified-layout-binding-pass'
+    schema_version = 'mapsoo-world-layout-materializer-qa/1.0'
+    status = 'profile-layout-v1-pass'
     runs = $runs
+    proves = @(
+        'authoritative logical TileMapLayer cells'
+        'profile-specific projected map polygons'
+        'StaticBody2D collision geometry and one-way semantics'
+        'NavigationRegion2D polygons and NavigationLink2D traversal'
+        'profile-specific logical-to-world coordinate projection'
+        'runtime PlayerSpawn and Player binding'
+        'deterministic persisted scene structure'
+        'no-layout backward compatibility'
+        'post-validation tamper rejection before scene mutation'
+    )
     not_proven = @(
-        'art-directed production TileSet selection'
+        'art-directed TileSet selection'
         'physical Raspberry Pi performance'
     )
 } | ConvertTo-Json -Depth 5

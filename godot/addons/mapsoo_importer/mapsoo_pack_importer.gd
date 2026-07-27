@@ -467,7 +467,7 @@ static func _importer_version_for_schema(
 		LAYERED_DEPTH_SCHEMA_VERSION,
 		CONTROLLED_SCHEMA_VERSION,
 	]:
-		return "%s-layout.1" % version
+		return "%s-layout.2" % version
 	return version
 
 

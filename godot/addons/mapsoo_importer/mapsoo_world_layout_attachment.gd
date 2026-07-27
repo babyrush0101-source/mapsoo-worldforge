@@ -3,9 +3,12 @@ extends RefCounted
 
 ## Optional WorldLayoutPlan 1.0 attachment support for Pack 0.6--1.0.
 ##
-## The attachment is planning data. It is deliberately persisted as scene
-## metadata and logical markers; it does not claim to materialize a TileMap,
-## collision geometry, or a navigation mesh.
+## The attachment is persisted as verified planning metadata and materialized
+## through Godot-native logical cells, collision, navigation and markers.
+
+const LayoutMaterializer = preload(
+	"res://addons/mapsoo_importer/mapsoo_world_layout_materializer.gd"
+)
 
 const ATTACHMENT_PATH := "world-layout-plan.json"
 const SCHEMA_VERSION := "1.0.0"
@@ -140,6 +143,19 @@ static func bind_scene(root: Node, attachment: Dictionary) -> Dictionary:
 	if root.get_node_or_null("WorldLayoutPlan") != null:
 		return _failure("Generated scene already contains a WorldLayoutPlan node.")
 	var plan: Dictionary = attachment.plan
+	var plan_source := _dictionary(plan.get("source"))
+	var expected_profile := str(root.get_meta("mapsoo_profile", plan.get("profile", "")))
+	var plan_revalidation := _validate_plan(
+		plan,
+		expected_profile,
+		plan_source.get("seed")
+	)
+	if not plan_revalidation.ok:
+		return plan_revalidation
+	plan = plan_revalidation.layout
+	var materializer_preflight := LayoutMaterializer.validate_plan(root, plan)
+	if not materializer_preflight.ok:
+		return materializer_preflight
 	var spawn_value: Dictionary = plan.spawn
 	var exit_value: Dictionary = plan.exit
 	var bounds_value: Dictionary = plan.bounds
@@ -166,7 +182,6 @@ static func bind_scene(root: Node, attachment: Dictionary) -> Dictionary:
 	)
 	root.set_meta("mapsoo_layout_collision_mode", str(collision.mode))
 	root.set_meta("mapsoo_layout_navigation_mode", str(navigation.mode))
-	root.set_meta("mapsoo_layout_materialization", "planning-metadata-only")
 
 	var container := Node.new()
 	container.name = "WorldLayoutPlan"
@@ -209,6 +224,25 @@ static func bind_scene(root: Node, attachment: Dictionary) -> Dictionary:
 	exit.set_meta("mapsoo_coordinate_unit", "logical-tile")
 	container.add_child(exit)
 	exit.owner = root
+	var materialized := LayoutMaterializer.materialize(root, plan, spawn, exit)
+	if not materialized.ok:
+		root.remove_child(container)
+		container.free()
+		for key: String in [
+			"mapsoo_layout_schema_version",
+			"mapsoo_layout_plan_id",
+			"mapsoo_layout_plan_sha256",
+			"mapsoo_layout_manifest_sha256",
+			"mapsoo_layout_profile",
+			"mapsoo_layout_bounds",
+			"mapsoo_layout_unit",
+			"mapsoo_layout_spawn",
+			"mapsoo_layout_exit",
+			"mapsoo_layout_collision_mode",
+			"mapsoo_layout_navigation_mode",
+		]:
+			root.remove_meta(key)
+		return materialized
 	return {"ok": true, "status": "bound", "error": ""}
 
 
@@ -229,7 +263,6 @@ static func validate_bound_scene(root: Node, attachment: Dictionary) -> Dictiona
 		or root.get_meta("mapsoo_layout_plan_sha256", "") != attachment.get("sha256")
 		or root.get_meta("mapsoo_layout_manifest_sha256", "") != attachment.get("manifest_sha256")
 		or root.get_meta("mapsoo_layout_profile", "") != plan.get("profile")
-		or root.get_meta("mapsoo_layout_materialization", "") != "planning-metadata-only"
 	):
 		return _failure("Staged scene WorldLayoutPlan identity metadata differs from validation.")
 	var expected_spawn := Vector2i(int(plan.spawn.x), int(plan.spawn.y))
@@ -251,6 +284,9 @@ static func validate_bound_scene(root: Node, attachment: Dictionary) -> Dictiona
 		or container.get_meta("mapsoo_navigation_intent", {}) != plan.navigation_intent
 	):
 		return _failure("Staged scene WorldLayoutPlan intent metadata differs from validation.")
+	var materialized := LayoutMaterializer.validate_scene(root, plan)
+	if not materialized.ok:
+		return materialized
 	return {"ok": true, "status": "bound", "error": ""}
 
 

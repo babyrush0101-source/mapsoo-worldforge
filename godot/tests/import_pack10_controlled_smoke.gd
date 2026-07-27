@@ -69,7 +69,7 @@ func _run() -> void:
 	var layout_importer: Dictionary = layout_state.get("importer", {})
 	if not layout_result.ok or not _validate_scene(
 		layout_result.scene_path, "public", "CC0-1.0", "public", true,
-	) or layout_importer.get("version") != "1.0.0-layout.1":
+	) or layout_importer.get("version") != "1.0.0-layout.2":
 		_fail("WorldLayoutPlan-bound Pack 1.0 import failed: %s" % layout_result.errors)
 		return
 
@@ -645,7 +645,7 @@ func _validate_scene(
 			(
 				world.get_meta("mapsoo_layout_plan_id", "") == "neutral-layered-layout"
 				and world.get_meta("mapsoo_layout_materialization", "")
-					== "planning-metadata-only"
+					== "profile-layout-v1"
 				and world.get_node_or_null("WorldLayoutPlan/Spawn") is Marker2D
 				and world.get_node_or_null("WorldLayoutPlan/Exit") is Marker2D
 			)

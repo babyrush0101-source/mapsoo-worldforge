@@ -74,6 +74,14 @@ try {
         "--expected-cells=64", "--expected-props=6", "--expected-places=4", "--expected-structures=4",
         "--check-conflict=true"
     )
+    Invoke-Godot "WorldLayoutPlan attachment smoke test" @(
+        "--headless", "--path", $godotRoot,
+        "--script", "res://tests/world_layout_attachment_smoke.gd"
+    )
+    Invoke-Godot "WorldLayoutPlan materializer smoke test" @(
+        "--headless", "--path", $godotRoot,
+        "--script", "res://tests/world_layout_materializer_smoke.gd"
+    )
 }
 finally {
     if (-not $KeepGenerated) {

@@ -258,6 +258,7 @@ jobs:
             res://addons/mapsoo_importer/mapsoo_pack_09.gd
             res://addons/mapsoo_importer/mapsoo_pack_10.gd
             res://addons/mapsoo_importer/mapsoo_world_layout_attachment.gd
+            res://addons/mapsoo_importer/mapsoo_world_layout_materializer.gd
             res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd
             res://addons/mapsoo_importer/runtime/mapsoo_isometric_player_controller.gd
             res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd
@@ -276,6 +277,7 @@ jobs:
             res://tests/import_alpha12_playable_smoke.gd
             res://tests/import_pack10_controlled_smoke.gd
             res://tests/world_layout_attachment_smoke.gd
+            res://tests/world_layout_materializer_smoke.gd
             res://tests/character_profile_test_fixture.gd
             res://tests/runtime_shell_smoke.gd
             res://tests/character_profile_runtime_smoke.gd
@@ -488,6 +490,19 @@ jobs:
             exit 1
           fi
 
+      - name: Materialize confirmed WorldLayoutPlan geometry across all world types
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-world-layout-materializer-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/world_layout_materializer_smoke.gd 2>&1 | tee "$log_file"
+          grep -Fq 'MAPSOO_WORLD_LAYOUT_MATERIALIZER_OK profiles=4 deterministic=4 persisted=4 absent=1 tamper=2' "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during WorldLayoutPlan geometry materialization." >&2
+            exit 1
+          fi
+
       - name: Run generated-world runtime shell contract
         shell: bash
         run: |
@@ -634,6 +649,7 @@ jobs:
             'res://addons/mapsoo_importer/mapsoo_pack_09.gd',
             'res://addons/mapsoo_importer/mapsoo_pack_10.gd',
             'res://addons/mapsoo_importer/mapsoo_world_layout_attachment.gd',
+            'res://addons/mapsoo_importer/mapsoo_world_layout_materializer.gd',
             'res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd',
             'res://addons/mapsoo_importer/runtime/mapsoo_isometric_player_controller.gd',
             'res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd',
@@ -653,6 +669,7 @@ jobs:
             'res://tests/import_alpha12_playable_smoke.gd',
             'res://tests/import_pack10_controlled_smoke.gd',
             'res://tests/world_layout_attachment_smoke.gd',
+            'res://tests/world_layout_materializer_smoke.gd',
             'res://tests/character_profile_test_fixture.gd',
             'res://tests/runtime_shell_smoke.gd',
             'res://tests/character_profile_runtime_smoke.gd',
@@ -844,6 +861,21 @@ jobs:
             -not ($lines -contains 'MAPSOO_WORLD_LAYOUT_ATTACHMENT_OK profiles=4 absent=1 negative=8')
           ) {
             throw 'WorldLayoutPlan attachment binding failed.'
+          }
+
+      - name: Materialize confirmed WorldLayoutPlan geometry across all world types on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/world_layout_materializer_smoke.gd 2>&1)
+          $lines = @($output | ForEach-Object { $_.ToString() })
+          $lines | ForEach-Object { Write-Host $_ }
+          if (
+            $LASTEXITCODE -ne 0 -or
+            $lines -match '^(?:SCRIPT )?ERROR:' -or
+            -not ($lines -contains 'MAPSOO_WORLD_LAYOUT_MATERIALIZER_OK profiles=4 deterministic=4 persisted=4 absent=1 tamper=2')
+          ) {
+            throw 'WorldLayoutPlan geometry materialization failed.'
           }
 
       - name: Run generated-world runtime shell contract on Windows

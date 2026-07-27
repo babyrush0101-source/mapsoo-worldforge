@@ -103,17 +103,30 @@ internal runtime details in this repository.
 
 ## Current runtime boundary
 
-The Godot attachment is marked `planning-metadata-only`. It makes the confirmed
-layout safely available to a world runner, but it does not yet generate:
+The Godot attachment is marked `profile-layout-v1`. After the exact plan and
+manifest binding pass validation, the importer deterministically creates:
 
-- final TileMap cells from production sprites;
-- collision polygons or physics bodies;
-- navigation meshes or navigation regions;
-- profile-specific gameplay scripts.
+- a hidden `TileMapLayer` containing the authoritative logical terrain cells;
+- profile-projected terrain polygons;
+- `StaticBody2D` collision for solid terrain, one-way terrain, and blocked
+  regions;
+- `NavigationRegion2D` regions and `NavigationLink2D` traversal edges;
+- traversal and landmark markers;
+- world-space spawn and exit markers;
+- a binding that moves the generated `PlayerSpawn` and player body to the
+  confirmed spawn when the scene contains a runtime player.
 
-Those materializers are the next engine-specific layer. Until they exist and
-are tested, the importer must not report a plan attachment as a fully playable
-world.
+The projection uses the generated scene's pixel bounds. Top-down, platformer,
+and layered-depth plans use bounded linear projection; isometric action uses a
+diamond projection. The same plan produces the same scene semantics before and
+after `PackedScene` persistence.
+
+The logical TileMap is deliberately hidden. Existing production artwork remains
+the visible layer until a later art-mapping stage selects exact production
+TileSet cells for every logical material. Therefore `profile-layout-v1` proves
+runtime map semantics, collision, navigation, traversal, and endpoints; it does
+not claim final art-directed TileSet selection, profile gameplay completion, or
+physical Raspberry Pi performance.
 
 ## Fail-closed behavior
 
@@ -128,6 +141,5 @@ The materializer rejects:
 - mismatched spawn, exit, landmark, seed, checkpoint, or intake bindings;
 - incomplete navigation edge coverage.
 
-This makes a layout safe to hand to a later art or runtime stage without
-claiming that art, collision geometry, navigation meshes, or an engine scene
-have already been produced.
+This makes a layout safe to materialize without claiming that the logical
+material IDs have already been mapped to final production artwork.
