@@ -267,23 +267,30 @@ SpriteCook 只允许两种薄接入方式，不成为运行时依赖：
 1. 公开 API 通过现有 `ProductionArtProvider` port 返回 PNG 候选；凭据、资产 ID、轮询和计费信息停留在 server-only adapter。
 2. 用户主动导出的 Godot 资源作为 authoring input；adapter 只提取 atlas、动画帧和 terrain 信息，再转换为 WorldForge 的逻辑材质映射并重新校验。Top-down/platformer 可复用其 auto-tile terrain，isometric 只按 atlas 输入处理。
 
+可以直接吸收的工作流优点包括：批量生成前检查额度、把可复用资产 ID 保存到本地私有运行记录、用参考资产维持风格、默认紧裁切透明边界、按显式下载清单落盘，以及把动画帧和 Godot 资源分开物化。它们是 adapter 的操作策略，不是新的核心领域对象。WorldForge 不复制 SpriteCook 的账户、素材库、编辑器、计费或 MCP 会话管理。
+
 核心不调用 SpriteCook MCP、不加载其插件，也不把第三方 `.tres` 直接当作可信 pack 内容。四类 profile 共用同一套候选和逻辑材质端口，不为每个供应商或 profile 复制一套 importer。
 
 已经审核并组装完成的 Pack 同样只走薄适配层，不再复制投影器：
 
 ```text
-Pack 1.0 ZIP
-  -> adapters/materialize-pack10-world-asset-output
+reviewed Pack 0.6 / 0.7 / 0.8 / 1.0
+  -> shared exact archive loader
+  -> small profile projector
+  -> one reviewed-world source receipt
   -> fingerprint-bound recorded replay provider
   -> core/runWorldAssetProvider
   -> Godot importer / World Runner
 ```
 
-Pack 1.0 仍是 layered-depth 可见资产、角色动画和地图 sidecar 的唯一组装
-来源。adapter 只校验 ZIP/schema/语义/哈希，把 19 个去重运行时文件映射到
-现有 36 个角色；license、provenance 和审核状态保留在来源 receipt，不作为
-运行时资产，也不会被 replay 自动提升。这样 SpriteCook、模型、艺术家或
-离线工具只需产出同一标准候选/Pack，核心和 Godot 路径保持不变。
+`replayReviewedWorldAsset()` 是四类 profile 的唯一公开回放入口。Pack 1.0
+仍是 layered-depth 可见资产、角色动画和地图 sidecar 的唯一组装来源；
+Pack 0.6/0.7/0.8 review archive 分别保留现有 top-down、platformer 和
+isometric 投影规则。四个投影器只负责校验 schema/语义/哈希并映射到已经
+存在的角色契约；license、provenance 和审核状态统一保留在
+`reviewed-world-asset-source-receipt`，不作为运行时资产，也不会被 replay
+自动提升。这样 SpriteCook、模型、艺术家或离线工具只需产出同一标准候选/
+Pack，核心和 Godot 路径保持不变。
 
 新增依赖前使用四个判断：
 

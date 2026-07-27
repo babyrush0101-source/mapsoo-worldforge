@@ -1,6 +1,5 @@
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
-import JSZip from 'jszip';
 
 import packSchema from '../../schemas/mapsoo-pack-1.0.schema.json';
 import {
@@ -18,10 +17,12 @@ import {
 } from '../core/layered-depth-asset-bundle';
 import {
   assertPack10Manifest,
-  type Pack10Distribution,
   type Pack10Manifest,
-  type Pack10ReviewGate,
 } from '../core/pack-manifest-1.0';
+import {
+  materializeReviewedWorldAssetSourceReceipt,
+  type ReviewedWorldAssetSourceReceipt,
+} from '../core/reviewed-world-asset-source-receipt';
 import {
   fingerprintGenerationRequestV2,
   materializeGenerationRequestV2,
@@ -32,13 +33,12 @@ import type {
   WorldAssetProviderOutput,
 } from '../core/world-asset-provider';
 import { assertCanonicalMetadataFreePng } from './canonical-png';
+import {
+  ExactPackArchiveError,
+  loadExactPackArchive,
+} from './load-exact-pack-archive';
 
 const MANIFEST_PATH = 'mapsoo.manifest.json';
-const MAX_ARCHIVE_BYTES = 128 * 1024 * 1024;
-const MAX_ARCHIVE_FILES = 256;
-const MAX_PAYLOAD_BYTES = 128 * 1024 * 1024;
-const SAFE_PATH =
-  /^(?!\/)(?!.*\\)(?!.*(?:^|\/)\.\.?(?:\/|$))[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*(?:\/[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*)*$/;
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });
 addFormats(ajv);
@@ -81,23 +81,7 @@ export class Pack10WorldAssetProjectionError extends Error {
   }
 }
 
-export interface Pack10WorldAssetReplayReceipt {
-  readonly document_type: 'pack10-world-asset-replay-receipt';
-  readonly schema_version: '1.0.0';
-  readonly pack_id: string;
-  readonly pack_sha256: string;
-  readonly manifest_sha256: string;
-  readonly request_fingerprint_sha256: string;
-  readonly distribution: Pack10Distribution;
-  readonly review: Readonly<{
-    human_art: Pack10ReviewGate;
-    rights: Pack10ReviewGate;
-    runtime: Pack10ReviewGate;
-    raspberry_pi: Pack10ReviewGate;
-  }>;
-  readonly runtime_asset_count: number;
-  readonly runtime_role_count: number;
-}
+export type Pack10WorldAssetReplayReceipt = ReviewedWorldAssetSourceReceipt;
 
 export interface Pack10WorldAssetReplayProjection {
   readonly output: WorldAssetProviderOutput;
@@ -106,22 +90,6 @@ export interface Pack10WorldAssetReplayProjection {
 
 function fail(code: Pack10WorldAssetProjectionErrorCode, message: string): never {
   throw new Pack10WorldAssetProjectionError(code, message);
-}
-
-async function sha256(bytes: Uint8Array): Promise<string> {
-  const snapshot = bytes.slice();
-  const digest = await crypto.subtle.digest('SHA-256', snapshot.buffer);
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function parseJson(bytes: Uint8Array): unknown {
-  try {
-    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-  } catch {
-    fail('pack10-replay.invalid-manifest', 'Pack 1.0 manifest must be strict UTF-8 JSON.');
-  }
 }
 
 function pngDimensions(bytes: Uint8Array): { readonly width: number; readonly height: number } {
@@ -146,68 +114,39 @@ function pngDimensions(bytes: Uint8Array): { readonly width: number; readonly he
 async function loadArchive(zipBytes: Uint8Array): Promise<{
   readonly manifest: Pack10Manifest;
   readonly manifestBytes: Uint8Array;
+  readonly manifestSha256: string;
+  readonly archiveSha256: string;
   readonly payloads: ReadonlyMap<string, Uint8Array>;
 }> {
-  if (!(zipBytes instanceof Uint8Array) || zipBytes.byteLength < 1 || zipBytes.byteLength > MAX_ARCHIVE_BYTES) {
-    fail('pack10-replay.invalid-archive', 'Pack 1.0 ZIP size is invalid.');
-  }
-  let archive: JSZip;
   try {
-    archive = await JSZip.loadAsync(zipBytes.slice(), { checkCRC32: true, createFolders: false });
-  } catch {
-    fail('pack10-replay.invalid-archive', 'Pack 1.0 ZIP cannot be decoded.');
-  }
-  const entries = Object.values(archive.files);
-  if (
-    entries.length < 2
-    || entries.length > MAX_ARCHIVE_FILES
-    || entries.some((entry) =>
-      entry.dir
-      || !SAFE_PATH.test(entry.name)
-      || (entry.unsafeOriginalName ?? entry.name) !== entry.name)
-  ) {
-    fail('pack10-replay.invalid-archive', 'Pack 1.0 ZIP entry inventory is unsafe.');
-  }
-  const payloads = new Map<string, Uint8Array>();
-  let totalBytes = 0;
-  for (const entry of entries) {
-    const bytes = Uint8Array.from(await entry.async('uint8array'));
-    totalBytes += bytes.byteLength;
-    if (totalBytes > MAX_PAYLOAD_BYTES) {
-      fail('pack10-replay.invalid-archive', 'Pack 1.0 extracted payload budget is exceeded.');
+    return await loadExactPackArchive(zipBytes, {
+      locateManifestPath: (names) =>
+        names.length > 0 && names.filter((name) => name === MANIFEST_PATH).length === 1
+          ? MANIFEST_PATH
+          : undefined,
+      materializeManifest: (candidate) => {
+        if (!validatePackSchema(candidate)) {
+          fail('pack10-replay.invalid-manifest', 'Pack 1.0 manifest fails its JSON Schema.');
+        }
+        const manifest = candidate as unknown as Pack10Manifest;
+        assertPack10Manifest(manifest);
+        return manifest;
+      },
+      fileRecords: (manifest) => manifest.files,
+    });
+  } catch (error) {
+    if (error instanceof Pack10WorldAssetProjectionError) throw error;
+    if (error instanceof ExactPackArchiveError) {
+      if (error.code === 'exact-pack.invalid-archive') {
+        fail('pack10-replay.invalid-archive', error.message);
+      }
+      if (error.code === 'exact-pack.invalid-manifest') {
+        fail('pack10-replay.invalid-manifest', error.message);
+      }
+      fail('pack10-replay.integrity', error.message);
     }
-    payloads.set(entry.name, bytes);
-  }
-  const manifestBytes = payloads.get(MANIFEST_PATH);
-  if (!manifestBytes) fail('pack10-replay.invalid-manifest', 'Pack 1.0 manifest is missing.');
-  const candidate = parseJson(manifestBytes);
-  if (!validatePackSchema(candidate)) {
-    fail('pack10-replay.invalid-manifest', 'Pack 1.0 manifest fails its JSON Schema.');
-  }
-  const manifest = candidate as unknown as Pack10Manifest;
-  try {
-    assertPack10Manifest(manifest);
-  } catch {
     fail('pack10-replay.invalid-manifest', 'Pack 1.0 manifest fails semantic validation.');
   }
-  const expectedPaths = new Set([MANIFEST_PATH, ...manifest.files.map(({ path }) => path)]);
-  if (
-    expectedPaths.size !== payloads.size
-    || [...payloads.keys()].some((path) => !expectedPaths.has(path))
-  ) {
-    fail('pack10-replay.integrity', 'Pack 1.0 ZIP and manifest inventories differ.');
-  }
-  for (const record of manifest.files) {
-    const bytes = payloads.get(record.path);
-    if (
-      !bytes
-      || bytes.byteLength !== record.bytes
-      || await sha256(bytes) !== record.sha256
-    ) {
-      fail('pack10-replay.integrity', `Pack 1.0 payload integrity failed: ${record.path}.`);
-    }
-  }
-  return Object.freeze({ manifest, manifestBytes, payloads });
 }
 
 function runtimePathAssetIds(manifest: Pack10Manifest): Map<string, string> {
@@ -396,15 +335,24 @@ export async function materializePack10WorldAssetOutput(
       bundle,
       files: Object.freeze(files),
     }),
-    receipt: Object.freeze({
-      document_type: 'pack10-world-asset-replay-receipt',
+    receipt: materializeReviewedWorldAssetSourceReceipt({
+      document_type: 'reviewed-world-asset-source-receipt',
       schema_version: '1.0.0',
+      profile: manifest.profile,
+      pack_contract: 'pack-1.0',
       pack_id: manifest.pack.id,
-      pack_sha256: await sha256(zipBytes),
-      manifest_sha256: await sha256(loaded.manifestBytes),
+      pack_sha256: loaded.archiveSha256,
+      manifest_sha256: loaded.manifestSha256,
+      review_record_sha256: null,
       request_fingerprint_sha256: requestFingerprint,
-      distribution: manifest.distribution,
-      review: Object.freeze({ ...manifest.review }),
+      authorization: {
+        distribution: manifest.distribution,
+        license_id: manifest.license.output.id,
+        permits_redistribution: manifest.license.output.permits_redistribution,
+        contains_generative_ai: manifest.provenance.contains_generative_ai,
+        human_curated: manifest.provenance.human_curated,
+      },
+      review: { ...manifest.review },
       runtime_asset_count: assets.length,
       runtime_role_count: roles.length,
     }),

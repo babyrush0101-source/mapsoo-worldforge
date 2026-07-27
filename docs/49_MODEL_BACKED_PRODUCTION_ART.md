@@ -781,15 +781,13 @@ continuity only and does not reduce any item below.
   real model outputs; the provider-neutral revision, neutral player slot,
   embedded one-click PCK binding and reusable-shell mode are implemented
   across all four profiles;
-- exercise the completed Pack 1.0 replay bridge with reviewed real model
-  output. The complete Pack remains the single assembly source of truth:
-  `materializePack10WorldAssetOutput()` verifies its exact ZIP inventory and
-  hashes, projects only the 19 PNG/JSON runtime files into all 36
-  `layered-depth-2d` roles, and `replayPack10WorldAsset()` sends that projection
-  through the existing fingerprint-bound `WorldAssetProvider` runner. This
-  bridge deliberately preserves Pack distribution/review gates in a source
-  receipt and does not create a second art-packing pipeline or grant release
-  approval;
+- exercise the completed four-profile reviewed-Pack replay bridge with reviewed
+  real model output. Pack 0.6/0.7/0.8/1.0 remain the assembly sources of truth;
+  their small projectors share exact archive verification, the
+  `reviewed-world-asset-source-receipt` contract and
+  `replayReviewedWorldAsset()`. The entry sends the selected projection through
+  the existing fingerprint-bound `WorldAssetProvider` runner. It does not
+  create a second art-packing pipeline or grant release approval;
 - execute the canonical character pose inventory in smaller, independently
   reviewed batches instead of relying on one perfect sprite-sheet request;
 - add semantic identity, action, direction, temporal-continuity, seam, pivot,

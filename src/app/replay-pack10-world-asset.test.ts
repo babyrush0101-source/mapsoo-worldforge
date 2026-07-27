@@ -138,9 +138,18 @@ describe('Pack 1.0 world asset replay', () => {
       !path.startsWith('license') && !path.startsWith('provenance/'))).toBe(true);
     expect(result.generation.provider.capabilities.outputProvenance).toBe('recorded-replay');
     expect(result.source).toMatchObject({
-      document_type: 'pack10-world-asset-replay-receipt',
+      document_type: 'reviewed-world-asset-source-receipt',
+      profile: 'layered-depth-2d',
+      pack_contract: 'pack-1.0',
       pack_id: 'pack10-public-fixture',
-      distribution: 'public',
+      review_record_sha256: null,
+      authorization: {
+        distribution: 'public',
+        license_id: 'CC0-1.0',
+        permits_redistribution: true,
+        contains_generative_ai: false,
+        human_curated: true,
+      },
       runtime_asset_count: 19,
       runtime_role_count: 36,
     });

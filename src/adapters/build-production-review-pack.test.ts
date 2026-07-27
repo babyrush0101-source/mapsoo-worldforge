@@ -13,6 +13,9 @@ import {
   type ProductionReviewTerrainAutotileArtifact,
 } from './build-production-review-pack';
 import {
+  materializeVersionedReviewWorldAssetOutput,
+} from './materialize-versioned-review-world-asset-output';
+import {
   normalizeSpriteCookTopdown17Export,
 } from './spritecook/normalize-spritecook-topdown17-export';
 import {
@@ -33,7 +36,11 @@ import {
 } from '../core/production-art-contract';
 import { createProductionArtRunSet } from '../core/production-art-run-set';
 import { bindGenerationRequestV2 } from '../core/generation-request-v2';
-import { runWorldAssetProvider } from '../core/world-asset-provider';
+import {
+  assertTrustedWorldAssetGeneration,
+  createFingerprintBoundWorldAssetReplayProvider,
+  runWorldAssetProvider,
+} from '../core/world-asset-provider';
 import type { WorldAssetProfile } from '../core/asset-profile';
 import {
   buildWorldLayoutPlanFromConfirmedIntake,
@@ -43,6 +50,7 @@ import { createConfirmedWorldCreationIntake } from '../core/confirmed-world-crea
 import { PROCEDURAL_TOPDOWN_FARM_PROVIDER } from '../providers/procedural-topdown-farm-provider';
 import { PROCEDURAL_SIDE_PLATFORMER_PROVIDER } from '../providers/procedural-side-platformer-provider';
 import { PROCEDURAL_ISOMETRIC_ACTION_PROVIDER } from '../providers/procedural-isometric-action-provider';
+import { replayReviewedWorldAsset } from '../app/replay-reviewed-world-asset';
 
 const rights = Object.freeze({
   distribution: 'internal-review' as const,
@@ -486,9 +494,86 @@ describe('three-profile production review pack builder', () => {
         .map((name) => archive.file(name)!.async('string')));
       expect(exposed.join('\n')).not.toContain('private/review');
       expect(exposed.join('\n')).not.toContain('Private review fixture description');
+
+      const replayJob = (await boundRequest(profile)).bound;
+      const replayed = await replayReviewedWorldAsset(first.bytes, replayJob);
+      expect(replayed.generation.bundle.profile).toBe(profile);
+      expect(replayed.generation.bundle.roles.map(({ role }) => role)).toEqual(
+        first.manifest.roles.map(({ role }) => role),
+      );
+      expect(replayed.generation.payloads).toHaveLength(
+        new Set(first.manifest.roles.map(({ path }) => path)).size,
+      );
+      expect(replayed.generation.payloads.every(({ path }) =>
+        !path.startsWith('schema/')
+        && path !== 'license-assets.md'
+        && path !== 'readme.md'
+        && path !== 'production-art-review.json')).toBe(true);
+      expect(replayed.source).toMatchObject({
+        document_type: 'reviewed-world-asset-source-receipt',
+        profile,
+        pack_contract: profile === 'topdown-farm'
+          ? 'pack-0.6'
+          : profile === 'side-platformer'
+            ? 'pack-0.7'
+            : 'pack-0.8',
+        pack_id: options.packId,
+        authorization: {
+          distribution: 'internal-review',
+          license_id: 'LicenseRef-UNRELEASED',
+          permits_redistribution: false,
+          contains_generative_ai: true,
+          human_curated: false,
+        },
+        review: {
+          human_art: 'pending',
+          rights: 'pending',
+          runtime: 'pending',
+          raspberry_pi: 'pending',
+        },
+      });
+      expect(() => assertTrustedWorldAssetGeneration(replayed.generation)).not.toThrow();
+
+      const projection = await materializeVersionedReviewWorldAssetOutput(
+        first.bytes,
+        replayJob.request,
+      );
+      const provider = createFingerprintBoundWorldAssetReplayProvider(
+        `review-${profile}-fingerprint-test`,
+        '1.0.0',
+        profile,
+        projection.output,
+        projection.receipt.request_fingerprint_sha256,
+      );
+      const changedJob = await bindGenerationRequestV2(
+        {
+          ...replayJob.request,
+          description: 'A changed request must not reuse the recorded review Pack.',
+        },
+        replayJob.references.map((reference) => ({
+          path: reference.descriptor.path,
+          bytes: reference.readBytes(),
+        })),
+      );
+      await expect(runWorldAssetProvider(provider, changedJob)).rejects.toMatchObject({
+        code: 'world-provider.invalid-output',
+      });
     },
     30_000,
   );
+
+  it('rejects a public procedural source Pack as a production-review replay', async () => {
+    const [base, replayJob] = await Promise.all([
+      basePack('side-platformer'),
+      boundRequest('side-platformer'),
+    ]);
+    await expect(materializeVersionedReviewWorldAssetOutput(
+      base.readBytes(),
+      replayJob.bound.request,
+    )).rejects.toMatchObject({
+      code: 'versioned-review-replay.invalid-manifest',
+    });
+  }, 15_000);
 
   it('embeds complete SpriteCook-normalized top-down transitions through the neutral contract', async () => {
     const [{ plan, inventory }, base, terrainAutotiles] = await Promise.all([

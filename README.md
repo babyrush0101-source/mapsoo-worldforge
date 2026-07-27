@@ -118,13 +118,14 @@ runs into one deterministic Pack 1.0 ZIP that replaces all eight planes, all
 five gameplay atlases and both character atlases while keeping every release
 gate pending and the license `LicenseRef-UNRELEASED`. See
 [Model-backed production art](docs/49_MODEL_BACKED_PRODUCTION_ART.md).
-That complete Pack can now re-enter the existing trusted
-`WorldAssetProvider` runner through one fingerprint-bound replay adapter:
-the adapter verifies the exact ZIP inventory and hashes, projects only the 19
-runtime PNG/JSON files into all 36 layered-depth roles, and keeps the Pack
-distribution/review state in a separate source receipt. It does not duplicate
-the Pack assembler or turn an internal-review candidate into an approved
-release.
+Every reviewed Pack profile can now re-enter the existing trusted
+`WorldAssetProvider` runner through one public `replayReviewedWorldAsset()`
+entry. Pack 0.6/0.7/0.8/1.0 retain small profile projectors but share one exact
+archive loader, one versioned source-receipt contract, one request-fingerprint
+replay provider and one runner. The replay excludes review/license documents
+from runtime payloads and never promotes an internal-review candidate into an
+approved release. See
+[Four-profile reviewed Pack replay](docs/57_FOUR_PROFILE_REVIEWED_PACK_REPLAY.md).
 The provider-neutral
 [live-model four-profile direction review](docs/52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md)
 catches world-landmark and character-identity drift before one profile is
@@ -153,6 +154,11 @@ and independently renders a CC0 `768 × 384` guide matching the existing
 isometric terrain production task. That guide enters the normal
 provider-neutral environment-reference path alongside an approved style
 direction; it is never presented as runtime art or a finished tileset.
+The integration boundary also adopts the useful workflow ideas documented by
+SpriteCook—stable asset references, reusable style references, budget checks,
+tight transparent crops and explicit Godot export manifests—without making a
+SpriteCook account, MCP session or response format part of the WorldForge
+core. Other model providers and local tools remain interchangeable.
 
 A separately labelled **synthetic technical fixture** now exercises that full
 path without a model call. Its deterministic candidate passed real headless

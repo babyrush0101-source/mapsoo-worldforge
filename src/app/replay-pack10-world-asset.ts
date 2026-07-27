@@ -1,13 +1,7 @@
 import type { GenerationRequestJobV2 } from '../core/generation-request-v2';
-import {
-  createFingerprintBoundWorldAssetReplayProvider,
-  runWorldAssetProvider,
-  type WorldAssetGenerationResult,
-} from '../core/world-asset-provider';
-import {
-  materializePack10WorldAssetOutput,
-  type Pack10WorldAssetReplayReceipt,
-} from '../adapters/materialize-pack10-world-asset-output';
+import type { WorldAssetGenerationResult } from '../core/world-asset-provider';
+import type { Pack10WorldAssetReplayReceipt } from '../adapters/materialize-pack10-world-asset-output';
+import { replayReviewedWorldAsset } from './replay-reviewed-world-asset';
 
 export interface Pack10WorldAssetReplayResult {
   readonly generation: WorldAssetGenerationResult;
@@ -24,17 +18,8 @@ export async function replayPack10WorldAsset(
   job: GenerationRequestJobV2,
   options: { readonly signal?: AbortSignal } = {},
 ): Promise<Pack10WorldAssetReplayResult> {
-  const projection = await materializePack10WorldAssetOutput(packBytes, job.request);
-  const provider = createFingerprintBoundWorldAssetReplayProvider(
-    'mapsoo-pack10-world-replay',
-    '1.0.0',
-    'layered-depth-2d',
-    projection.output,
-    projection.receipt.request_fingerprint_sha256,
-  );
-  const generation = await runWorldAssetProvider(provider, job, options);
-  return Object.freeze({
-    generation,
-    source: projection.receipt,
-  });
+  if (job.request.profile !== 'layered-depth-2d') {
+    throw new Error('Pack 1.0 replay requires the layered-depth-2d profile.');
+  }
+  return replayReviewedWorldAsset(packBytes, job, options);
 }

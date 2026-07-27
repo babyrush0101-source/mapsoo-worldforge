@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-reviewed-world-asset-source-receipt-1.0.schema.json",
+  "title": "Mapsoo Reviewed World Asset Source Receipt 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "profile",
+    "pack_contract",
+    "pack_id",
+    "pack_sha256",
+    "manifest_sha256",
+    "review_record_sha256",
+    "request_fingerprint_sha256",
+    "authorization",
+    "review",
+    "runtime_asset_count",
+    "runtime_role_count"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "reviewed-world-asset-source-receipt" },
+    "profile": {
+      "enum": [
+        "topdown-farm",
+        "side-platformer",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "pack_contract": {
+      "enum": ["pack-0.6", "pack-0.7", "pack-0.8", "pack-1.0"]
+    },
+    "pack_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 80
+    },
+    "pack_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "review_record_sha256": {
+      "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }]
+    },
+    "request_fingerprint_sha256": { "$ref": "#/$defs/sha256" },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "distribution",
+        "license_id",
+        "permits_redistribution",
+        "contains_generative_ai",
+        "human_curated"
+      ],
+      "properties": {
+        "distribution": {
+          "enum": ["internal-review", "private", "public"]
+        },
+        "license_id": {
+          "type": "string",
+          "pattern": "^(?:[A-Za-z0-9][A-Za-z0-9.-]{0,79}|LicenseRef-[A-Za-z0-9][A-Za-z0-9.-]{0,79})$"
+        },
+        "permits_redistribution": { "type": "boolean" },
+        "contains_generative_ai": { "type": "boolean" },
+        "human_curated": { "type": "boolean" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["human_art", "rights", "runtime", "raspberry_pi"],
+      "properties": {
+        "human_art": { "$ref": "#/$defs/gate" },
+        "rights": { "$ref": "#/$defs/gate" },
+        "runtime": { "$ref": "#/$defs/gate" },
+        "raspberry_pi": { "$ref": "#/$defs/gate" }
+      }
+    },
+    "runtime_asset_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 36
+    },
+    "runtime_role_count": {
+      "enum": [21, 30, 36]
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "gate": {
+      "enum": ["pending", "pass", "rejected"]
+    }
+  }
+}
