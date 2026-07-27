@@ -572,12 +572,12 @@ export function selectNextProductionArtWorkflowTask(
     return Object.freeze({ phase: 'awaiting-direction-approval' });
   }
 
-  const next = state.tasks.find(({ status, task_id: taskId }) =>
-    taskId !== 'scene-direction' && status === 'pending');
-  if (next) return Object.freeze({ phase: 'ready', task_id: next.task_id });
   if (state.tasks.some(({ status }) => status === 'rejected' || status === 'uncertain')) {
     return Object.freeze({ phase: 'review-required' });
   }
+  const next = state.tasks.find(({ status, task_id: taskId }) =>
+    taskId !== 'scene-direction' && status === 'pending');
+  if (next) return Object.freeze({ phase: 'ready', task_id: next.task_id });
   return Object.freeze({ phase: 'complete' });
 }
 

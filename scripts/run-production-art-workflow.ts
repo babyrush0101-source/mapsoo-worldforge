@@ -39,6 +39,9 @@ import {
   WORLD_ASSET_PROFILES,
   type WorldAssetProfile,
 } from '../src/core/asset-profile';
+import {
+  createProductionArtProgress,
+} from '../src/core/production-art-progress';
 import type {
   ProductionArtGenerationEvidence,
 } from '../src/adapters/normalize-production-art-png';
@@ -859,6 +862,11 @@ function workflowSummary(
     plan,
     approvedDirectionSha256,
   );
+  const progress = createProductionArtProgress(
+    state,
+    plan,
+    approvedDirectionSha256,
+  );
   const characterProfile = state.tasks
     .flatMap(({ attempts }) => attempts)
     .map(({ artifact }) => artifact?.character_profile)
@@ -882,6 +890,7 @@ function workflowSummary(
     ...(selection.task_id ? { next_task: selection.task_id } : {}),
     ...(runSet ? { run_set: runSet } : {}),
     ...(characterProfile ? { character_profile: characterProfile } : {}),
+    progress,
     human_review: 'required',
     distribution: 'internal-review',
   };

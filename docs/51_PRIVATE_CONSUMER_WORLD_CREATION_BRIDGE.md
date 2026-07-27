@@ -77,6 +77,21 @@ That invocation is dry-run by default. A real image request still requires the
 separate `--execute --allow-remote-upload` authorization, one reviewed task at
 a time. Scene direction and every later asset remain human-review gates.
 
+The returned `progress` object is the only public workflow status intended for
+a consumer UI or Agent. It lists missing roles and the next action without
+exposing private prompts or paths. In particular:
+
+- `direction.generated=true` means only that a direction candidate exists;
+- `direction.approved=true` means its exact bytes were accepted for this
+  immutable workflow;
+- `run_set_ready=true` means every canonical image task has verified output;
+- `runtime_verified` and `runner_delivery_ready` remain false at this stage.
+
+A private consumer must therefore keep “generating”, “awaiting approval”,
+“assembling”, “runtime testing”, and “ready to enter” as distinct states.
+Rejected or uncertain mandatory tasks stop later paid generation until the
+operator explicitly resolves the same task.
+
 After art approval, deterministic pack projection and Godot import, build the
 PCK and its exact evidence on the trusted host:
 

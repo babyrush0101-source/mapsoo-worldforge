@@ -55,6 +55,9 @@ The relevant code is:
 - [`schemas/mapsoo-production-art-workflow-job-1.0.schema.json`](../schemas/mapsoo-production-art-workflow-job-1.0.schema.json)
   and [`schemas/mapsoo-production-art-workflow-state-1.0.schema.json`](../schemas/mapsoo-production-art-workflow-state-1.0.schema.json):
   portable strict schemas for operator input and the privacy-minimized journal;
+- [`src/core/production-art-progress.ts`](../src/core/production-art-progress.ts)
+  and [`schemas/mapsoo-production-art-progress-1.0.schema.json`](../schemas/mapsoo-production-art-progress-1.0.schema.json):
+  a privacy-minimized progress projection for UI, Agent, and worker consumers;
 - [`scripts/run-production-art-workflow.ts`](../scripts/run-production-art-workflow.ts):
   the resumable multi-task operator CLI.
 
@@ -125,6 +128,26 @@ Inspect or initialize the workflow without a credential, upload, or model call:
 pnpm production-art:workflow -- --job private/workflow.json
 ```
 
+Every invocation returns a nested `progress` document. It contains exact
+task/role coverage, generated/approved direction state, request accounting,
+attention tasks and one canonical next action. It intentionally contains no
+prompt, private source path, raw reference digest, provider request id or
+candidate path. Its four delivery flags are deliberately fail-closed:
+
+```json
+{
+  "run_set_ready": false,
+  "production_review_required": true,
+  "runtime_verified": false,
+  "runner_delivery_ready": false
+}
+```
+
+Even after every image task succeeds, only `run_set_ready` becomes true. A
+complete run set still requires review-pack assembly, rendered Godot evidence,
+human approval, runtime build and final delivery. This prevents a consumer UI
+from presenting a direction image or a folder of PNGs as an enterable world.
+
 For `layered-depth-2d`, a `request_budget` of `14` permits exactly one attempt
 for each canonical task. A larger bound permits only explicitly acknowledged
 retries; it never causes a retry by itself. Start at most one paid task:
@@ -175,6 +198,11 @@ pnpm production-art:workflow -- \
   --execute \
   --allow-remote-upload
 ```
+
+Any rejected or uncertain asset task blocks selection of all later paid tasks
+until that exact task is reconciled or explicitly retried. The workflow does
+not spend requests on later sheets while an earlier mandatory role remains
+unresolved.
 
 The journal stores one combined private-input binding, not source contents,
 paths, filenames, individual reference digests, prompts, or credentials.

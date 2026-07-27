@@ -110,6 +110,14 @@ try {
     || firstSummary.requests_started !== 0
     || firstSummary.remote_request_count_this_invocation !== 0
     || firstSummary.total_tasks !== 14
+    || firstSummary.progress?.document_type !== 'production-art-progress'
+    || firstSummary.progress?.next_action !== 'generate-scene-direction'
+    || firstSummary.progress?.coverage?.total_tasks !== 14
+    || firstSummary.progress?.coverage?.succeeded_tasks !== 0
+    || firstSummary.progress?.run_set_ready !== false
+    || firstSummary.progress?.production_review_required !== true
+    || firstSummary.progress?.runtime_verified !== false
+    || firstSummary.progress?.runner_delivery_ready !== false
   ) {
     throw new Error('Dry-run did not initialize the canonical no-cost workflow.');
   }
@@ -201,7 +209,8 @@ try {
 
   console.log(
     'MAPSOO_PRODUCTION_ART_WORKFLOW_OK dry_run=true private_state=true '
-    + 'duplicate_keys=true immutable_inputs=true budget_preflight=true lock=true',
+    + 'duplicate_keys=true immutable_inputs=true budget_preflight=true lock=true '
+    + 'progress_contract=true',
   );
 } finally {
   await rm(workflowDirectory, { recursive: true, force: true });

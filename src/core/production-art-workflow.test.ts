@@ -179,6 +179,28 @@ describe('production art workflow', () => {
     expect(retry.tasks[0].attempts).toHaveLength(2);
   });
 
+  it('does not advance to later paid tasks while an asset task needs attention', () => {
+    const { productionPlan, completed } = finishScene();
+    const running = beginProductionArtWorkflowTask(completed, productionPlan, {
+      expectedStateRevision: completed.state_revision,
+      taskId: 'terrain-sheet',
+      approvedDirectionSha256: SHA_C,
+    });
+    const rejected = completeProductionArtWorkflowTask(running, productionPlan, {
+      expectedStateRevision: running.state_revision,
+      taskId: 'terrain-sheet',
+      attempt: 1,
+      outcome: 'rejected',
+      artifact: artifact('terrain-sheet'),
+      errorCode: 'task.semantic-rejected',
+    });
+    expect(selectNextProductionArtWorkflowTask(
+      rejected,
+      productionPlan,
+      SHA_C,
+    )).toEqual({ phase: 'review-required' });
+  });
+
   it('reconciles an uncertain attempt without consuming another request', () => {
     const { productionPlan, state } = initial();
     const running = beginProductionArtWorkflowTask(state, productionPlan, {

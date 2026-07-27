@@ -60,6 +60,12 @@ state and the completed source-free run set. A shared zero-request verifier now
 materializes those run sets for all four profiles, re-decodes and re-hashes
 every frozen PNG/evidence pair, and rejects incomplete, aliased or substituted
 task inventories before a profile-specific pack builder can mutate a ZIP.
+Each workflow response also includes a schema-bound, privacy-minimized progress
+document with exact missing asset roles and the next allowed action. It keeps
+`runtime_verified` and `runner_delivery_ready` false even when all image tasks
+are complete, so a direction candidate or PNG folder cannot be presented as an
+enterable world. Rejected or uncertain tasks stop later paid generation until
+the same task is explicitly resolved.
 Player tasks for all four profiles now additionally project into portable, complete
 `CharacterProfileRevision` artifacts while preserving normalized atlas bytes.
 The reusable Godot runtime shell can now load any of the four generated world
