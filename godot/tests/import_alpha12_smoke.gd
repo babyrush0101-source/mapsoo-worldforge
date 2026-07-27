@@ -3,7 +3,7 @@ extends SceneTree
 const Importer = preload("res://addons/mapsoo_importer/mapsoo_pack_importer.gd")
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd")
 const OUTPUT_ROOT := "res://mapsoo_imports"
-const DEFAULT_MANIFEST := "res://tests/fixtures/alpha12/mapsoo.manifest.json"
+const DEFAULT_MANIFEST := "res://tests/.generated/pack-alpha12/mapsoo.manifest.json"
 const DIRECTIONS := ["left", "right", "near", "far"]
 const PLAYER_ACTIONS := ["idle", "walk", "run", "interact"]
 const NPC_ACTIONS := ["idle", "talk"]

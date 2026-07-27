@@ -2,7 +2,7 @@ extends SceneTree
 
 const Importer = preload("res://addons/mapsoo_importer/mapsoo_pack_importer.gd")
 const OUTPUT_ROOT := "res://mapsoo_imports"
-const DEFAULT_MANIFEST := "res://tests/fixtures/alpha12/mapsoo.manifest.json"
+const DEFAULT_MANIFEST := "res://tests/.generated/pack-alpha12/mapsoo.manifest.json"
 
 
 func _init() -> void:
