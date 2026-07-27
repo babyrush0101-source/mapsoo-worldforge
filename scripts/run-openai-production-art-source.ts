@@ -29,6 +29,10 @@ import {
   serializeCharacterProfileRevisionCanonical,
 } from '../src/core/character-profile-revision';
 import {
+  materializeCharacterIdentitySemantics,
+  type CharacterIdentitySemantics,
+} from '../src/core/character-identity-semantics';
+import {
   runProductionArtProvider,
   type RemoteProcessingAuthorization,
 } from '../src/core/production-art-provider';
@@ -43,6 +47,7 @@ import {
   WORLD_ASSET_PROFILES,
   type WorldAssetProfile,
 } from '../src/core/asset-profile';
+import { parseStrictJsonDocument } from '../src/adapters/import-world-spec';
 
 const DEFAULT_OUTPUT_ROOT = 'docs/visual-qa/production-art/model-runs';
 const SAFE_CHARACTER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -58,6 +63,7 @@ const VALUE_FLAGS = new Set([
   '--environment-reference-id',
   '--character-reference',
   '--character-reference-id',
+  '--character-identity-semantics-file',
   '--character-identity-digest-sha256',
   '--approved-direction',
   '--character-id',
@@ -82,6 +88,7 @@ interface Arguments {
   readonly environmentReferenceId: string;
   readonly characterReference?: string;
   readonly characterReferenceId: string;
+  readonly characterIdentitySemanticsFile?: string;
   readonly characterIdentityDigestSha256?: string;
   readonly approvedDirection?: string;
   readonly characterId?: string;
@@ -100,6 +107,7 @@ function usage(): string {
     '  pnpm production-art:model -- --profile layered-depth-2d --task scene-direction \\',
     '    --world-brief-file <private-brief.txt> --style-bible-file <private-style.txt> \\',
     '    --environment-reference <environment.png> --character-reference <character.png> \\',
+    '    --character-identity-semantics-file <human-confirmed-character.json> \\',
     '    --quality medium --execute --allow-remote-upload',
     '',
     'Execute an approved player-character round:',
@@ -107,6 +115,7 @@ function usage(): string {
     '    --task character-character-player-atlas --character-id neutral-traveler \\',
     '    --world-brief-file <private-brief.txt> --style-bible-file <private-style.txt> \\',
     '    --approved-direction <accepted-direction.png> --character-reference <character.png> \\',
+    '    --character-identity-semantics-file <human-confirmed-character.json> \\',
     '    --quality medium --execute --allow-remote-upload',
     '',
     'Rules:',
@@ -163,6 +172,12 @@ function parseArguments(argv: readonly string[]): Arguments {
       : {}),
     characterReferenceId:
       values.get('--character-reference-id') ?? 'character-reference',
+    ...(values.has('--character-identity-semantics-file')
+      ? {
+        characterIdentitySemanticsFile:
+          values.get('--character-identity-semantics-file'),
+      }
+      : {}),
     ...(values.has('--character-identity-digest-sha256')
       ? {
         characterIdentityDigestSha256:
@@ -214,6 +229,22 @@ function assertExecutionArguments(args: Arguments, task: ProductionArtTask): voi
   }
   if (task.reference_roles.includes('character') && !args.characterReference) {
     throw new Error(`${task.task_id} requires --character-reference.`);
+  }
+  if (
+    task.reference_roles.includes('character')
+    && !args.characterIdentitySemanticsFile
+  ) {
+    throw new Error(
+      `${task.task_id} requires --character-identity-semantics-file.`,
+    );
+  }
+  if (
+    args.characterIdentitySemanticsFile
+    && !task.reference_roles.includes('character')
+  ) {
+    throw new Error(
+      '--character-identity-semantics-file is accepted only for a character-bearing task.',
+    );
   }
   const isPlayerCharacterTask = task.kind === 'character-animation-sheet'
     && task.role_mappings.length === 1
@@ -327,6 +358,32 @@ async function readBoundedText(path: string, label: string, maximum: number): Pr
   return value;
 }
 
+async function readCharacterIdentitySemantics(
+  path: string,
+): Promise<CharacterIdentitySemantics> {
+  const bytes = Uint8Array.from(await readFile(resolve(path)));
+  if (bytes.byteLength < 2 || bytes.byteLength > 64 * 1024) {
+    throw new Error(
+      'Character identity semantics must be between 2 bytes and 64 KiB.',
+    );
+  }
+  let value: unknown;
+  try {
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    const parsed = parseStrictJsonDocument(
+      text,
+      'Character identity semantics',
+    );
+    if (!parsed.ok) throw new Error(parsed.message);
+    value = parsed.value;
+  } catch {
+    throw new Error(
+      'Character identity semantics must be strict UTF-8 JSON.',
+    );
+  }
+  return materializeCharacterIdentitySemantics(value);
+}
+
 function dryRunSummary(args: Arguments, task: ProductionArtTask): object {
   const source = selectOpenAiSourceSize(task.target);
   return {
@@ -348,6 +405,8 @@ function dryRunSummary(args: Arguments, task: ProductionArtTask): object {
     requires_character_id: task.kind === 'character-animation-sheet'
       && task.role_mappings.length === 1
       && task.role_mappings[0].role === 'character.player.atlas',
+    requires_character_identity_semantics:
+      task.reference_roles.includes('character'),
     output_policy: 'internal-review',
     human_review: 'required',
   };
@@ -383,10 +442,18 @@ async function main(): Promise<void> {
   assertExecutionArguments(args, task);
   const credential = process.env.OPENAI_API_KEY;
   if (!credential) throw new Error('OPENAI_API_KEY is required only when --execute is present.');
-  const [worldBrief, styleBible, references] = await Promise.all([
+  const [
+    worldBrief,
+    styleBible,
+    references,
+    characterIdentitySemantics,
+  ] = await Promise.all([
     readBoundedText(args.worldBriefFile!, 'World brief', 2_000),
     readBoundedText(args.styleBibleFile!, 'Style bible', 4_000),
     loadReferences(args, task),
+    args.characterIdentitySemanticsFile
+      ? readCharacterIdentitySemantics(args.characterIdentitySemanticsFile)
+      : undefined,
   ]);
   const authorization: RemoteProcessingAuthorization = Object.freeze({
     decision: 'approved',
@@ -403,6 +470,7 @@ async function main(): Promise<void> {
     taskId: task.task_id,
     worldBrief,
     styleBible,
+    ...(characterIdentitySemantics ? { characterIdentitySemantics } : {}),
     references,
     remoteAuthorization: authorization,
   }, { credential });

@@ -42,7 +42,13 @@ The versioned roles, atlas coordinates, clip manifests, collision data, navigati
 | Isometric action | clear arena, actors, effect focal point | convincing 2:1 depth order | simple geometry and sparse prop language | fail |
 | Layered-depth 2D | clear gameplay baseline and depth | seven-plane intent is readable | sparse scene and minimal occlusion/material detail | fail |
 
-The shared pink/amber character is visually traceable across profiles at a basic level, but current identity preservation is geometric only: silhouette, four-color palette, anchors, and pivots. It does not yet preserve semantic hair, face, clothing, equipment, or body-proportion cues.
+The shared pink/amber baseline character is visually traceable across profiles
+at a basic level, but that existing rendered fixture still preserves only
+geometric silhouette, four-color palette, anchors, and pivots. The production
+path now has a separate human-confirmed `CharacterIdentitySemantics 1.0`
+contract for hair, face, clothing, equipment, distinguishing features and body
+proportions. No existing baseline image is retroactively claimed to pass that
+semantic contract; reviewed real model output is still required.
 
 ## First side-platformer production candidate
 
@@ -101,7 +107,8 @@ A future model or artist-backed provider must pass all of the following:
 2. Produce a structured art-direction analysis: palette, value hierarchy, material/texture scale, horizon/depth, dominant forms, and landmark contrast.
 3. Generate every required role and animation, with no placeholder rectangles or unrelated preview composition.
 4. Render the approval sample and final preview from the same exported atlases and scene data.
-5. Preserve the selected character's semantic identity across all requested actions and directions.
+5. Exercise the implemented semantic-identity contract against reviewed real
+   model output across every requested action and direction.
 6. Pass tile seams, alpha bounds, pivot, sprite-density, collision alignment, navigation, contrast, and occlusion checks.
 7. Avoid copying protected characters, maps, logos, textures, UI, or distinctive commercial-game art.
 8. Receive a human art review before release.

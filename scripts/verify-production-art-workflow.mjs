@@ -58,6 +58,10 @@ async function run(args, environment = {}) {
 
 const briefPath = resolve(temporaryRoot, 'private-brief.txt');
 const stylePath = resolve(temporaryRoot, 'private-style.txt');
+const characterSemanticsPath = resolve(
+  temporaryRoot,
+  'private-character-semantics.json',
+);
 const environmentPath = resolve(temporaryRoot, 'private-environment.bin');
 const characterPath = resolve(temporaryRoot, 'private-character.bin');
 const jobPath = resolve(temporaryRoot, 'private-workflow.json');
@@ -66,6 +70,29 @@ const brief = 'A quiet neutral harbor with original architecture.';
 const style = 'Original limited palette, readable silhouettes, no named-game imitation.';
 const environment = Buffer.from('89504e470d0a1a0a', 'hex');
 const character = Buffer.from('ffd8ffe000104a46', 'hex');
+const characterSemantics = {
+  character_id: 'neutral-traveler',
+  confirmation: {
+    checkpoint_sha256: 'c'.repeat(64),
+    status: 'human-confirmed',
+  },
+  cues: {
+    body_proportions: 'Compact synthetic traveler proportions.',
+    clothing: ['Plain magenta jacket.', 'Plain amber scarf.'],
+    distinguishing_features: ['Small pale crescent above the right eyebrow.'],
+    equipment: ['Small round lantern at the left hip.'],
+    face: 'Round synthetic face with straight eyebrows.',
+    hair: 'Short dark wavy hair with one upward curl.',
+    palette: ['#231f2b', '#b43b73', '#e4a43b'],
+    silhouette: 'Compact traveler with a broad scarf and narrow boots.',
+  },
+  document_type: 'character-identity-semantics',
+  schema_version: '1.0.0',
+  source_identity: {
+    identity_digest_sha256: 'b'.repeat(64),
+    source_reference_id: 'smoke-character',
+  },
+};
 const job = {
   schema_version: '1.0.0',
   document_type: 'production-art-workflow-job',
@@ -75,6 +102,7 @@ const job = {
   request_budget: 14,
   world_brief_file: briefPath,
   style_bible_file: stylePath,
+  character_identity_semantics_file: characterSemanticsPath,
   environment_reference: environmentPath,
   character_reference: characterPath,
   character_id: 'neutral-traveler',
@@ -91,6 +119,11 @@ try {
   await Promise.all([
     writeFile(briefPath, brief, { encoding: 'utf8', flag: 'wx' }),
     writeFile(stylePath, style, { encoding: 'utf8', flag: 'wx' }),
+    writeFile(
+      characterSemanticsPath,
+      JSON.stringify(characterSemantics),
+      { encoding: 'utf8', flag: 'wx' },
+    ),
     writeFile(environmentPath, environment, { flag: 'wx' }),
     writeFile(characterPath, character, { flag: 'wx' }),
     writeFile(jobPath, `${JSON.stringify(job, null, 2)}\n`, {
@@ -138,8 +171,10 @@ try {
     style,
     'private-brief.txt',
     'private-style.txt',
+    'private-character-semantics.json',
     'private-environment.bin',
     'private-character.bin',
+    'Plain magenta jacket.',
     digest(environment),
     digest(character),
     'must-not-be-used',

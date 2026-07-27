@@ -138,6 +138,13 @@ traversal and animation geometry, but fails closed on missing profiles, world
 drift, character drift or changed source fingerprints. Its
 `continuity-confirmed` status deliberately does not replace human art, rights,
 runtime or physical Raspberry Pi gates.
+The private, human-confirmed
+[character semantic continuity contract](docs/58_CHARACTER_SEMANTIC_CONTINUITY.md)
+adds the identity layer that pixel hashes cannot express: silhouette, body
+proportions, hair, face, clothing, equipment, distinguishing features and
+palette anchors. Character-bearing remote tasks must compile those exact cues
+into profile-specific prompts. The raw cue sheet stays in the private
+workspace; public Packs and receipts retain no character description.
 The optional terrain-transition layer now also has a zero-network local
 SpriteCook 17-piece importer. It strips the optional guide grid and reorders
 the documented N/E/S/W cells into the same neutral 4 by 4 mask contract used

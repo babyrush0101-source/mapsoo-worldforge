@@ -15,6 +15,7 @@ import {
   type RemoteProcessingAuthorization,
 } from '../../core/production-art-provider';
 import { bindReferenceImage, type ReferenceImageRole, type RuntimeReferenceImage } from '../../core/reference-image';
+import type { CharacterIdentitySemantics } from '../../core/character-identity-semantics';
 
 async function sha256(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes).buffer);
@@ -62,11 +63,35 @@ async function job(): Promise<ProductionArtProviderJob> {
     allow_prompt_upload: true,
     max_requests: 1,
   };
+  const characterIdentitySemantics: CharacterIdentitySemantics = {
+    schema_version: '1.0.0',
+    document_type: 'character-identity-semantics',
+    character_id: 'lantern-courier',
+    source_identity: {
+      identity_digest_sha256: 'a'.repeat(64),
+      source_reference_id: 'character-reference',
+    },
+    confirmation: {
+      status: 'human-confirmed',
+      checkpoint_sha256: 'b'.repeat(64),
+    },
+    cues: {
+      silhouette: 'Compact traveler with a broad scarf and narrow boots.',
+      body_proportions: 'Large head, short torso, slim arms, and sturdy legs.',
+      hair: 'Dark wavy bob with one upward curl above the left eyebrow.',
+      face: 'Round face, straight eyebrows, and a small triangular nose.',
+      clothing: ['Magenta jacket.', 'Amber scarf.', 'Charcoal trousers.'],
+      equipment: ['Small round lantern at the left hip.'],
+      distinguishing_features: ['Pale crescent patch above the right eyebrow.'],
+      palette: ['#231f2b', '#b43b73', '#e4a43b', '#e7d8c9'],
+    },
+  };
   return {
     plan,
     task,
     worldBrief: 'An original misty settlement built around a stone causeway.',
     styleBible: 'Layered depth, cool blue dawn, warm windows, compact readable silhouettes.',
+    characterIdentitySemantics,
     references,
     remoteAuthorization,
   };
@@ -191,6 +216,18 @@ describe('OpenAI production art source adapter', () => {
     expect(prompt).toContain('4,0=idle.left.frame-1');
     expect(prompt).toContain('independently rendered animation frame');
     expect(prompt).toContain('not a mirrored or shifted duplicate');
+    expect(prompt).toContain('Magenta jacket');
+    expect(prompt).toContain('Amber scarf');
+    expect(prompt).toContain('Pale crescent patch');
+    expect(prompt).toContain('Do not replace, remove, recolor, or invent');
     expect(selectOpenAiSourceSize(value.task.target).value).toBe('1024x1152');
+  });
+
+  it('refuses a character-bearing prompt without human-confirmed semantics', async () => {
+    const value = await job();
+    expect(() => buildOpenAiProductionArtPrompt({
+      ...value,
+      characterIdentitySemantics: undefined,
+    })).toThrow(/Character identity semantics/u);
   });
 });

@@ -22,6 +22,7 @@ const PREPARE_FLAGS = new Set([
   '--reference-root',
   '--workspace',
   '--character-id',
+  '--character-identity-semantics',
   '--completed-at',
   '--quality',
   '--request-budget',
@@ -52,6 +53,7 @@ function usage(): string {
     '    --reference-root <reference-root> \\',
     '    --workspace <private-workspace-outside-this-repository> \\',
     '    --character-id <neutral-kebab-case-id> \\',
+    '    [--character-identity-semantics <human-confirmed-character.json>] \\',
     '    --completed-at <canonical-UTC-ISO> \\',
     '    [--quality low|medium|high] [--request-budget <integer>]',
     '',
@@ -178,6 +180,14 @@ async function prepare(argv: readonly string[]): Promise<void> {
     ),
     workspace: privateWorkspacePath(required(values, '--workspace')),
     characterId: required(values, '--character-id'),
+    ...(values.has('--character-identity-semantics')
+      ? {
+        characterIdentitySemantics: await readStrictJson(
+          required(values, '--character-identity-semantics'),
+          'Character identity semantics',
+        ),
+      }
+      : {}),
     completedAt: required(values, '--completed-at'),
     ...(quality ? { quality } : {}),
     ...(requestBudgetText ? { requestBudget: Number(requestBudgetText) } : {}),

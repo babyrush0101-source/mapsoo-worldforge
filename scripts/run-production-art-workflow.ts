@@ -58,6 +58,10 @@ import {
   materializeWorldLayoutPlan,
   serializeCanonicalWorldLayoutPlan,
 } from '../src/core/world-layout-plan';
+import {
+  materializeCharacterIdentitySemantics,
+  serializeCharacterIdentitySemanticsCanonical,
+} from '../src/core/character-identity-semantics';
 
 const WORKFLOW_ROOT = 'docs/visual-qa/production-art/workflows';
 const MODEL_RUN_ROOT = 'docs/visual-qa/production-art/model-runs';
@@ -106,6 +110,7 @@ interface WorkflowJob {
   readonly request_budget: number;
   readonly world_brief_file: string;
   readonly style_bible_file: string;
+  readonly character_identity_semantics_file?: string;
   readonly world_layout_plan_file?: string;
   readonly environment_reference: string;
   readonly character_reference: string;
@@ -301,6 +306,10 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     value,
     'world_layout_plan_file',
   );
+  const hasCharacterIdentitySemantics = Object.prototype.hasOwnProperty.call(
+    value,
+    'character_identity_semantics_file',
+  );
   if (
     !exactKeys(value, [
       'character_id',
@@ -315,6 +324,9 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
       'style_bible_file',
       'workflow_id',
       'world_brief_file',
+      ...(hasCharacterIdentitySemantics
+        ? ['character_identity_semantics_file']
+        : []),
       ...(hasWorldLayoutPlan ? ['world_layout_plan_file'] : []),
       ...(hasApprovedDirection ? ['approved_direction'] : []),
       ...(hasPrivateOutputRoot ? ['private_output_root'] : []),
@@ -331,6 +343,10 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     || (value.request_budget as number) > 64
     || !safePathValue(value.world_brief_file)
     || !safePathValue(value.style_bible_file)
+    || (
+      hasCharacterIdentitySemantics
+      && !safePathValue(value.character_identity_semantics_file)
+    )
     || (hasWorldLayoutPlan && !safePathValue(value.world_layout_plan_file))
     || !safePathValue(value.environment_reference)
     || !safePathValue(value.character_reference)
@@ -441,6 +457,7 @@ function privateInputBinding(input: {
   readonly job: WorkflowJob;
   readonly worldBrief: string;
   readonly styleBible: string;
+  readonly characterIdentitySemantics?: Uint8Array;
   readonly worldLayoutPlan?: Uint8Array;
   readonly environmentReference: Uint8Array;
   readonly characterReference: Uint8Array;
@@ -467,6 +484,12 @@ function privateInputBinding(input: {
     ],
     ['world-brief', input.worldBrief],
     ['style-bible', input.styleBible],
+    ...(input.characterIdentitySemantics
+      ? [[
+        'character-identity-semantics',
+        input.characterIdentitySemantics,
+      ] as const]
+      : []),
     ...(input.worldLayoutPlan
       ? [['world-layout-plan', input.worldLayoutPlan] as const]
       : []),
@@ -668,6 +691,15 @@ function taskArguments(
         job.private_input_binding.character_reference_id,
       );
     }
+  }
+  if (
+    task.reference_roles.includes('character')
+    && job.character_identity_semantics_file
+  ) {
+    values.push(
+      '--character-identity-semantics-file',
+      job.character_identity_semantics_file,
+    );
   }
   if (isPlayerCharacterTask(task)) {
     values.push(
@@ -1029,9 +1061,15 @@ async function main(): Promise<void> {
     distribution: 'internal-review',
     license: 'LicenseRef-Proprietary',
   });
+  if (args.execute && !job.character_identity_semantics_file) {
+    throw new Error(
+      'Remote workflow execution requires a human-confirmed character identity semantics file.',
+    );
+  }
   const [
     worldBrief,
     styleBible,
+    characterIdentitySemanticsBytes,
     worldLayoutPlanBytes,
     environmentReference,
     characterReference,
@@ -1039,6 +1077,12 @@ async function main(): Promise<void> {
   ] = await Promise.all([
     readBoundedText(job.world_brief_file, 'World brief', 2_000),
     readBoundedText(job.style_bible_file, 'Style bible', 4_000),
+    job.character_identity_semantics_file
+      ? readBoundedBinary(
+        job.character_identity_semantics_file,
+        'Character identity semantics',
+      )
+      : undefined,
     job.world_layout_plan_file
       ? readBoundedBinary(job.world_layout_plan_file, 'World layout plan')
       : undefined,
@@ -1048,6 +1092,35 @@ async function main(): Promise<void> {
       ? readBoundedBinary(job.approved_direction, 'Approved direction')
       : undefined,
   ]);
+  if (characterIdentitySemanticsBytes) {
+    if (characterIdentitySemanticsBytes.byteLength > 64 * 1024) {
+      throw new Error(
+        'Character identity semantics cannot exceed 64 KiB.',
+      );
+    }
+    const semantics = materializeCharacterIdentitySemantics(
+      parseJsonRecord(
+        characterIdentitySemanticsBytes,
+        'Character identity semantics',
+      ),
+    );
+    const canonicalBytes =
+      serializeCharacterIdentitySemanticsCanonical(semantics);
+    if (
+      canonicalBytes.byteLength !== characterIdentitySemanticsBytes.byteLength
+      || canonicalBytes.some((byte, index) =>
+        byte !== characterIdentitySemanticsBytes[index])
+      || semantics.character_id !== job.character_id
+      || semantics.source_identity.identity_digest_sha256
+        !== job.private_input_binding.character_identity_digest_sha256
+      || semantics.source_identity.source_reference_id
+        !== job.private_input_binding.character_reference_id
+    ) {
+      throw new Error(
+        'Character identity semantics must be canonical and bind the workflow character.',
+      );
+    }
+  }
   if (worldLayoutPlanBytes) {
     const layoutRecord = parseJsonRecord(worldLayoutPlanBytes, 'World layout plan');
     const layout = await materializeWorldLayoutPlan(layoutRecord);
@@ -1069,6 +1142,9 @@ async function main(): Promise<void> {
     job,
     worldBrief,
     styleBible,
+    ...(characterIdentitySemanticsBytes
+      ? { characterIdentitySemantics: characterIdentitySemanticsBytes }
+      : {}),
     ...(worldLayoutPlanBytes ? { worldLayoutPlan: worldLayoutPlanBytes } : {}),
     environmentReference,
     characterReference,

@@ -37,6 +37,9 @@ import {
   PORTABLE_WORLD_RUNTIME_CONTRACT_VERSION,
   type PortableWorldRuntimeContract,
 } from '../core/portable-world-runtime-contract';
+import type {
+  CharacterIdentitySemantics,
+} from '../core/character-identity-semantics';
 
 const roots: string[] = [];
 const execFileAsync = promisify(execFile);
@@ -125,6 +128,35 @@ async function intakeFixture(
     }],
     approved_intent_preview_sha256: 'e'.repeat(64),
   });
+}
+
+function characterSemantics(
+  intake: ConfirmedWorldCreationIntake,
+): CharacterIdentitySemantics {
+  return {
+    schema_version: '1.0.0',
+    document_type: 'character-identity-semantics',
+    character_id: 'neutral-traveler',
+    source_identity: {
+      identity_digest_sha256:
+        intake.character_source.identity_digest_sha256,
+      source_reference_id: intake.character_source.reference_id,
+    },
+    confirmation: {
+      status: 'human-confirmed',
+      checkpoint_sha256: 'f'.repeat(64),
+    },
+    cues: {
+      silhouette: 'Compact traveler with a broad scarf and narrow boots.',
+      body_proportions: 'Large head, short torso, slim arms, and sturdy legs.',
+      hair: 'Dark wavy bob with one curl above the left eyebrow.',
+      face: 'Round face, straight eyebrows, and a small triangular nose.',
+      clothing: ['Magenta jacket.', 'Amber scarf.', 'Charcoal trousers.'],
+      equipment: ['Small round lantern at the left hip.'],
+      distinguishing_features: ['Pale crescent above the right eyebrow.'],
+      palette: ['#231f2b', '#b43b73', '#e4a43b', '#e7d8c9'],
+    },
+  };
 }
 
 describe('world delivery workspace preparation', () => {
@@ -254,6 +286,69 @@ describe('world delivery workspace preparation', () => {
       characterId: 'neutral-traveler',
       completedAt: COMPLETED_AT,
     })).rejects.toThrow(/SHA-256|byteLength/u);
+  });
+
+  it('stages human-confirmed semantic identity only in the private workspace', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'mapsoo-world-workspace-'));
+    roots.push(root);
+    const intake = await intakeFixture(root, 'isometric-action');
+    const semantics = characterSemantics(intake);
+    const workspace = resolve(root, 'private-workspace');
+    const manifest = await prepareWorldDeliveryWorkspace({
+      intake,
+      referenceRoot: root,
+      workspace,
+      characterId: 'neutral-traveler',
+      characterIdentitySemantics: semantics,
+      completedAt: COMPLETED_AT,
+    });
+    expect(manifest.files).toHaveProperty(
+      'character-identity-semantics.json',
+    );
+    const staged = JSON.parse(await readFile(
+      resolve(workspace, 'character-identity-semantics.json'),
+      'utf8',
+    ));
+    expect(staged).toEqual(semantics);
+    const job = JSON.parse(await readFile(
+      resolve(workspace, 'production-art-workflow-job.json'),
+      'utf8',
+    ));
+    expect(job.character_identity_semantics_file).toBe(
+      resolve(workspace, 'character-identity-semantics.json'),
+    );
+    expect(new Ajv2020().compile(workflowJobSchema)(job)).toBe(true);
+    expect(JSON.stringify(manifest)).not.toContain('Magenta jacket');
+    const { stdout } = await execFileAsync(process.execPath, [
+      resolve(process.cwd(), 'node_modules/vite-node/vite-node.mjs'),
+      resolve(process.cwd(), 'scripts/run-production-art-workflow.ts'),
+      '--job',
+      resolve(workspace, 'production-art-workflow-job.json'),
+    ], {
+      cwd: process.cwd(),
+      windowsHide: true,
+      maxBuffer: 1024 * 1024,
+    });
+    expect(stdout).not.toContain('Magenta jacket');
+    expect(JSON.parse(stdout)).toMatchObject({
+      mode: 'dry-run',
+      remote_request_count_this_invocation: 0,
+    });
+
+    await expect(prepareWorldDeliveryWorkspace({
+      intake,
+      referenceRoot: root,
+      workspace: resolve(root, 'drifted-workspace'),
+      characterId: 'neutral-traveler',
+      characterIdentitySemantics: {
+        ...semantics,
+        source_identity: {
+          ...semantics.source_identity,
+          identity_digest_sha256: '0'.repeat(64),
+        },
+      },
+      completedAt: COMPLETED_AT,
+    })).rejects.toThrow(/bind the selected character/u);
   });
 
   it('requires an explicit canonical completion instant for the baseline receipt', async () => {

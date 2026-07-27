@@ -43,6 +43,10 @@ import {
   serializeCharacterProfileRevisionCanonical,
 } from '../core/character-profile-revision';
 import {
+  materializeCharacterIdentitySemantics,
+  serializeCharacterIdentitySemanticsCanonical,
+} from '../core/character-identity-semantics';
+import {
   createWorldRunnerDelivery,
   type WorldRunnerArchitecture,
   type WorldRunnerArtifactKind,
@@ -121,6 +125,7 @@ export interface PrepareWorldDeliveryWorkspaceInput {
   readonly completedAt: string;
   readonly quality?: 'low' | 'medium' | 'high';
   readonly requestBudget?: number;
+  readonly characterIdentitySemantics?: unknown;
 }
 
 export interface FinalizeWorldRunnerDeliveryInput {
@@ -376,6 +381,12 @@ export async function prepareWorldDeliveryWorkspace(
   const layoutPlanSha256 = await fingerprintWorldLayoutPlan(layoutPlan);
   const layoutPlanBytes = await serializeCanonicalWorldLayoutPlan(layoutPlan);
   const characterId = assertSafeId(input.characterId, 'Character id', 48);
+  const characterIdentitySemantics =
+    input.characterIdentitySemantics === undefined
+      ? undefined
+      : materializeCharacterIdentitySemantics(
+        input.characterIdentitySemantics,
+      );
   const quality = input.quality ?? 'medium';
   if (!['low', 'medium', 'high'].includes(quality)) {
     throw new Error('Production quality must be low, medium, or high.');
@@ -407,6 +418,20 @@ export async function prepareWorldDeliveryWorkspace(
     descriptor.role === 'environment-style')!;
   const character = referenceRecords.find(({ descriptor }) =>
     descriptor.role === 'character')!;
+  if (
+    characterIdentitySemantics
+    && (
+      characterIdentitySemantics.character_id !== characterId
+      || characterIdentitySemantics.source_identity.identity_digest_sha256
+        !== intake.character_source.identity_digest_sha256
+      || characterIdentitySemantics.source_identity.source_reference_id
+        !== character.descriptor.id
+    )
+  ) {
+    throw new Error(
+      'Character identity semantics must bind the selected character id, identity digest, and reference.',
+    );
+  }
   const intakeSha256 = await fingerprintConfirmedWorldCreationIntake(intake);
   const completedAt = canonicalUtcInstant(input.completedAt);
   const baseline = await generateReferenceWorldPack({
@@ -456,6 +481,14 @@ export async function prepareWorldDeliveryWorkspace(
     request_budget: requestBudget,
     world_brief_file: resolve(workspace, 'world-brief.txt'),
     style_bible_file: resolve(workspace, 'style-bible.txt'),
+    ...(characterIdentitySemantics
+      ? {
+        character_identity_semantics_file: resolve(
+          workspace,
+          'character-identity-semantics.json',
+        ),
+      }
+      : {}),
     world_layout_plan_file: resolve(workspace, 'world-layout-plan.json'),
     environment_reference: resolve(workspace, ...environment.name.split('/')),
     character_reference: resolve(workspace, ...character.name.split('/')),
@@ -479,6 +512,14 @@ export async function prepareWorldDeliveryWorkspace(
     ['world-layout-plan.json', layoutPlanBytes],
     ['world-brief.txt', textBytes(worldBrief(intake))],
     ['style-bible.txt', textBytes(styleBible(intake, layoutPlan))],
+    ...(characterIdentitySemantics
+      ? [[
+        'character-identity-semantics.json',
+        serializeCharacterIdentitySemanticsCanonical(
+          characterIdentitySemantics,
+        ),
+      ] as const]
+      : []),
     ['production-art-workflow-job.json', jsonBytes(job)],
     [`baseline/${baseline.pack.filename}`, baseline.pack.bytes],
     ['baseline/world-preview.png', baseline.previewBytes],

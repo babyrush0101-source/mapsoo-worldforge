@@ -13,6 +13,10 @@ import {
   WORLD_ASSET_PROFILES,
   type WorldAssetProfile,
 } from './asset-profile';
+import {
+  materializeCharacterIdentitySemantics,
+  type CharacterIdentitySemantics,
+} from './character-identity-semantics';
 
 const PROVIDER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
@@ -51,6 +55,7 @@ export interface ProductionArtProviderJob {
   readonly task: ProductionArtTask;
   readonly worldBrief: string;
   readonly styleBible: string;
+  readonly characterIdentitySemantics?: CharacterIdentitySemantics;
   readonly references: readonly RuntimeReferenceImage[];
   readonly remoteAuthorization?: RemoteProcessingAuthorization;
 }
@@ -351,6 +356,7 @@ export async function runProductionArtProvider(
     readonly taskId: string;
     readonly worldBrief: string;
     readonly styleBible: string;
+    readonly characterIdentitySemantics?: unknown;
     readonly references: readonly RuntimeReferenceImage[];
     readonly remoteAuthorization?: RemoteProcessingAuthorization;
   },
@@ -404,6 +410,27 @@ export async function runProductionArtProvider(
   if (referenceBytes > contract.capabilities.maxReferenceBytes) {
     fail('production-provider.invalid-metadata', 'References exceed the provider byte limit.');
   }
+  const characterIdentitySemantics = supplied.characterIdentitySemantics === undefined
+    ? undefined
+    : materializeCharacterIdentitySemantics(
+      supplied.characterIdentitySemantics,
+    );
+  if (characterIdentitySemantics) {
+    const characterReferenceIds = references
+      .filter(({ descriptor }) => descriptor.role === 'character')
+      .map(({ descriptor }) => descriptor.id);
+    if (
+      !task.reference_roles.includes('character')
+      || characterIdentitySemantics.source_identity.source_reference_id
+        !== characterReferenceIds[0]
+      || characterReferenceIds.length !== 1
+    ) {
+      fail(
+        'production-provider.invalid-metadata',
+        'Character semantics must bind the task single declared character reference.',
+      );
+    }
+  }
   validateRemoteAuthorization(supplied.remoteAuthorization, contract, task, referenceIds);
   if (contract.capabilities.requiresCredentials
     && (typeof options.credential !== 'string' || options.credential.length < 1)) {
@@ -414,6 +441,7 @@ export async function runProductionArtProvider(
     task,
     worldBrief,
     styleBible,
+    ...(characterIdentitySemantics ? { characterIdentitySemantics } : {}),
     references: Object.freeze(references),
     ...(supplied.remoteAuthorization
       ? { remoteAuthorization: deepFreezeData(JSON.parse(JSON.stringify(supplied.remoteAuthorization))) }

@@ -31,6 +31,7 @@
     },
     "world_brief_file": { "$ref": "#/$defs/localPath" },
     "style_bible_file": { "$ref": "#/$defs/localPath" },
+    "character_identity_semantics_file": { "$ref": "#/$defs/localPath" },
     "world_layout_plan_file": { "$ref": "#/$defs/localPath" },
     "environment_reference": { "$ref": "#/$defs/localPath" },
     "character_reference": { "$ref": "#/$defs/localPath" },

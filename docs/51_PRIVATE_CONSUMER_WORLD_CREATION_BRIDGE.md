@@ -278,6 +278,17 @@ The projection creates the existing `GenerationRequestV2` and
 `ConfirmedGenerationBinding`, so the new conversation boundary uses the
 production pipeline instead of bypassing it.
 
+After the character reference is selected, the Agent may propose a separate
+semantic cue sheet for silhouette, body proportions, hair, face, clothing,
+equipment, distinguishing features and palette anchors. The user must edit or
+explicitly confirm those cues; inferred or unconfirmed cues cannot enter a
+remote task. `CharacterIdentitySemantics 1.0` binds the confirmed cue sheet to
+the neutral character id, opaque identity digest, character reference id and a
+confirmation checkpoint. It remains a private workspace file. Only its exact
+bytes affect the private workflow input hash; the raw cues do not enter the
+public Pack, workflow state, progress report, source receipt or runtime
+delivery.
+
 The public browser demonstrates the same neutral boundary. Its four visible
 rounds collect the ten facts in groups: six world facts, two art-direction
 facts, two map facts, and one intent-preview approval. Profile and runtime
@@ -304,6 +315,13 @@ character. A created character first becomes a complete, digest-verified
 `CharacterProfileRevision` for the selected world profile. Its atlas, frame
 grid, pivot, clips, source-identity summary, and rights are validated before
 the runtime player slot changes.
+
+For model-backed creation, every task that uploads the character reference also
+requires the human-confirmed semantic cue sheet. The provider prompt preserves
+all identity cues while allowing only profile camera projection, direction
+readability and declared frame geometry to change. This is a generation
+constraint, not automatic proof: the produced atlas still needs human
+identity/action/direction review.
 
 No private Actor, NPC, relationship, memory, or user record belongs in the
 character profile.

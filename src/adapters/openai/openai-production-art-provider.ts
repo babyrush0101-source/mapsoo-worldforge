@@ -8,6 +8,9 @@ import {
   type ProductionArtProviderJob,
 } from '../../core/production-art-provider';
 import { WORLD_ASSET_PROFILES } from '../../core/asset-profile';
+import {
+  compileCharacterIdentitySemanticsPrompt,
+} from '../../core/character-identity-semantics';
 
 export const OPENAI_PRODUCTION_ART_PROVIDER_ID = 'openai-gpt-image-2' as const;
 export const OPENAI_PRODUCTION_ART_MODEL = 'gpt-image-2-2026-04-21' as const;
@@ -100,6 +103,12 @@ function gridDescription(task: ProductionArtTask): string {
 export function buildOpenAiProductionArtPrompt(job: ProductionArtProviderJob): string {
   const worldBrief = boundedPromptText(job.worldBrief, 'World brief', 2_000);
   const styleBible = boundedPromptText(job.styleBible, 'Style bible', 4_000);
+  const characterIdentity = job.task.reference_roles.includes('character')
+    ? compileCharacterIdentitySemanticsPrompt(
+      job.characterIdentitySemantics,
+      job.plan.profile,
+    )
+    : undefined;
   const alphaInstructions = job.task.alpha_policy === 'straight-alpha'
     ? [
       'Render on one perfectly solid #00FF00 green chroma background connected to all four outer image borders.',
@@ -118,6 +127,9 @@ export function buildOpenAiProductionArtPrompt(job: ProductionArtProviderJob): s
     `Profile: ${job.plan.profile}. Task: ${job.task.kind}.`,
     `World brief: ${worldBrief}`,
     `Approved style bible: ${styleBible}`,
+    ...(characterIdentity
+      ? [`Human-confirmed character preservation contract:\n${characterIdentity}`]
+      : []),
     `Canvas grid: ${gridDescription(job.task)}. Preserve the declared role order exactly.`,
     `Reference images in upload order: ${job.references.map(
       ({ descriptor }, index) =>

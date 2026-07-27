@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-character-identity-semantics-1.0.schema.json",
+  "title": "Mapsoo Character Identity Semantics 1.0",
+  "description": "Private, human-confirmed semantic cues for preserving one character across world profiles.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "character_id",
+    "source_identity",
+    "confirmation",
+    "cues"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "character-identity-semantics" },
+    "character_id": { "$ref": "#/$defs/id" },
+    "source_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_digest_sha256", "source_reference_id"],
+      "properties": {
+        "identity_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "source_reference_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "confirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "checkpoint_sha256"],
+      "properties": {
+        "status": { "const": "human-confirmed" },
+        "checkpoint_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "cues": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "silhouette",
+        "body_proportions",
+        "hair",
+        "face",
+        "clothing",
+        "equipment",
+        "distinguishing_features",
+        "palette"
+      ],
+      "properties": {
+        "silhouette": { "$ref": "#/$defs/cue" },
+        "body_proportions": { "$ref": "#/$defs/cue" },
+        "hair": { "$ref": "#/$defs/cue" },
+        "face": { "$ref": "#/$defs/cue" },
+        "clothing": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/listCue" }
+        },
+        "equipment": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/listCue" }
+        },
+        "distinguishing_features": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/listCue" }
+        },
+        "palette": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "cue": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    },
+    "listCue": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    }
+  }
+}

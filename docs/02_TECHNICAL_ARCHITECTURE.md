@@ -233,6 +233,7 @@ WorldForge 只自研决定项目差异化和可验证交付的核心：
 
 - 多轮对话确认后的世界定义与版本化 checkpoint；
 - `WorldLayoutPlan`、角色身份绑定和四类世界的完整性规则；
+- 人工确认的角色语义身份，以及四类镜头下只允许的适配边界；
 - provider-neutral 美术任务、候选归一化、来源/许可记录和人工审核状态；
 - 可复现世界包、Godot importer、World Runner 契约与树莓派交付证据。
 
@@ -259,6 +260,8 @@ confirmed world
 ```
 
 核心、schema、manifest 和 Godot importer 不导入供应商 SDK，也不理解供应商响应格式。API key、OAuth session、计费、重试和供应商错误只存在于 adapter/runtime 边界；原始错误、私有 prompt、用户路径和凭据不得进入 pack。adapter 必须把结果降为标准候选文件和证据，不能自行宣布世界包完整、可发布或权利合格。
+
+角色参考图的像素签名只证明几何和颜色来源相同，不能证明发型、脸部、服装或装备仍然是同一角色。`CharacterIdentitySemantics 1.0` 因此作为私有、人工确认的输入存在：核心校验其角色身份、来源摘要和确认 checkpoint，按 profile 编译允许的镜头/方向适配规则；模型 adapter 只在该任务获得单次 prompt/reference 上传授权后使用原始语义。公开 Pack、workflow state 和 receipt 不包含这些描述。
 
 SpriteCook 适合作为可选 adapter，复用其参考图驱动的 Sprite、动画和 TileSet 工作流；WorldForge 仍负责把这些候选组织成已确认世界的完整资产角色、地图计划和 Godot 可加载包。集成采用用户自带账号/授权，不复制其产品 UI，不把第三方 API 转售为 WorldForge 自有 API，并保留离线 provider 与其他 adapter 的同等入口。
 

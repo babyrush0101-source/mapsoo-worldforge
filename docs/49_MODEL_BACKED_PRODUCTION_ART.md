@@ -790,8 +790,9 @@ continuity only and does not reduce any item below.
   create a second art-packing pipeline or grant release approval;
 - execute the canonical character pose inventory in smaller, independently
   reviewed batches instead of relying on one perfect sprite-sheet request;
-- add semantic identity, action, direction, temporal-continuity, seam, pivot,
-  and art-to-collision human review;
+- exercise the implemented human-confirmed semantic identity prompt boundary
+  with real output, then record action, direction, temporal-continuity, seam,
+  pivot, and art-to-collision human review;
 - render the imported pack in Godot rather than approving a direction image;
 - complete physical Raspberry Pi 4B frame-time, memory, temperature,
   controller, and audio validation;
