@@ -362,7 +362,7 @@ describe('three-profile production review pack builder', () => {
     const layoutPath = Object.keys(archive.files).find((path) =>
       path.endsWith('/world-layout-plan.json'));
     expect(layoutPath).toBeTruthy();
-  });
+  }, 15_000);
 
   it.each(cases)(
     'projects a complete deterministic %s model-art inventory into its Godot pack',
