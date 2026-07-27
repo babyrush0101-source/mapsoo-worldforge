@@ -22,6 +22,10 @@ describe('world creation dialogue UI', () => {
     expect(markup).toContain('Side platformer');
     expect(markup).toContain('Isometric action');
     expect(markup).toContain('Layered-depth 2D');
+    expect(markup).toContain('Raspberry Pi 4B');
+    expect(markup).toContain('What rules, beliefs, history, or central tension');
+    expect(markup).toContain('Which terrain types must shape the playable space?');
+    expect(markup).toContain('Who lives here');
     expect(markup).toContain('Nothing is frozen until you explicitly approve it.');
   });
 
@@ -34,14 +38,21 @@ describe('world creation dialogue UI', () => {
   });
 
   it('builds a deterministic visual sample from the first three confirmed decisions', () => {
-    const answers = {
-      'world-brief': 'A riverside courier settlement.',
-      'art-direction': 'Warm pixels and teal water.',
-      'map-layout': 'Ferry spawn, market landmark, hill gate exit.',
+    const facts = {
+      premise: 'A riverside courier settlement.',
+      worldview: 'Delivery routes reconnect districts after seasonal floods.',
+      terrain: 'Riverbanks, bridges and a hill.',
+      geography: 'Ferry spawn, market route and hill gate exit.',
+      culture: 'Growers, ferry workers and timber homes.',
+      ecology: 'Reeds, willow trees, birds and morning mist.',
+      mood: 'Hopeful, calm and readable.',
+      art_direction: 'Warm pixels and teal water.',
+      traversal: 'Follow the ferry route through the market to the gate.',
+      landmarks: 'Old ferry, market waterwheel, hill gate.',
     } as const;
-    const first = buildWorldCreationStyleSample('topdown-farm', answers);
-    const second = buildWorldCreationStyleSample('topdown-farm', answers);
-    const side = buildWorldCreationStyleSample('side-platformer', answers);
+    const first = buildWorldCreationStyleSample('topdown-farm', facts);
+    const second = buildWorldCreationStyleSample('topdown-farm', facts);
+    const side = buildWorldCreationStyleSample('side-platformer', facts);
 
     expect(first.pngBytes).toEqual(second.pngBytes);
     expect(first.pngBytes).not.toEqual(side.pngBytes);

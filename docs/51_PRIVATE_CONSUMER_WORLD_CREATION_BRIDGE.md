@@ -249,6 +249,16 @@ The projection creates the existing `GenerationRequestV2` and
 `ConfirmedGenerationBinding`, so the new conversation boundary uses the
 production pipeline instead of bypassing it.
 
+The public browser demonstrates the same neutral boundary. Its four visible
+rounds collect the ten facts in groups: six world facts, two art-direction
+facts, two map facts, and one intent-preview approval. Profile and runtime
+target are then locked. Reference selection and explicit rights confirmation
+complete the final style-sample checkpoint; only at that point does the
+application create the canonical intake, derive the character identity digest,
+build the `WorldLayoutPlan`, and invoke the existing provider runner. The
+generated ZIP therefore contains the exact layout derived from the confirmed
+facts and seed rather than a UI-only description or unrelated default map.
+
 ## Character composition
 
 The world and selected character remain independently versioned:

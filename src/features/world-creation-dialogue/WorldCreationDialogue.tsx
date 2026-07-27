@@ -7,6 +7,11 @@ import {
   type ConfirmedDialogueCheckpoint,
 } from '../../core/confirmed-generation-binding';
 import {
+  WORLD_CREATION_FACT_PROMPTS,
+  type ConfirmedWorldFacts,
+  type WorldCreationIntakeTarget,
+} from '../../core/confirmed-world-creation-intake';
+import {
   PROFILE_CREATION_CAPABILITIES,
   WORLD_CREATION_STAGES,
   WORLD_CREATION_STAGE_DESCRIPTORS,
@@ -25,15 +30,61 @@ const PROFILE_LABELS: Readonly<Record<WorldAssetProfile, string>> = Object.freez
   'layered-depth-2d': 'Layered-depth 2D',
 });
 
+const STARTER_FACTS: ConfirmedWorldFacts = Object.freeze({
+  premise: 'A hopeful riverside settlement where a young courier reconnects isolated neighborhoods.',
+  worldview: 'Seasonal floods separated the districts, so trust is rebuilt through deliveries and repaired crossings.',
+  terrain: 'Riverbanks, stone paths, timber bridges, garden plots and one climbable hill.',
+  geography: 'The old ferry is the spawn, the market and waterwheel are route landmarks, and the hill gate is the exit.',
+  culture: 'Ferry workers, growers and craftspeople share timber homes, awnings, public notice boards and market stalls.',
+  ecology: 'A mild river climate with reeds, willow trees, garden plants, birds, drifting leaves and soft morning mist.',
+  mood: 'Hopeful and calm, with strong silhouettes and readable paths, hazards, interactions and exits.',
+  art_direction: 'Warm hand-painted pixels, soft morning light, teal water, amber landmarks and consistent character scale.',
+  traversal: 'Start at the old ferry, cross the market and waterwheel checkpoints, then climb to the hill gate exit.',
+  landmarks: 'Old ferry, waterwheel market, hilltop gate.',
+});
+
 const STARTER_REPLIES: Readonly<Partial<Record<WorldCreationStage, string>>> = Object.freeze({
-  'world-brief': 'A hopeful riverside settlement where a young courier reconnects isolated neighborhoods.',
-  'art-direction': 'Warm hand-painted pixels, soft morning light, readable silhouettes, teal water and amber landmarks.',
-  'map-layout': 'Spawn at the old ferry, follow one main route through two landmarks, then reach the hilltop gate.',
   'style-sample': 'Keep the palette and character scale. Increase the exit landmark contrast before full generation.',
 });
 
+type WorldFactKey = keyof ConfirmedWorldFacts;
+
+const STAGE_FACT_KEYS: Readonly<
+  Partial<Record<WorldCreationStage, readonly WorldFactKey[]>>
+> = Object.freeze({
+    'world-brief': Object.freeze<WorldFactKey[]>([
+      'premise',
+      'worldview',
+      'terrain',
+      'geography',
+      'culture',
+      'ecology',
+    ]),
+    'art-direction': Object.freeze<WorldFactKey[]>(['mood', 'art_direction']),
+    'map-layout': Object.freeze<WorldFactKey[]>(['traversal', 'landmarks']),
+  });
+
+const FACT_MAX_LENGTH: Readonly<Record<WorldFactKey, number>> = Object.freeze({
+  premise: 240,
+  worldview: 240,
+  terrain: 200,
+  geography: 200,
+  culture: 240,
+  ecology: 200,
+  mood: 160,
+  art_direction: 240,
+  traversal: 200,
+  landmarks: 240,
+});
+
+const FACT_PROMPTS = Object.freeze(Object.fromEntries(
+  WORLD_CREATION_FACT_PROMPTS.map(({ fact, question }) => [fact, question]),
+) as Record<WorldFactKey, string>);
+
 export interface WorldCreationAssetHandoff {
   readonly profile: WorldAssetProfile;
+  readonly target: WorldCreationIntakeTarget;
+  readonly facts: ConfirmedWorldFacts;
   readonly description: string;
   readonly sessionRevision: number;
   readonly checkpoints: readonly ConfirmedDialogueCheckpoint[];
@@ -70,14 +121,35 @@ function dataUrl(bytes: Uint8Array): string {
 
 export function buildWorldCreationStyleSample(
   profile: WorldAssetProfile,
-  answers: Partial<Record<WorldCreationStage, string>>,
+  facts: ConfirmedWorldFacts,
 ) {
   return renderProfileReferenceScene(profile, JSON.stringify({
     profile,
-    worldBrief: answers['world-brief'] ?? '',
-    artDirection: answers['art-direction'] ?? '',
-    mapLayout: answers['map-layout'] ?? '',
+    worldBrief: `${facts.premise} ${facts.worldview} ${facts.culture} ${facts.ecology}`,
+    artDirection: `${facts.mood} ${facts.art_direction}`,
+    mapLayout: `${facts.terrain} ${facts.geography} ${facts.traversal} ${facts.landmarks}`,
   }));
+}
+
+function stageSummary(stage: WorldCreationStage, facts: ConfirmedWorldFacts, sampleNotes: string): string {
+  const factKeys = STAGE_FACT_KEYS[stage] ?? [];
+  if (factKeys.length === 0) return sampleNotes.trim();
+  return factKeys.map((fact) => facts[fact].trim()).join(' · ');
+}
+
+function generationDescription(facts: ConfirmedWorldFacts): string {
+  return [
+    `Premise: ${facts.premise}`,
+    `Worldview: ${facts.worldview}`,
+    `Terrain: ${facts.terrain}`,
+    `Geography: ${facts.geography}`,
+    `Culture: ${facts.culture}`,
+    `Ecology: ${facts.ecology}`,
+    `Mood: ${facts.mood}`,
+    `Art direction: ${facts.art_direction}`,
+    `Traversal: ${facts.traversal}`,
+    `Landmarks: ${facts.landmarks}`,
+  ].join('\n').slice(0, 2000);
 }
 
 function checkpointPrefix(stage: WorldCreationStage): string {
@@ -89,7 +161,9 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
     id: 'browser-world-session',
     profile: 'topdown-farm',
   }));
-  const [reply, setReply] = useState(STARTER_REPLIES['world-brief'] ?? '');
+  const [target, setTarget] = useState<WorldCreationIntakeTarget>('raspberry-pi-4b');
+  const [facts, setFacts] = useState<ConfirmedWorldFacts>(STARTER_FACTS);
+  const [reply, setReply] = useState('');
   const [answers, setAnswers] = useState<Partial<Record<WorldCreationStage, string>>>({});
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('Answer one question at a time. Nothing is frozen until you explicitly approve it.');
@@ -97,22 +171,36 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
   const dialogueStage = WORLD_CREATION_STAGES.indexOf(session.stage) <= WORLD_CREATION_STAGES.indexOf('style-sample');
   const completedStages = useMemo(() => new Set(session.checkpoints.map(({ stage }) => stage)), [session.checkpoints]);
   const styleSample = useMemo(
-    () => session.stage === 'style-sample' ? buildWorldCreationStyleSample(session.profile, answers) : null,
-    [session.stage, session.profile, answers],
+    () => session.stage === 'style-sample' ? buildWorldCreationStyleSample(session.profile, facts) : null,
+    [session.stage, session.profile, facts],
   );
+  const currentFactKeys = STAGE_FACT_KEYS[session.stage] ?? [];
+  const canConfirm = currentFactKeys.length > 0
+    ? currentFactKeys.every((fact) => facts[fact].trim().length > 0)
+    : reply.trim().length > 0;
 
   async function confirmCurrentStage() {
-    if (!dialogueStage || !reply.trim()) return;
+    if (!dialogueStage || !canConfirm) return;
     setBusy(true);
     try {
-      const normalized = reply.trim();
+      const normalizedFacts = {
+        ...facts,
+        ...Object.fromEntries(
+          currentFactKeys.map((fact) => [fact, facts[fact].trim()]),
+        ),
+      } as ConfirmedWorldFacts;
+      const normalized = stageSummary(session.stage, normalizedFacts, reply);
       const visualSampleSha256 = session.stage === 'style-sample' && styleSample
         ? await sha256Bytes(styleSample.pngBytes)
         : undefined;
       const snapshotSha256 = await sha256(JSON.stringify({
         profile: session.profile,
+        target,
         stage: session.stage,
-        answer: normalized,
+        facts: Object.fromEntries(
+          currentFactKeys.map((fact) => [fact, normalizedFacts[fact]]),
+        ),
+        ...(session.stage === 'style-sample' ? { sampleNotes: normalized } : {}),
         ...(visualSampleSha256 ? { visualSampleSha256 } : {}),
       }));
       const prefix = checkpointPrefix(session.stage);
@@ -125,16 +213,11 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
       });
       const nextAnswers = { ...answers, [session.stage]: normalized };
       setAnswers(nextAnswers);
+      setFacts(normalizedFacts);
       setSession(next);
       setReply(STARTER_REPLIES[next.stage] ?? '');
       if (next.stage === 'asset-generation' && next.phase !== 'blocked') {
         if (!visualSampleSha256) throw new Error('The approved intent preview digest is missing.');
-        const description = [
-          `World: ${nextAnswers['world-brief'] ?? ''}`,
-          `Art direction: ${nextAnswers['art-direction'] ?? ''}`,
-          `Layout: ${nextAnswers['map-layout'] ?? ''}`,
-          `Approved sample notes: ${nextAnswers['style-sample'] ?? ''}`,
-        ].join('\n').slice(0, 2000);
         const checkpoints = CONFIRMED_DIALOGUE_STAGES.map((stage) => {
           const checkpoint = next.checkpoints.find((candidate) => candidate.stage === stage);
           if (!checkpoint) throw new Error(`Missing confirmed ${stage} checkpoint.`);
@@ -142,7 +225,9 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
         });
         onReadyForAssets?.({
           profile: next.profile as WorldCreationAssetHandoff['profile'],
-          description,
+          target,
+          facts: Object.freeze({ ...normalizedFacts }),
+          description: generationDescription(normalizedFacts),
           sessionRevision: next.revision,
           checkpoints: Object.freeze(checkpoints),
           approvedIntentPreviewSha256: visualSampleSha256,
@@ -180,7 +265,9 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
         stage,
       });
       setSession(next);
-      setReply(answers[stage] ?? STARTER_REPLIES[stage] ?? '');
+      setReply(stage === 'style-sample'
+        ? answers[stage] ?? STARTER_REPLIES[stage] ?? ''
+        : '');
       setNotice(`Returned to ${WORLD_CREATION_STAGE_DESCRIPTORS[stage].label.toLowerCase()}. Later draft checkpoints were cleared.`);
     } catch (error) {
       setNotice(error instanceof WorldCreationError ? error.message : 'The earlier checkpoint could not be restored.');
@@ -240,14 +327,24 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
           <p className="creation-speaker">Mapsoo · {descriptor.label}</p>
           <h3>{descriptor.question}</h3>
           {session.stage === 'world-brief' && (
-            <label>
-              World profile
-              <select value={session.profile} onChange={(event) => changeProfile(event.target.value as WorldAssetProfile)}>
-                {Object.entries(PROFILE_LABELS).map(([profile, label]) => (
-                  <option key={profile} value={profile}>{label}</option>
-                ))}
-              </select>
-            </label>
+            <div className="two-column-fields">
+              <label>
+                World profile
+                <select value={session.profile} onChange={(event) => changeProfile(event.target.value as WorldAssetProfile)}>
+                  {Object.entries(PROFILE_LABELS).map(([profile, label]) => (
+                    <option key={profile} value={profile}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Runtime target
+                <select value={target} onChange={(event) => setTarget(event.target.value as WorldCreationIntakeTarget)}>
+                  <option value="raspberry-pi-4b">Raspberry Pi 4B</option>
+                  <option value="desktop">Desktop</option>
+                  <option value="web">Web</option>
+                </select>
+              </label>
+            </div>
           )}
           {dialogueStage ? (
             <>
@@ -269,12 +366,28 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
                   </figcaption>
                 </figure>
               )}
-              <label>
-                Your answer
-                <textarea rows={5} maxLength={2000} value={reply} onChange={(event) => setReply(event.target.value)} />
-              </label>
+              {currentFactKeys.map((fact) => (
+                <label key={fact}>
+                  <span>{FACT_PROMPTS[fact]}</span>
+                  <textarea
+                    rows={3}
+                    maxLength={FACT_MAX_LENGTH[fact]}
+                    value={facts[fact]}
+                    onChange={(event) => setFacts((current) => ({
+                      ...current,
+                      [fact]: event.target.value,
+                    }))}
+                  />
+                </label>
+              ))}
+              {session.stage === 'style-sample' && (
+                <label>
+                  Approval notes
+                  <textarea rows={4} maxLength={1000} value={reply} onChange={(event) => setReply(event.target.value)} />
+                </label>
+              )}
               <p className="creation-output-note">{descriptor.output}</p>
-              <button className="primary-action" type="button" disabled={busy || !reply.trim()} onClick={() => void confirmCurrentStage()}>
+              <button className="primary-action" type="button" disabled={busy || !canConfirm} onClick={() => void confirmCurrentStage()}>
                 <span>{busy ? 'Saving checkpoint…' : descriptor.confirmation}</span><span>→</span>
               </button>
             </>

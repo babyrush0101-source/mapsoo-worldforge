@@ -6,6 +6,13 @@ import {
 } from '../core/confirmed-generation-binding';
 import { bindGenerationRequestV2 } from '../core/generation-request-v2';
 import { extractCharacterIdentitySignature } from '../core/character-identity-signature';
+import {
+  createConfirmedWorldCreationIntake,
+  projectConfirmedWorldCreationIntake,
+  type ConfirmedWorldCreationIntake,
+  type ConfirmedWorldFacts,
+  type WorldCreationIntakeTarget,
+} from '../core/confirmed-world-creation-intake';
 import { extractEnvironmentArtSignature } from '../core/environment-art-signature';
 import {
   createExportedWorldReviewEvidence,
@@ -16,7 +23,11 @@ import {
   createWorldAssetRevision,
   type WorldAssetRevision,
 } from '../core/world-asset-revision';
-import type { WorldLayoutPlan } from '../core/world-layout-plan';
+import {
+  buildWorldLayoutPlanFromConfirmedIntake,
+  fingerprintWorldLayoutPlan,
+  type WorldLayoutPlan,
+} from '../core/world-layout-plan';
 import type {
   ReferenceImageDescriptor,
   ReferenceImageRole,
@@ -73,6 +84,27 @@ export interface GeneratedReferenceWorldPack {
   readonly environmentArtSignatureSha256: string;
   /** Binds the displayed pack preview to the exact runtime and visual asset revision under review. */
   readonly reviewEvidence: ExportedWorldReviewEvidence;
+}
+
+export interface GenerateConfirmedReferenceWorldPackInput {
+  readonly intakeId: string;
+  readonly sessionRevision: number;
+  readonly profile: ImplementedReferenceWorldProfile;
+  readonly target: WorldCreationIntakeTarget;
+  readonly seed: string;
+  readonly facts: ConfirmedWorldFacts;
+  readonly environment: LocalReferenceImage;
+  readonly character: LocalReferenceImage;
+  readonly approvedIntentPreviewSha256: string;
+  readonly completedAt: string;
+  readonly signal?: AbortSignal;
+}
+
+export interface GeneratedConfirmedReferenceWorldPack extends GeneratedReferenceWorldPack {
+  readonly confirmedIntake: ConfirmedWorldCreationIntake;
+  readonly confirmedIntakeSha256: string;
+  readonly layoutPlan: WorldLayoutPlan;
+  readonly layoutPlanSha256: string;
 }
 
 function abortIfNeeded(signal?: AbortSignal): void {
@@ -238,5 +270,73 @@ export async function generateReferenceWorldPack(input: GenerateReferenceWorldPa
     characterIdentitySignatureSha256: characterIdentity.signature_sha256,
     environmentArtSignatureSha256: environmentArt.signature_sha256,
     reviewEvidence,
+  });
+}
+
+export async function generateConfirmedReferenceWorldPack(
+  input: GenerateConfirmedReferenceWorldPackInput,
+): Promise<GeneratedConfirmedReferenceWorldPack> {
+  abortIfNeeded(input.signal);
+  const characterIdentity = await extractCharacterIdentitySignature(
+    await decodeReferenceImageRgba(
+      input.character.bytes,
+      input.character.descriptor.mediaType,
+    ),
+  );
+  const confirmedIntake = await createConfirmedWorldCreationIntake({
+    intake_id: input.intakeId,
+    session_revision: input.sessionRevision,
+    profile: input.profile,
+    target: input.target,
+    seed: input.seed,
+    facts: input.facts,
+    character_source: {
+      reference_id: input.character.descriptor.id,
+      identity_digest_sha256: characterIdentity.signature_sha256,
+    },
+    references: [
+      input.environment.descriptor,
+      input.character.descriptor,
+    ],
+    approved_intent_preview_sha256: input.approvedIntentPreviewSha256,
+  });
+  const [projection, layoutPlan] = await Promise.all([
+    projectConfirmedWorldCreationIntake(confirmedIntake),
+    buildWorldLayoutPlanFromConfirmedIntake(confirmedIntake),
+  ]);
+  abortIfNeeded(input.signal);
+  const generated = await generateReferenceWorldPack({
+    profile: input.profile,
+    environment: input.environment,
+    character: input.character,
+    worldId: projection.generation_request.id,
+    description: projection.generation_request.description,
+    seed: projection.generation_request.seed,
+    completedAt: input.completedAt,
+    confirmation: {
+      sessionRevision: confirmedIntake.session_revision,
+      checkpoints: confirmedIntake.checkpoints.map(({ stage, snapshot_sha256 }) => ({
+        stage,
+        snapshotSha256: snapshot_sha256,
+      })),
+    },
+    approvedIntentPreviewSha256: confirmedIntake.approved_intent_preview_sha256,
+    layoutPlan,
+    signal: input.signal,
+  });
+  if (
+    generated.characterIdentitySignatureSha256 !== characterIdentity.signature_sha256
+    || generated.confirmationBinding?.binding_sha256
+      !== projection.generation_binding.binding_sha256
+    || !generated.layoutPlanEmbeddedInPack
+  ) {
+    throw new Error('Confirmed world generation did not preserve its intake and layout bindings.');
+  }
+  return Object.freeze({
+    ...generated,
+    confirmedIntake,
+    confirmedIntakeSha256: projection.intake_sha256,
+    layoutPlan,
+    layoutPlanSha256: await fingerprintWorldLayoutPlan(layoutPlan),
   });
 }

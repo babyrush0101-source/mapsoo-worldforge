@@ -7,7 +7,11 @@ import type { BrowserReferenceImage } from '../../adapters/read-reference-image-
 import { extractCharacterIdentitySignature } from '../../core/character-identity-signature';
 import { createConfirmedWorldCreationIntake } from '../../core/confirmed-world-creation-intake';
 import { buildWorldLayoutPlanFromConfirmedIntake } from '../../core/world-layout-plan';
-import { generateReferenceWorldPack, type ImplementedReferenceWorldProfile } from './generate-reference-world-pack';
+import {
+  generateConfirmedReferenceWorldPack,
+  generateReferenceWorldPack,
+  type ImplementedReferenceWorldProfile,
+} from './generate-reference-world-pack';
 
 async function sha256(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', bytes.slice().buffer);
@@ -90,6 +94,63 @@ const confirmation = {
 };
 
 describe('reference-world profile router', () => {
+  it('turns structured dialogue facts into the exact intake and embedded Godot layout', async () => {
+    const [environment, character] = await references();
+    const generated = await generateConfirmedReferenceWorldPack({
+      intakeId: 'browser-confirmed-river-world',
+      sessionRevision: 4,
+      profile: 'topdown-farm',
+      target: 'raspberry-pi-4b',
+      seed: 'browser-confirmed-seed',
+      facts: {
+        premise: 'Reconnect a riverside settlement through courier work.',
+        worldview: 'Seasonal floods made mutual aid the central civic rule.',
+        terrain: 'Riverbanks, bridges, gardens and a climbable hill.',
+        geography: 'The ferry spawn connects a market and waterwheel to the hill gate exit.',
+        culture: 'Ferry workers, growers and craftspeople share timber public spaces.',
+        ecology: 'Reeds, willow trees, birds, drifting leaves and morning mist.',
+        mood: 'Hopeful, calm and readable.',
+        art_direction: 'Warm hand-painted pixels, teal water and amber landmarks.',
+        traversal: 'Walk from the ferry through two checkpoints to the hill gate.',
+        landmarks: 'Old ferry; waterwheel market; hilltop gate',
+      },
+      environment,
+      character,
+      approvedIntentPreviewSha256: 'e'.repeat(64),
+      completedAt: '2026-07-20T12:00:00.000Z',
+    });
+
+    expect(generated.confirmedIntake).toMatchObject({
+      intake_id: 'browser-confirmed-river-world',
+      profile: 'topdown-farm',
+      target: 'raspberry-pi-4b',
+      seed: 'browser-confirmed-seed',
+      facts: {
+        geography: 'The ferry spawn connects a market and waterwheel to the hill gate exit.',
+        landmarks: 'Old ferry; waterwheel market; hilltop gate',
+      },
+    });
+    expect(generated.confirmedIntakeSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(generated.layoutPlanSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(generated.layoutPlan).toMatchObject({
+      profile: 'topdown-farm',
+      source: {
+        intake_id: generated.confirmedIntake.intake_id,
+        intake_sha256: generated.confirmedIntakeSha256,
+        seed: generated.confirmedIntake.seed,
+      },
+    });
+    expect(generated.confirmationBinding?.binding_sha256)
+      .toBe(generated.assetRevision.dialogue_binding_sha256);
+    expect(generated.reviewEvidence.approved_intent_preview_sha256).toBe('e'.repeat(64));
+
+    const zip = await JSZip.loadAsync(generated.pack.bytes);
+    const layoutEntry = Object.values(zip.files)
+      .find(({ name }) => name.endsWith('/world-layout-plan.json'));
+    expect(layoutEntry).toBeDefined();
+    expect(JSON.parse(await layoutEntry!.async('text'))).toEqual(generated.layoutPlan);
+  });
+
   it('embeds the confirmed deterministic layout across all four pack profiles', async () => {
     const [environment, character] = await references();
     for (const profile of [

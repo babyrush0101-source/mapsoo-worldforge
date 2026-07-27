@@ -29,6 +29,16 @@ The current **unpublished Alpha12 development candidate** expands that workflow 
 
 The intended user path is: **world brief → art direction → map layout → style sample → complete assets → Godot map → enter the world**. The first four stages run in the browser; complete packs, trusted Godot importers, controllers, and headless playability tests exist for all four profiles. The candidate is not yet a public release and physical Raspberry Pi 4B performance validation remains pending.
 
+The browser conversation now records ten explicit facts instead of treating
+four free-text paragraphs as a map: premise, worldview, terrain, geography,
+culture, ecology, mood, art direction, traversal, and landmarks. The selected
+profile and target device are locked after the fourth round. Once the user
+adds the environment and character references and confirms their rights, the
+application creates the same canonical `ConfirmedWorldCreationIntake` and
+`WorldLayoutPlan` used by the CLI, then embeds that layout in the generated
+Godot pack. A dialogue answer can no longer be displayed as confirmed while a
+different default layout silently enters the ZIP.
+
 The fourth-round image is explicitly an **intent preview**, not final artwork.
 After references and complete assets are generated, the browser instead shows
 the exact `scene.previewAssetId` PNG included in the downloadable pack. An

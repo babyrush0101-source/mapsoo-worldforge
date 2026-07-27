@@ -368,10 +368,9 @@ export function App() {
           key={creationHandoff?.checkpoints.map(({ snapshotSha256 }) => snapshotSha256).join(':') ?? 'standalone-reference-generator'}
           initialProfile={creationHandoff?.profile}
           initialDescription={creationHandoff?.description}
-          initialConfirmation={creationHandoff ? {
-            sessionRevision: creationHandoff.sessionRevision,
-            checkpoints: creationHandoff.checkpoints,
-          } : undefined}
+          initialWorldFacts={creationHandoff?.facts}
+          initialTarget={creationHandoff?.target}
+          initialSessionRevision={creationHandoff?.sessionRevision}
           initialApprovedIntentPreviewSha256={creationHandoff?.approvedIntentPreviewSha256}
         />
 

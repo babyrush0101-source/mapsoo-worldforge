@@ -2,12 +2,17 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 
 import { readBrowserReferenceImage, type BrowserReferenceImage } from '../../adapters/read-reference-image-file';
 import type { ConfirmedDialogueInput } from '../../core/confirmed-generation-binding';
+import type {
+  ConfirmedWorldFacts,
+  WorldCreationIntakeTarget,
+} from '../../core/confirmed-world-creation-intake';
 import {
   freezeWorldAssetRevision,
   type FrozenWorldLaunchBinding,
   type WorldAssetRevision,
 } from '../../core/world-asset-revision';
 import {
+  generateConfirmedReferenceWorldPack,
   generateReferenceWorldPack,
   type DownloadableWorldPack,
   type ImplementedReferenceWorldProfile,
@@ -20,6 +25,9 @@ interface ReferenceWorldGeneratorProps {
   readonly initialDescription?: string;
   readonly initialConfirmation?: ConfirmedDialogueInput;
   readonly initialApprovedIntentPreviewSha256?: string;
+  readonly initialWorldFacts?: ConfirmedWorldFacts;
+  readonly initialTarget?: WorldCreationIntakeTarget;
+  readonly initialSessionRevision?: number;
 }
 
 const PROFILE_COPY = Object.freeze({
@@ -78,6 +86,9 @@ export function ReferenceWorldGenerator({
   initialDescription = 'A welcoming riverside world with readable paths, landmarks and a distinctive player character.',
   initialConfirmation,
   initialApprovedIntentPreviewSha256,
+  initialWorldFacts,
+  initialTarget = 'raspberry-pi-4b',
+  initialSessionRevision,
 }: ReferenceWorldGeneratorProps) {
   const abortRef = useRef<AbortController | null>(null);
   const generationRef = useRef(0);
@@ -88,6 +99,7 @@ export function ReferenceWorldGenerator({
   const [worldId, setWorldId] = useState('my-2d-world');
   const [description, setDescription] = useState(initialDescription);
   const [seed, setSeed] = useState('world-001');
+  const [target, setTarget] = useState<WorldCreationIntakeTarget>(initialTarget);
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [state, setState] = useState<GeneratorState>('idle');
   const [notice, setNotice] = useState('Choose two references to begin.');
@@ -101,6 +113,8 @@ export function ReferenceWorldGenerator({
   const [environmentArtSha256, setEnvironmentArtSha256] = useState<string | null>(null);
   const [reviewBindingSha256, setReviewBindingSha256] = useState<string | null>(null);
   const [exportedPreviewSha256, setExportedPreviewSha256] = useState<string | null>(null);
+  const [confirmedIntakeSha256, setConfirmedIntakeSha256] = useState<string | null>(null);
+  const [layoutPlanSha256, setLayoutPlanSha256] = useState<string | null>(null);
 
   useEffect(() => () => {
     abortRef.current?.abort();
@@ -126,6 +140,8 @@ export function ReferenceWorldGenerator({
     setEnvironmentArtSha256(null);
     setReviewBindingSha256(null);
     setExportedPreviewSha256(null);
+    setConfirmedIntakeSha256(null);
+    setLayoutPlanSha256(null);
     replacePreviewUrl(null);
     setState('idle');
     setNotice(nextNotice);
@@ -162,11 +178,30 @@ export function ReferenceWorldGenerator({
     setPack(null);
     setNotice(`Generating the complete ${PROFILE_JOB_LABEL[profile]} asset graph…`);
     try {
-      const generated = await generateReferenceWorldPack({
-        profile, environment, character, worldId, description, seed,
-        completedAt: new Date().toISOString(), confirmation: initialConfirmation, signal: controller.signal,
-        approvedIntentPreviewSha256: initialApprovedIntentPreviewSha256,
-      });
+      let confirmedGenerated:
+        | Awaited<ReturnType<typeof generateConfirmedReferenceWorldPack>>
+        | undefined;
+      const generated = initialWorldFacts
+        && initialSessionRevision !== undefined
+        && initialApprovedIntentPreviewSha256
+        ? confirmedGenerated = await generateConfirmedReferenceWorldPack({
+          intakeId: worldId,
+          sessionRevision: initialSessionRevision,
+          profile,
+          target,
+          seed,
+          facts: initialWorldFacts,
+          environment,
+          character,
+          approvedIntentPreviewSha256: initialApprovedIntentPreviewSha256,
+          completedAt: new Date().toISOString(),
+          signal: controller.signal,
+        })
+        : await generateReferenceWorldPack({
+          profile, environment, character, worldId, description, seed,
+          completedAt: new Date().toISOString(), confirmation: initialConfirmation, signal: controller.signal,
+          approvedIntentPreviewSha256: initialApprovedIntentPreviewSha256,
+        });
       if (controller.signal.aborted || token !== generationRef.current) return;
       const previewBuffer = new ArrayBuffer(generated.previewBytes.byteLength);
       new Uint8Array(previewBuffer).set(generated.previewBytes);
@@ -180,6 +215,8 @@ export function ReferenceWorldGenerator({
       setEnvironmentArtSha256(generated.environmentArtSignatureSha256);
       setReviewBindingSha256(generated.reviewEvidence.review_binding_sha256);
       setExportedPreviewSha256(generated.reviewEvidence.preview.sha256);
+      setConfirmedIntakeSha256(confirmedGenerated?.confirmedIntakeSha256 ?? null);
+      setLayoutPlanSha256(confirmedGenerated?.layoutPlanSha256 ?? null);
       setState('ready');
       setNotice(`Complete Pack ${generated.packSchemaVersion} ready for visual review: ${generated.generatedFileCount} generated files, ${generated.requiredRoleCount} required roles, ${generated.characterClipCount} character clips.`);
     } catch (error) {
@@ -233,7 +270,7 @@ export function ReferenceWorldGenerator({
             </label>
           </div>
           <label>World profile
-            <select value={profile} onChange={(event) => {
+            <select disabled={Boolean(initialWorldFacts)} value={profile} onChange={(event) => {
               const next = event.target.value as ImplementedReferenceWorldProfile;
               setProfile(next);
               clearGeneratedResult('Profile changed. Generate a new pack for this world type.');
@@ -248,8 +285,27 @@ export function ReferenceWorldGenerator({
             <label>World ID<input value={worldId} maxLength={80} onChange={(event) => setWorldId(event.target.value)} /></label>
             <label>Seed<input value={seed} maxLength={160} onChange={(event) => setSeed(event.target.value)} /></label>
           </div>
+          <label>Runtime target
+            <select
+              disabled={Boolean(initialWorldFacts)}
+              value={target}
+              onChange={(event) => setTarget(event.target.value as WorldCreationIntakeTarget)}
+            >
+              <option value="raspberry-pi-4b">Raspberry Pi 4B</option>
+              <option value="desktop">Desktop</option>
+              <option value="web">Web</option>
+            </select>
+          </label>
           <p className="reference-generator-status">World ID and seed are public: they are written into the ZIP name, manifest, README, and receipt.</p>
-          <label>Description<textarea rows={4} maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
+          <label>{initialWorldFacts ? 'Confirmed world facts' : 'Description'}
+            <textarea
+              readOnly={Boolean(initialWorldFacts)}
+              rows={initialWorldFacts ? 8 : 4}
+              maxLength={2000}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </label>
           <label className="rights-confirmation">
             <input type="checkbox" checked={rightsConfirmed} onChange={(event) => setRightsConfirmed(event.target.checked)} />
             <span>I own both references and allow generative adaptation, redistribution, and CC0 dedication of the newly generated output.</span>
@@ -288,6 +344,12 @@ export function ReferenceWorldGenerator({
             <span>{reviewBindingSha256
               ? `Review chain ${reviewBindingSha256.slice(0, 12)}… · intent + runtime + visual assets`
               : 'No review chain yet'}</span>
+            <span>{confirmedIntakeSha256
+              ? `Confirmed intake ${confirmedIntakeSha256.slice(0, 12)}… · exact structured conversation`
+              : 'No structured intake binding yet'}</span>
+            <span>{layoutPlanSha256
+              ? `World layout ${layoutPlanSha256.slice(0, 12)}… · embedded in Godot pack`
+              : 'No confirmed layout binding yet'}</span>
             <span>{frozenLaunch
               ? `Frozen launch ${frozenLaunch.launch_binding_sha256.slice(0, 12)}…`
               : 'Awaiting visual approval'}</span>
