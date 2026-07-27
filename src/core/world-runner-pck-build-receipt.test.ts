@@ -24,6 +24,11 @@ function receipt() {
       platform: 'win32',
       architecture: 'x64',
     },
+    launch_binding: {
+      status: 'bound',
+      spawn_id: 'world-entry',
+      player_slot_id: 'player-one',
+    },
     character_binding: {
       embedded: true,
       profile_revision_id: 'created-character-side-platformer',
@@ -46,7 +51,13 @@ describe('World Runner PCK build receipt 1.0', () => {
     expect(value.physical_raspberry_pi_tested).toBe(false);
   });
 
-  it('rejects a false physical Pi claim and partial character evidence', () => {
+  it('keeps receipts without portable launch evidence backward compatible', () => {
+    const value = receipt();
+    const { launch_binding: _launchBinding, ...legacyReceipt } = value;
+    expect(validate(legacyReceipt), JSON.stringify(validate.errors)).toBe(true);
+  });
+
+  it('rejects false claims, partial evidence and invalid portable launch IDs', () => {
     expect(validate({
       ...receipt(),
       physical_raspberry_pi_tested: true,
@@ -57,6 +68,21 @@ describe('World Runner PCK build receipt 1.0', () => {
         embedded: true,
         profile_revision_id: 'created-character-side-platformer',
         revision_sha256: SHA,
+      },
+    })).toBe(false);
+    expect(validate({
+      ...receipt(),
+      launch_binding: {
+        status: 'bound',
+        spawn_id: 'World Entry',
+        player_slot_id: 'player-one',
+      },
+    })).toBe(false);
+    expect(validate({
+      ...receipt(),
+      launch_binding: {
+        status: 'bound',
+        spawn_id: 'world-entry',
       },
     })).toBe(false);
   });

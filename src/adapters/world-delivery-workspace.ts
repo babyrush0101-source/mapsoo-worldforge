@@ -77,6 +77,11 @@ export interface GodotHeadlessSmokeReport {
   readonly world_id: string;
   readonly pack_sha256: string;
   readonly runtime_artifact_sha256: string;
+  readonly launch_binding?: Readonly<{
+    status: 'bound';
+    spawn_id: string;
+    player_slot_id: string;
+  }>;
   readonly character_binding?: Readonly<{
     status: 'bound';
     profile_revision_id: string;
@@ -409,6 +414,7 @@ function materializeVerificationReport(value: unknown): GodotHeadlessSmokeReport
     'world_id',
     'pack_sha256',
     'runtime_artifact_sha256',
+    ...('launch_binding' in value ? ['launch_binding'] : []),
     ...('character_binding' in value ? ['character_binding'] : []),
   ], 'Godot headless smoke report');
   if (
@@ -425,6 +431,27 @@ function materializeVerificationReport(value: unknown): GodotHeadlessSmokeReport
     || !/^[a-f0-9]{64}$/.test(value.runtime_artifact_sha256)
   ) {
     throw new Error('Godot headless smoke report values are invalid.');
+  }
+  if ('launch_binding' in value) {
+    if (!isRecord(value.launch_binding)) {
+      throw new Error('Godot headless smoke launch binding must be an object.');
+    }
+    exactKeys(value.launch_binding, [
+      'status',
+      'spawn_id',
+      'player_slot_id',
+    ], 'Godot headless smoke launch binding');
+    if (
+      value.launch_binding.status !== 'bound'
+      || typeof value.launch_binding.spawn_id !== 'string'
+      || value.launch_binding.spawn_id.length > 80
+      || !SAFE_ID.test(value.launch_binding.spawn_id)
+      || typeof value.launch_binding.player_slot_id !== 'string'
+      || value.launch_binding.player_slot_id.length > 80
+      || !SAFE_ID.test(value.launch_binding.player_slot_id)
+    ) {
+      throw new Error('Godot headless smoke launch binding values are invalid.');
+    }
   }
   if ('character_binding' in value) {
     if (!isRecord(value.character_binding)) {
@@ -513,6 +540,15 @@ export async function finalizeWorldRunnerDelivery(
     ]);
   const revision = materializeCharacterProfileRevision(revisionValue);
   const report = materializeVerificationReport(reportValue);
+  if (
+    !report.launch_binding
+    || report.launch_binding.spawn_id !== input.spawnId
+    || report.launch_binding.player_slot_id !== input.playerSlotId
+  ) {
+    throw new Error(
+      'Headless smoke report is missing or does not bind the requested launch spawn and player slot.',
+    );
+  }
   const revisionPath = portableRelativePath(
     input.characterRevisionPath,
     'Character revision',

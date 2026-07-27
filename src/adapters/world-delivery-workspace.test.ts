@@ -332,6 +332,11 @@ describe('World Runner delivery finalization', () => {
       world_id: 'mist-harbor-world',
       pack_sha256: 'a'.repeat(64),
       runtime_artifact_sha256: 'b'.repeat(64),
+      launch_binding: {
+        status: 'bound',
+        spawn_id: 'world-entry',
+        player_slot_id: 'player-one',
+      },
       character_binding: {
         status: 'bound',
         profile_revision_id: 'test-character',
@@ -340,6 +345,16 @@ describe('World Runner delivery finalization', () => {
       },
     };
     expect(validate(valid)).toBe(true);
+    const { launch_binding: _launchBinding, ...legacyReport } = valid;
+    expect(validate(legacyReport)).toBe(true);
+    expect(validate({
+      ...valid,
+      launch_binding: {
+        status: 'bound',
+        spawn_id: 'World Entry',
+        player_slot_id: 'player-one',
+      },
+    })).toBe(false);
     expect(validate({ ...valid, private_product_id: 'must-not-cross' })).toBe(false);
     expect(validate({ ...valid, passed: false })).toBe(false);
   });
@@ -372,6 +387,11 @@ describe('World Runner delivery finalization', () => {
       world_id: contract.world.world_id,
       pack_sha256: sha(pack),
       runtime_artifact_sha256: sha(pck),
+      launch_binding: {
+        status: 'bound',
+        spawn_id: 'world-entry',
+        player_slot_id: 'player-one',
+      },
       character_binding: {
         status: 'bound',
         profile_revision_id: revision.profile_revision_id,
@@ -414,6 +434,57 @@ describe('World Runner delivery finalization', () => {
     expect(delivery.character_profile_revision.identity_digest_sha256)
       .toBe(intake.character_source.identity_digest_sha256);
     expect(JSON.parse(await readFile(output, 'utf8'))).toEqual(delivery);
+
+    await writeFile(resolve(bundle, 'evidence/smoke.json'), `${JSON.stringify({
+      ...report,
+      launch_binding: {
+        ...report.launch_binding,
+        spawn_id: 'different-entry',
+      },
+    })}\n`);
+    await expect(finalizeWorldRunnerDelivery({
+      intake,
+      bundleRoot: bundle,
+      worldPackPath: 'packs/world.zip',
+      runtimeArtifact: {
+        kind: 'godot-pck',
+        architecture: 'arm64',
+        path: 'runtime/world.pck',
+      },
+      runtimeContractPath: 'runtime/contract.json',
+      characterRevisionPath: 'characters/revision.json',
+      verificationReportPath: 'evidence/smoke.json',
+      deliveryId: 'mist-harbor-delivery-two',
+      spawnId: 'world-entry',
+      playerSlotId: 'player-one',
+      outputPath: resolve(root, 'different-delivery.json'),
+    })).rejects.toThrow(/requested launch spawn and player slot/u);
+
+    const {
+      launch_binding: _launchBinding,
+      ...reportWithoutLaunchBinding
+    } = report;
+    await writeFile(
+      resolve(bundle, 'evidence/smoke.json'),
+      `${JSON.stringify(reportWithoutLaunchBinding)}\n`,
+    );
+    await expect(finalizeWorldRunnerDelivery({
+      intake,
+      bundleRoot: bundle,
+      worldPackPath: 'packs/world.zip',
+      runtimeArtifact: {
+        kind: 'godot-pck',
+        architecture: 'arm64',
+        path: 'runtime/world.pck',
+      },
+      runtimeContractPath: 'runtime/contract.json',
+      characterRevisionPath: 'characters/revision.json',
+      verificationReportPath: 'evidence/smoke.json',
+      deliveryId: 'mist-harbor-delivery-three',
+      spawnId: 'world-entry',
+      playerSlotId: 'player-one',
+      outputPath: resolve(root, 'missing-launch-delivery.json'),
+    })).rejects.toThrow(/missing or does not bind/u);
   });
 
   it('rejects a changed atlas', async () => {
@@ -447,6 +518,11 @@ describe('World Runner delivery finalization', () => {
         world_id: contract.world.world_id,
         pack_sha256: sha(pack),
         runtime_artifact_sha256: 'f'.repeat(64),
+        launch_binding: {
+          status: 'bound',
+          spawn_id: 'world-entry',
+          player_slot_id: 'player-one',
+        },
       })),
     ]);
     await expect(finalizeWorldRunnerDelivery({
@@ -506,6 +582,11 @@ describe('World Runner delivery finalization', () => {
         world_id: contract.world.world_id,
         pack_sha256: sha(pack),
         runtime_artifact_sha256: 'f'.repeat(64),
+        launch_binding: {
+          status: 'bound',
+          spawn_id: 'world-entry',
+          player_slot_id: 'player-one',
+        },
       })),
     ]);
     await expect(finalizeWorldRunnerDelivery({

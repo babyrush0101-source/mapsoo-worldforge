@@ -1,7 +1,8 @@
 # Operator-model golden sample
 
-Status: **complete real model candidate and Godot traversal proof; human art,
-rights, exact Godot framebuffer, and physical Raspberry Pi approval pending**
+Status: **complete real model candidate, standard internal review pack/PCK, and
+exact Godot traversal proof; human art, rights, and physical Raspberry Pi
+approval pending**
 
 This proof answers a narrower but essential question than the synthetic Pack
 1.0 fixture: can one confirmed neutral world identity produce every canonical
@@ -50,7 +51,8 @@ The source and normalized bitmaps remain `UNRELEASED` and are not committed.
 
 ## What the live run exposed
 
-Eleven model requests were needed for the nine canonical tasks:
+Fourteen model requests were needed for the nine canonical tasks and subsequent
+art corrections:
 
 1. the terrain request returned six attractive subjects in reading order but
    not inside the requested engineering cells;
@@ -58,7 +60,13 @@ Eleven model requests were needed for the nine canonical tasks:
    82-pixel fragment;
 3. the first player request returned only 18 of the required 28 poses;
 4. the second player request returned 27 poses;
-5. a targeted correction supplied the 28th pose.
+5. a targeted correction supplied the 28th pose;
+6. the first foreground correction painted a transparency checkerboard and was
+   rejected before admission;
+7. a chroma-keyed foreground correction cleared the spawn and exit but required
+   soft-matte despill before it was visually clean;
+8. a direction-specific player correction still failed to make every left pose
+   face left and was not admitted.
 
 This is why a user-facing “generate my world” action should be one job but not
 one assumed-perfect image response. The Agent must retain the confirmed world
@@ -96,11 +104,19 @@ Both runs loaded five background planes, six terrain roles, fourteen prop
 roles and the 28-pose character atlas. A real `CharacterBody2D` settled on the
 world floor, played the run-row cells and reached the declared right-side exit.
 
-The deterministic composite is the current visual-review artifact. The local
-headless traversal run did not retain a Godot framebuffer PNG, so this proof
-does not claim a hash-bound Godot render for the exact Blue Harbor candidate.
-The earlier four-profile candidates still retain their separately bound Godot
-4.3/4.7 renders.
+The final nine-task inventory passed the standard production-art run-set
+verifier and produced an internal Pack 0.7 review archive at SHA-256
+`7303221de8cb88f3e3c9580430d3aa9f26cc74609427ca4dc510047fbbe07694`.
+Godot imported that archive and passed the Pack 0.7 playable smoke. The exact
+World Runner PCK was rebuilt byte-identically at 826,272 bytes and SHA-256
+`06aab6d371987f9dca4f479923edb0b0c96484d92d3e87941a34ed4d52e7ec06`.
+
+Windowed OpenGL3 captures from Godot 4.3 and 4.7 were byte-identical:
+`1280 x 720`, 1,349,106 bytes, SHA-256
+`bfc6413fc8948f0634d56c2e86799a919ad8942e0304ff2b4fe992781f9c6c47`.
+Godot reopened the saved PNG, the host decoded it independently, and both
+receipts matched the host hash. A targeted pixel audit found zero strong or
+moderate magenta spill pixels.
 
 ## Honest review result
 
@@ -115,8 +131,10 @@ Current AI pre-review:
 - character left/right direction semantics: revise;
 - temporal animation quality: review;
 - terrain and prop semantic ordering: review;
-- foreground coverage at spawn and exit: revise;
+- foreground coverage at spawn and exit: pass after revision;
 - art-to-collision alignment: pending;
+- standard run-set, Pack 0.7 and reproducible World Runner PCK: technical pass;
+- exact Godot 4.3/4.7 framebuffer binding: pass;
 - human art approval: pending;
 - redistribution rights: pending;
 - physical Raspberry Pi 4B: pending.

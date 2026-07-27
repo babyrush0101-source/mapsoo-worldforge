@@ -31,6 +31,10 @@ const PACKER_SCRIPT = join(REPOSITORY_ROOT, 'godot', 'tests', 'build_world_runne
 const RUNTIME_ROOT = join(REPOSITORY_ROOT, 'godot', 'addons', 'mapsoo_importer', 'runtime');
 const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
+const SEMVER = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
+const DEFAULT_SPAWN_ID = 'player-spawn';
+const DEFAULT_PLAYER_SLOT_ID = 'player';
+const LAUNCH_BINDING_FILE = 'world-runner-launch-binding.json';
 const SAFE_PROFILES = new Set([
   'side-platformer',
   'topdown-farm',
@@ -95,6 +99,14 @@ function exactKeys(value, expected, label) {
       || JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...expected].sort())) {
     throw new Error(`${label} has unexpected fields.`);
   }
+}
+
+function portableId(value, fallback, label) {
+  const result = value === undefined ? fallback : String(value);
+  if (!SAFE_ID.test(result) || result.length > 80) {
+    throw new Error(`${label} must use bounded lowercase kebab-case.`);
+  }
+  return result;
 }
 
 function canonicalJson(value) {
@@ -316,7 +328,7 @@ async function verifyManagedImport(importedWorldDir, worldId, manifestRecord) {
       || state.manifest_sha256 !== manifestRecord.sha256
       || state.importer.id !== 'mapsoo_importer'
       || typeof state.importer.version !== 'string'
-      || !/^\d+\.\d+\.\d+$/u.test(state.importer.version)
+      || !SEMVER.test(state.importer.version)
       || typeof state.godot_serialization !== 'string'
       || !/^4\.(?:3|[4-9]|\d{2,})$/u.test(state.godot_serialization)
       || !Number.isSafeInteger(state.cell_count) || state.cell_count < 0
@@ -449,6 +461,20 @@ async function copyTrustedProject(stagingRoot, managed, importedWorldDir, worldI
   return records;
 }
 
+async function copyLaunchBinding(stagingRoot, launchBinding, records) {
+  const path = join(stagingRoot, LAUNCH_BINDING_FILE);
+  const bytes = Buffer.from(`${JSON.stringify({
+    schema_version: '1.0.0',
+    document_type: 'world-runner-launch-binding',
+    status: 'bound',
+    spawn_id: launchBinding.spawnId,
+    player_slot_id: launchBinding.playerSlotId,
+  }, null, 2)}\n`, 'utf8');
+  await writeFile(path, bytes, { flag: 'wx' });
+  records.push({ source: path, target: `res://${LAUNCH_BINDING_FILE}` });
+  records.sort((left, right) => left.target.localeCompare(right.target, 'en'));
+}
+
 async function inspectCharacterBinding(bundleRoot, revisionInput, atlasInput, profile) {
   if (!revisionInput && !atlasInput) return null;
   if (!revisionInput || !atlasInput) {
@@ -551,6 +577,14 @@ export async function inspectWorldRunnerPckInput(input) {
     input.characterAtlasPath,
     manifest.profile,
   );
+  const launchBinding = Object.freeze({
+    spawnId: portableId(input.spawnId, DEFAULT_SPAWN_ID, 'Spawn ID'),
+    playerSlotId: portableId(
+      input.playerSlotId,
+      DEFAULT_PLAYER_SLOT_ID,
+      'Player slot ID',
+    ),
+  });
   return Object.freeze({
     bundleRoot,
     worldId,
@@ -562,6 +596,7 @@ export async function inspectWorldRunnerPckInput(input) {
     godotSerialization: managed.state.godot_serialization,
     managed,
     characterBinding,
+    launchBinding,
   });
 }
 
@@ -598,6 +633,7 @@ export async function buildWorldRunnerPck(input) {
       inspected.worldId,
     );
     await copyCharacterBinding(stagingRoot, inspected.characterBinding, inventory);
+    await copyLaunchBinding(stagingRoot, inspected.launchBinding, inventory);
     const inventoryPath = join(temporary, 'inventory.json');
     await writeFile(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`, { flag: 'wx' });
     const buildRun = await runGodot(godotBin, [
@@ -626,6 +662,8 @@ export async function buildWorldRunnerPck(input) {
       '--',
       `--world-id=${inspected.worldId}`,
       `--pack-sha256=${inspected.packSha256}`,
+      `--spawn-id=${inspected.launchBinding.spawnId}`,
+      `--player-slot-id=${inspected.launchBinding.playerSlotId}`,
       ...characterArguments,
       '--delivery-smoke=true',
     ], 'Packaged world headless smoke');
@@ -642,11 +680,28 @@ export async function buildWorldRunnerPck(input) {
       `pack_sha256=${inspected.packSha256}`,
       `profile=${inspected.profile}`,
       `scene=res://mapsoo_imports/${inspected.worldId}/${inspected.worldId}.world.tscn`,
+      'launch_binding=bound',
+      `spawn_id=${inspected.launchBinding.spawnId}`,
+      `player_slot_id=${inspected.launchBinding.playerSlotId}`,
       characterMarker,
       'physical_raspberry_pi=not-tested',
     ].join(' ');
     if (!smokeRun.output.split(/\r?\n/u).includes(expectedMarker)) {
-      throw new Error('Packaged world smoke did not emit the exact delivery marker.');
+      const failureMarker = smokeRun.output
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .find((line) => line.includes('MAPSOO_WORLD_RUNNER_PCK_FAILURE'));
+      const observedMarker = smokeRun.output
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .find((line) => line.startsWith('MAPSOO_WORLD_RUNNER_PCK_OK'));
+      throw new Error(
+        `Packaged world smoke did not emit the exact delivery marker.${
+          failureMarker ? ` ${failureMarker}` : ''
+        }${
+          observedMarker ? ` Observed: ${observedMarker}` : ''
+        }`,
+      );
     }
     const report = {
       schema_version: '1.0.0',
@@ -656,6 +711,11 @@ export async function buildWorldRunnerPck(input) {
       world_id: inspected.worldId,
       pack_sha256: inspected.packSha256,
       runtime_artifact_sha256: runtimeArtifactSha256,
+      launch_binding: {
+        status: 'bound',
+        spawn_id: inspected.launchBinding.spawnId,
+        player_slot_id: inspected.launchBinding.playerSlotId,
+      },
       character_binding: inspected.characterBinding
         ? {
           status: 'bound',
@@ -682,6 +742,11 @@ export async function buildWorldRunnerPck(input) {
         godot_version: godotVersion,
         platform: process.platform,
         architecture: process.arch,
+      },
+      launch_binding: {
+        status: 'bound',
+        spawn_id: inspected.launchBinding.spawnId,
+        player_slot_id: inspected.launchBinding.playerSlotId,
       },
       character_binding: inspected.characterBinding
         ? {

@@ -139,6 +139,7 @@ function sanitizeAlpha(image: Raster, task: ProductionArtTask): Raster {
       rgba[offset + 3] = 0;
       transparent += 1;
     } else {
+      rgba[offset + 3] = 255;
       visible += 1;
     }
   }
@@ -567,6 +568,7 @@ async function run(): Promise<void> {
       mapped_cells_checked: true,
       unmapped_cells_transparent: true,
       transparent_rgb_zeroed: true,
+      binary_alpha: true,
       significant_components: components.length,
       component_threshold_pixels: componentThreshold,
       ignored_component_pixels: ignoredComponentPixels,

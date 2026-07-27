@@ -712,6 +712,38 @@ Run its fail-closed contract test with:
 pnpm production-art:operator-import:verify
 ```
 
+After every canonical task has a frozen `UNRELEASED` report, the complete
+candidate can be admitted into the standard run-set shape for internal
+technical assembly:
+
+```bash
+pnpm production-art:operator-admit -- \
+  --profile side-platformer \
+  --candidate-root /private/review/side-platformer \
+  --out /private/review/side-platformer-admitted \
+  --admission internal-technical-review-only \
+  --model bounded-source-label
+```
+
+Admission re-hashes and decodes all nine PNGs, re-checks dimensions and alpha
+policy, writes the normal production-art run-set plus per-task generation
+evidence, and projects the admitted player sheet into a portable character
+revision and exact atlas. Each task also receives an `operator-admission.json`
+hash binding. The run-set admission deliberately retains `rights: pending`,
+`public_release: prohibited`, `human_review: required`, and
+`remote_request_count: 0`; it never embeds candidate or output absolute paths.
+It does not turn an operator candidate into a publishable asset.
+
+The offline CI verifier constructs a complete nine-task side-platformer
+candidate in a temporary directory and confirms the standard run-set,
+character projection, privacy boundary and zero-request receipt. Tampered PNG
+bytes and a report whose `UNRELEASED` rights marker is changed are both
+required to fail closed:
+
+```bash
+pnpm production-art:operator-admission:verify
+```
+
 ## What remains
 
 This source adapter is a real provider implementation, but the following work is

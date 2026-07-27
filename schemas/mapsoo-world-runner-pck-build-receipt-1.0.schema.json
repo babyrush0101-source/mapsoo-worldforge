@@ -59,6 +59,20 @@
         "architecture": { "type": "string", "minLength": 1, "maxLength": 32 }
       }
     },
+    "launch_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "spawn_id",
+        "player_slot_id"
+      ],
+      "properties": {
+        "status": { "const": "bound" },
+        "spawn_id": { "$ref": "#/$defs/id" },
+        "player_slot_id": { "$ref": "#/$defs/id" }
+      }
+    },
     "character_binding": {
       "oneOf": [
         {

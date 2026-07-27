@@ -9,6 +9,7 @@ const SAFE_PROFILES := [
 const CHARACTER_ROOT := "res://mapsoo_characters/"
 const CHARACTER_REVISION_FILE := "character-profile-revision.json"
 const CHARACTER_ATLAS_FILE := "character-profile-atlas.png"
+const LAUNCH_BINDING_FILE := "res://world-runner-launch-binding.json"
 const CharacterRuntime = preload(
 	"res://addons/mapsoo_importer/runtime/mapsoo_character_profile_runtime.gd"
 )
@@ -82,6 +83,43 @@ func _ready() -> void:
 			+ " character_revision_id=%s" % character_revision_id
 			+ " character_revision_sha256=%s" % character_revision_sha256
 		)
+	var launch_binding := _load_launch_binding()
+	if launch_binding.is_empty():
+		remove_child(world)
+		world.free()
+		_fail("Embedded launch binding is missing or invalid.")
+		return
+	var requested_spawn_id := _argument_value("--spawn-id=")
+	var requested_player_slot_id := _argument_value("--player-slot-id=")
+	var requested_spawn_count := _argument_count("--spawn-id=")
+	var requested_player_slot_count := _argument_count("--player-slot-id=")
+	if requested_spawn_count != requested_player_slot_count \
+			or requested_spawn_count > 1:
+		remove_child(world)
+		world.free()
+		_fail("Spawn ID and player slot ID arguments must be supplied together exactly once.")
+		return
+	var has_requested_spawn_id := requested_spawn_count == 1
+	var spawn_id := str(launch_binding.get("spawn_id", ""))
+	var player_slot_id := str(launch_binding.get("player_slot_id", ""))
+	if has_requested_spawn_id:
+		if not _safe_id(requested_spawn_id) \
+				or not _safe_id(requested_player_slot_id):
+			remove_child(world)
+			world.free()
+			_fail("Spawn ID or player slot ID argument is invalid.")
+			return
+		if requested_spawn_id != spawn_id \
+				or requested_player_slot_id != player_slot_id:
+			remove_child(world)
+			world.free()
+			_fail("Requested launch binding does not match the embedded binding.")
+			return
+	if not _bind_launch_nodes(world, spawn_id, player_slot_id):
+		remove_child(world)
+		world.free()
+		_fail("World scene does not expose one portable player launch binding.")
+		return
 	await get_tree().process_frame
 	var marker := (
 		"MAPSOO_WORLD_RUNNER_PCK_OK"
@@ -89,6 +127,9 @@ func _ready() -> void:
 		+ " pack_sha256=%s" % pack_sha256
 		+ " profile=%s" % profile
 		+ " scene=%s" % scene_path
+		+ " launch_binding=bound"
+		+ " spawn_id=%s" % spawn_id
+		+ " player_slot_id=%s" % player_slot_id
 		+ " %s" % character_marker
 		+ " physical_raspberry_pi=not-tested"
 	)
@@ -159,14 +200,93 @@ func _argument_value(prefix: String) -> String:
 	return ""
 
 
+func _argument_count(prefix: String) -> int:
+	var count := 0
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with(prefix):
+			count += 1
+	return count
+
+
 func _safe_id(value: String) -> bool:
-	if value.is_empty() or value.begins_with("-") or value.ends_with("-") \
+	if value.is_empty() or value.length() > 80 \
+			or value.begins_with("-") or value.ends_with("-") \
 			or value.contains("--"):
 		return false
 	for character: String in value:
 		if not "abcdefghijklmnopqrstuvwxyz0123456789-".contains(character):
 			return false
 	return true
+
+
+func _load_launch_binding() -> Dictionary:
+	var bytes := _read_file(LAUNCH_BINDING_FILE, 16 * 1024)
+	if bytes.is_empty():
+		return {}
+	var parsed: Variant = JSON.parse_string(bytes.get_string_from_utf8())
+	if not parsed is Dictionary:
+		return {}
+	var binding := parsed as Dictionary
+	if binding.size() != 5 \
+			or binding.get("schema_version", null) != "1.0.0" \
+			or binding.get("document_type", null) != "world-runner-launch-binding" \
+			or binding.get("status", null) != "bound" \
+			or typeof(binding.get("spawn_id", null)) != TYPE_STRING \
+			or typeof(binding.get("player_slot_id", null)) != TYPE_STRING:
+		return {}
+	for key: Variant in binding.keys():
+		if not [
+			"schema_version",
+			"document_type",
+			"status",
+			"spawn_id",
+			"player_slot_id",
+		].has(key):
+			return {}
+	var spawn_id := str(binding.get("spawn_id", ""))
+	var player_slot_id := str(binding.get("player_slot_id", ""))
+	if not _safe_id(spawn_id) or not _safe_id(player_slot_id):
+		return {}
+	return binding
+
+
+func _bind_launch_nodes(world: Node, spawn_id: String, player_slot_id: String) -> bool:
+	var spawn_matches: Array[Node] = []
+	var player_matches: Array[Node] = []
+	_collect_launch_nodes(world, spawn_matches, player_matches)
+	if spawn_matches.size() != 1 or player_matches.size() != 1:
+		return false
+	var spawn := spawn_matches[0] as Marker2D
+	var player := player_matches[0] as Node2D
+	if spawn == null or player == null:
+		return false
+	spawn.set_meta("mapsoo_portable_spawn_id", spawn_id)
+	player.set_meta("mapsoo_portable_slot_id", player_slot_id)
+	player.global_position = spawn.global_position
+	return true
+
+
+func _collect_launch_nodes(
+	node: Node,
+	spawn_matches: Array[Node],
+	player_matches: Array[Node],
+) -> void:
+	if node is Marker2D and node.name == &"PlayerSpawn":
+		spawn_matches.append(node)
+	if node is Node2D and node.name == &"Player" \
+			and _count_legacy_player_slots(node) == 1:
+		player_matches.append(node)
+	for child: Node in node.get_children():
+		_collect_launch_nodes(child, spawn_matches, player_matches)
+
+
+func _count_legacy_player_slots(node: Node) -> int:
+	var count := 0
+	for child: Node in node.get_children():
+		if str(child.get_meta("mapsoo_runtime_slot_id", "")) == "player":
+			count += 1
+		count += _count_legacy_player_slots(child)
+	return count
 
 
 func _sha256(value: String) -> bool:

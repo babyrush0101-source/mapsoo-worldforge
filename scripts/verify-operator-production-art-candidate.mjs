@@ -34,6 +34,31 @@ function fillRect(image, x, y, width, height, color) {
   }
 }
 
+function alphaContract(image) {
+  let transparent = 0;
+  let opaque = 0;
+  let partial = 0;
+  let transparentRgbLeaks = 0;
+  for (let offset = 0; offset < image.rgba.byteLength; offset += 4) {
+    const alpha = image.rgba[offset + 3];
+    if (alpha === 0) {
+      transparent += 1;
+      if (
+        image.rgba[offset] !== 0
+        || image.rgba[offset + 1] !== 0
+        || image.rgba[offset + 2] !== 0
+      ) {
+        transparentRgbLeaks += 1;
+      }
+    } else if (alpha === 255) {
+      opaque += 1;
+    } else {
+      partial += 1;
+    }
+  }
+  return { transparent, opaque, partial, transparentRgbLeaks };
+}
+
 async function run(args) {
   const child = spawn(process.execPath, [viteNode, runner, ...args], {
     cwd: process.cwd(),
@@ -73,9 +98,15 @@ try {
       y,
       width,
       height,
-      Uint8Array.from([30 + index * 20, 80 + index * 10, 120, 255]),
+      Uint8Array.from([
+        30 + index * 20,
+        80 + index * 10,
+        120,
+        index % 2 === 0 ? 96 : 255,
+      ]),
     );
   });
+  terrainSource.rgba.set(Uint8Array.from([210, 30, 90, 8]), 4);
   const terrainSourcePath = join(root, 'private-operator-terrain.png');
   const terrainOutputPath = join(root, 'terrain-candidate.png');
   const terrainReportPath = join(root, 'terrain-candidate.json');
@@ -98,6 +129,7 @@ try {
   const terrainReportText = await readFile(terrainReportPath, 'utf8');
   const terrainReport = JSON.parse(terrainReportText);
   const terrainPng = decodeRgbaPng(await readFile(terrainOutputPath));
+  const terrainAlpha = alphaContract(terrainPng);
   if (
     terrainSummary.status !== 'operator-candidate-written'
     || terrainSummary.roles !== 6
@@ -106,6 +138,11 @@ try {
     || terrainReport.role_bindings[5].role !== 'terrain.ceiling'
     || terrainPng.width !== 384
     || terrainPng.height !== 192
+    || terrainAlpha.partial !== 0
+    || terrainAlpha.transparent < 1
+    || terrainAlpha.opaque < 1
+    || terrainAlpha.transparentRgbLeaks !== 0
+    || terrainReport.normalization.binary_alpha !== true
     || terrainReportText.includes(terrainSourcePath)
   ) {
     throw new Error('Terrain component reflow did not preserve the safe canonical contract.');
@@ -144,11 +181,15 @@ try {
   }
   const propReport = JSON.parse(await readFile(propReportPath, 'utf8'));
   const propPng = decodeRgbaPng(await readFile(propOutputPath));
+  const propAlpha = alphaContract(propPng);
   if (
     propReport.role_bindings.length !== 14
     || propReport.normalization.mode !== 'proportional-grid'
     || propPng.width !== 512
     || propPng.height !== 512
+    || propAlpha.partial !== 0
+    || propAlpha.transparentRgbLeaks !== 0
+    || propReport.normalization.binary_alpha !== true
   ) {
     throw new Error('Proportional grid import did not preserve the canonical prop task.');
   }
@@ -195,12 +236,17 @@ try {
     throw new Error(`Character operator import failed: ${character.stderr}`);
   }
   const characterReport = JSON.parse(await readFile(characterReportPath, 'utf8'));
+  const characterPng = decodeRgbaPng(await readFile(characterOutputPath));
+  const characterAlpha = alphaContract(characterPng);
   if (
     characterReport.role_bindings.length !== 28
     || characterReport.role_bindings[0].role
       !== 'character.player.atlas:idle.left.frame-0'
     || characterReport.role_bindings[27].role
       !== 'character.player.atlas:hurt.right.frame-1'
+    || characterAlpha.partial !== 0
+    || characterAlpha.transparentRgbLeaks !== 0
+    || characterReport.normalization.binary_alpha !== true
   ) {
     throw new Error('Character reflow did not preserve the canonical pose inventory.');
   }
@@ -243,6 +289,7 @@ try {
   console.log(
     'MAPSOO_OPERATOR_PRODUCTION_ART_CANDIDATE_OK '
     + 'component_reflow=6 proportional_roles=14 character_poses=28 '
+    + 'binary_alpha=true transparent_rgb_zeroed=true '
     + 'path_privacy=true fail_closed=true',
   );
 } finally {

@@ -9,6 +9,8 @@ const FLAGS = new Set([
   '--world-pack',
   '--imported-world',
   '--world-id',
+  '--spawn-id',
+  '--player-slot-id',
   '--character-revision',
   '--character-atlas',
   '--godot-bin',
@@ -37,6 +39,8 @@ function usage() {
     '  --world-pack <path-inside-bundle> \\',
     '  --imported-world <directory-inside-bundle> \\',
     '  --world-id <lowercase-kebab-id> \\',
+    '  [--spawn-id <portable-spawn-id> \\',
+    '   --player-slot-id <portable-player-slot-id>] \\',
     '  [--character-revision <path-inside-bundle> \\',
     '   --character-atlas <path-inside-bundle>] \\',
     '  --godot-bin <trusted-godot-4.3+-binary> \\',
@@ -62,6 +66,9 @@ function flags(argv) {
   for (const flag of REQUIRED_FLAGS) {
     if (!result.has(flag)) throw new Error(`${flag} is required.`);
   }
+  if (result.has('--spawn-id') !== result.has('--player-slot-id')) {
+    throw new Error('--spawn-id and --player-slot-id must be supplied together.');
+  }
   return result;
 }
 
@@ -77,6 +84,10 @@ async function main() {
     worldPackPath: resolve(bundleRoot, values.get('--world-pack')),
     importedWorldDir: resolve(bundleRoot, values.get('--imported-world')),
     worldId: values.get('--world-id'),
+    spawnId: values.has('--spawn-id') ? values.get('--spawn-id') : undefined,
+    playerSlotId: values.has('--player-slot-id')
+      ? values.get('--player-slot-id')
+      : undefined,
     characterRevisionPath: values.has('--character-revision')
       ? resolve(bundleRoot, values.get('--character-revision'))
       : undefined,
@@ -92,6 +103,7 @@ async function main() {
     status: 'world-runner-pck-built',
     world_id: result.report.world_id,
     runtime_artifact_sha256: result.report.runtime_artifact_sha256,
+    launch_binding: result.report.launch_binding,
     character_binding: result.report.character_binding,
     physical_raspberry_pi_tested: false,
     output: result.pckPath,

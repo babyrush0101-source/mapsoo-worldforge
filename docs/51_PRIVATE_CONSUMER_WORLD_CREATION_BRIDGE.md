@@ -116,6 +116,8 @@ pnpm world-runner:pck:build -- \
   --world-pack packs/world.zip \
   --imported-world imported/<world-id> \
   --world-id <world-id> \
+  --spawn-id <spawn-id> \
+  --player-slot-id <player-slot-id> \
   --character-revision characters/revision.json \
   --character-atlas characters/atlas.png \
   --godot-bin <trusted-godot-4.3+-binary> \
@@ -125,12 +127,17 @@ pnpm world-runner:pck:build -- \
 ```
 
 The builder accepts exactly the importer-managed scene, TileSet and integrity
-state plus an optional exact character revision/atlas pair. It verifies the
+state, one portable spawn/player-slot pair, plus an optional exact character
+revision/atlas pair. It verifies the
 Pack manifest hash, state integrity, generated-file hashes, world/profile
 metadata, character profile, atlas bytes, bundle containment and trusted
 runtime-script references before calling Godot's `PCKPacker`. It then starts
-Godot from the new PCK and requires exact world, Pack, profile, scene and
-character-binding markers.
+Godot from the new PCK and requires exact world, Pack, profile, scene,
+spawn/player-slot and character-binding markers. The PCK embeds the launch
+binding; omitted runtime arguments use those embedded IDs, while supplied IDs
+must match them exactly. The runtime resolves one `PlayerSpawn` and one
+character-capable `Player`, moves the player to the spawn, and rejects missing,
+duplicate or mismatched bindings before readiness.
 Only after that launch succeeds does it write
 `mapsoo-godot-headless-smoke-report-1.0` and the build receipt.
 
@@ -171,8 +178,10 @@ pnpm world-delivery:workspace -- finalize \
 Finalization streams and hashes the staged pack and runtime artifact, requires
 canonical character-revision bytes, verifies the declared atlas bytes and
 identity digest, validates the runtime contract, and requires a strict
-`mapsoo-godot-headless-smoke-report-1.0` document bound to those exact pack and
-runtime hashes. Different existing output is never overwritten.
+`mapsoo-godot-headless-smoke-report-1.0` document bound to those exact pack,
+runtime, spawn and player-slot values. A legacy report may still validate
+against the historical JSON Schema, but it cannot finalize a new delivery
+without launch evidence. Different existing output is never overwritten.
 
 ## Agent conversation intake
 

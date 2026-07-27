@@ -189,6 +189,7 @@ async function writeFixture(root, options = {}) {
       + '[node name="World" type="Node2D"]\n'
       + `metadata/mapsoo_pack_id = "${WORLD_ID}"\n`
       + `metadata/mapsoo_profile = "${PROFILE}"\n\n`
+      + '[node name="PlayerSpawn" type="Marker2D" parent="."]\n\n'
       + '[node name="Player" type="Node2D" parent="."]\n\n'
       + '[node name="Visual" type="AnimatedSprite2D" parent="Player"]\n'
       + 'metadata/mapsoo_runtime_slot_id = "player"\n',
@@ -199,7 +200,10 @@ async function writeFixture(root, options = {}) {
   const tilesetName = `${WORLD_ID}.tileset.tres`;
   const core = {
     schema_version: '1.0.0',
-    importer: { id: 'mapsoo_importer', version: '1.0.0' },
+    importer: {
+      id: 'mapsoo_importer',
+      version: options.importerVersion ?? '0.1.0-alpha.10+fixture.1',
+    },
     godot_serialization: '4.3',
     pack_id: WORLD_ID,
     manifest_sha256: sha256(manifestBytes),
@@ -302,6 +306,50 @@ async function verifyInteractiveReady(godotBin, pckPath, arguments_, expectedMar
   });
 }
 
+async function verifyLaunchRejected(
+  godotBin,
+  pckPath,
+  arguments_,
+  expectedFailure,
+) {
+  const output = await new Promise((resolvePromise, reject) => {
+    const child = spawn(godotBin, [
+      '--headless',
+      '--main-pack', pckPath,
+      '--',
+      ...arguments_,
+      '--delivery-smoke=true',
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    let combined = '';
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new Error('Mismatched launch-binding rejection timed out.'));
+    }, 15_000);
+    const consume = (chunk) => {
+      combined += chunk.toString('utf8');
+    };
+    child.stdout.on('data', consume);
+    child.stderr.on('data', consume);
+    child.on('error', reject);
+    child.on('exit', (code) => {
+      clearTimeout(timeout);
+      if (
+        code === 0
+        || !combined.includes(expectedFailure)
+        || combined.includes('MAPSOO_WORLD_RUNNER_PCK_OK')
+      ) {
+        reject(new Error(`Invalid launch binding did not fail closed: ${combined}`));
+        return;
+      }
+      resolvePromise(combined);
+    });
+  });
+  return output;
+}
+
 async function verifyMetricsProbe(godotBin, pckPath, arguments_) {
   const output = await new Promise((resolvePromise, reject) => {
     const child = spawn(godotBin, [
@@ -353,6 +401,27 @@ async function main() {
     });
     if (inspected.profile !== PROFILE || inspected.managed.state.cell_count !== 1) {
       throw new Error('Valid managed input inspection did not preserve its exact binding.');
+    }
+    for (const [index, importerVersion] of [
+      '1.0.0-',
+      '1.0.0-01',
+      '1.0.0-alpha.01',
+      '1.0.0-alpha..1',
+      '1.0.0-any string',
+      '01.0.0',
+      '1.0.0+',
+      '1.0.0+build..1',
+    ].entries()) {
+      const invalidVersion = await writeFixture(root, {
+        name: `invalid-importer-version-${index}`,
+        importerVersion,
+      });
+      await rejects(() => inspectWorldRunnerPckInput({
+        bundleRoot: invalidVersion.bundle,
+        worldPackPath: invalidVersion.pack,
+        importedWorldDir: invalidVersion.imported,
+        worldId: WORLD_ID,
+      }), 'Importer state');
     }
     const unsafe = await writeFixture(root, { name: 'unsafe', unsafe: true });
     await rejects(() => inspectWorldRunnerPckInput({
@@ -418,6 +487,8 @@ async function main() {
         worldId: WORLD_ID,
         characterRevisionPath: valid.characterRevision,
         characterAtlasPath: valid.characterAtlas,
+        spawnId: 'world-entry',
+        playerSlotId: 'player-one',
         godotBin,
         pckPath: join(valid.bundle, 'runtime', `${id}.pck`),
         reportPath: join(valid.bundle, 'reports', `${id}.json`),
@@ -451,6 +522,12 @@ async function main() {
     if (sha256(firstBytes) !== sha256(secondBytes)
         || builds[0].report.runtime_artifact_sha256 !== sha256(firstBytes)
         || builds[0].receipt.runtime_artifact.target_runtime_architecture !== 'arm64'
+        || builds[0].receipt.launch_binding.status !== 'bound'
+        || builds[0].receipt.launch_binding.spawn_id !== 'world-entry'
+        || builds[0].receipt.launch_binding.player_slot_id !== 'player-one'
+        || builds[0].report.launch_binding.status !== 'bound'
+        || builds[0].report.launch_binding.spawn_id !== 'world-entry'
+        || builds[0].report.launch_binding.player_slot_id !== 'player-one'
         || builds[0].receipt.character_binding.embedded !== true
         || builds[0].report.character_binding.status !== 'bound'
         || builds[0].receipt.physical_raspberry_pi_tested !== false) {
@@ -463,6 +540,8 @@ async function main() {
       [
         `--world-id=${WORLD_ID}`,
         `--pack-sha256=${inspected.packSha256}`,
+        '--spawn-id=world-entry',
+        '--player-slot-id=player-one',
         `--character-revision-id=${binding.profile_revision_id}`,
         `--character-revision-sha256=${binding.revision_sha256}`,
       ],
@@ -472,11 +551,67 @@ async function main() {
         `pack_sha256=${inspected.packSha256}`,
         `profile=${PROFILE}`,
         `scene=res://mapsoo_imports/${WORLD_ID}/${WORLD_ID}.world.tscn`,
+        'launch_binding=bound',
+        'spawn_id=world-entry',
+        'player_slot_id=player-one',
         'character_binding=bound',
         `character_revision_id=${binding.profile_revision_id}`,
         `character_revision_sha256=${binding.revision_sha256}`,
         'physical_raspberry_pi=not-tested',
       ].join(' '),
+    );
+    const embeddedLaunchMarker = [
+      'MAPSOO_WORLD_RUNNER_READY',
+      `world_id=${WORLD_ID}`,
+      `pack_sha256=${inspected.packSha256}`,
+      `profile=${PROFILE}`,
+      `scene=res://mapsoo_imports/${WORLD_ID}/${WORLD_ID}.world.tscn`,
+      'launch_binding=bound',
+      'spawn_id=world-entry',
+      'player_slot_id=player-one',
+      'character_binding=bound',
+      `character_revision_id=${binding.profile_revision_id}`,
+      `character_revision_sha256=${binding.revision_sha256}`,
+      'physical_raspberry_pi=not-tested',
+    ].join(' ');
+    await verifyInteractiveReady(
+      godotBin,
+      builds[0].pckPath,
+      [
+        `--world-id=${WORLD_ID}`,
+        `--pack-sha256=${inspected.packSha256}`,
+        `--character-revision-id=${binding.profile_revision_id}`,
+        `--character-revision-sha256=${binding.revision_sha256}`,
+      ],
+      embeddedLaunchMarker,
+    );
+    await verifyLaunchRejected(
+      godotBin,
+      builds[0].pckPath,
+      [
+        `--world-id=${WORLD_ID}`,
+        `--pack-sha256=${inspected.packSha256}`,
+        '--spawn-id=wrong-entry',
+        '--player-slot-id=player-one',
+        `--character-revision-id=${binding.profile_revision_id}`,
+        `--character-revision-sha256=${binding.revision_sha256}`,
+      ],
+      'Requested launch binding does not match the embedded binding.',
+    );
+    await verifyLaunchRejected(
+      godotBin,
+      builds[0].pckPath,
+      [
+        `--world-id=${WORLD_ID}`,
+        `--pack-sha256=${inspected.packSha256}`,
+        '--spawn-id=world-entry',
+        '--spawn-id=world-entry',
+        '--player-slot-id=player-one',
+        '--player-slot-id=player-one',
+        `--character-revision-id=${binding.profile_revision_id}`,
+        `--character-revision-sha256=${binding.revision_sha256}`,
+      ],
+      'Spawn ID and player slot ID arguments must be supplied together exactly once.',
     );
     const exercisedMetrics = process.argv.includes('--exercise-metrics')
       ? await verifyMetricsProbe(
@@ -485,6 +620,8 @@ async function main() {
         [
           `--world-id=${WORLD_ID}`,
           `--pack-sha256=${inspected.packSha256}`,
+          '--spawn-id=world-entry',
+          '--player-slot-id=player-one',
           `--character-revision-id=${binding.profile_revision_id}`,
           `--character-revision-sha256=${binding.revision_sha256}`,
         ],
@@ -493,7 +630,10 @@ async function main() {
     process.stdout.write(
       `MAPSOO_WORLD_RUNNER_PCK_GODOT_OK version=${builds[0].report.godot_version}`
       + ` bytes=${firstBytes.byteLength} sha256=${sha256(firstBytes)}`
-      + ' reproducible=true character_binding=bound interactive_ready=true'
+      + ' reproducible=true launch_binding=custom-bound'
+      + ' launch_fallback=true launch_mismatch_rejected=true'
+      + ' launch_duplicate_rejected=true'
+      + ' character_binding=bound interactive_ready=true'
       + ` metrics_probe=${exercisedMetrics ? 'exercised-on-build-host' : 'not-requested'}`
       + ' target_runtime=arm64 physical_raspberry_pi=false\n',
     );
