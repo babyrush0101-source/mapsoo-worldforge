@@ -37,6 +37,41 @@ export interface WorldLayoutPackBindingIssue {
 const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Keeps immutable no-layout pack fixtures byte-compatible with their published
+ * schemas while allowing new layout-bearing packs to advertise the extension.
+ */
+export function selectWorldLayoutAwarePackSchema(
+  schema: unknown,
+  includeLayout: boolean,
+): unknown {
+  if (includeLayout || !isRecord(schema) || !isRecord(schema.properties)) {
+    return schema;
+  }
+  const properties = Object.fromEntries(
+    Object.entries(schema.properties).filter(([key]) => key !== 'layout'),
+  );
+  const selected: Record<string, unknown> = {
+    ...schema,
+    properties: Object.freeze(properties),
+  };
+  if (isRecord(schema.$defs)) {
+    const definitions = Object.fromEntries(
+      Object.entries(schema.$defs).filter(([key]) => key !== 'layoutBinding'),
+    );
+    if (Object.keys(definitions).length === 0) {
+      delete selected.$defs;
+    } else {
+      selected.$defs = Object.freeze(definitions);
+    }
+  }
+  return Object.freeze(selected);
+}
+
 async function sha256(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', bytes.slice().buffer);
   return [...new Uint8Array(digest)]

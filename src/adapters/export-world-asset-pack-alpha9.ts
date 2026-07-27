@@ -16,7 +16,11 @@ import {
   assertTrustedWorldAssetGeneration,
   type WorldAssetGenerationResult,
 } from '../core/world-asset-provider';
-import { prepareWorldLayoutPackEntry, WORLD_LAYOUT_PACK_PATH } from '../core/world-layout-pack-binding';
+import {
+  prepareWorldLayoutPackEntry,
+  selectWorldLayoutAwarePackSchema,
+  WORLD_LAYOUT_PACK_PATH,
+} from '../core/world-layout-pack-binding';
 import type { WorldLayoutPlan } from '../core/world-layout-plan';
 
 const ZIP_DATE = new Date(Date.UTC(1980, 0, 1));
@@ -74,7 +78,11 @@ export async function buildAlpha9WorldAssetPack(
   }));
   const supportEntries = await Promise.all([
     entry('generation-receipt.json', 'application/json', json(receipt)),
-    entry('schema/mapsoo-pack-0.6.schema.json', 'application/schema+json', json(packSchema)),
+    entry(
+      'schema/mapsoo-pack-0.6.schema.json',
+      'application/schema+json',
+      json(selectWorldLayoutAwarePackSchema(packSchema, Boolean(preparedLayout))),
+    ),
     entry('license-assets.md', 'text/markdown', text(
       '# Asset license\n\nThe generated PNG and runtime JSON assets in this pack are dedicated under CC0-1.0.\n\nReference images are not included and remain under their original rights. The schema and documentation are distributed under the repository MIT license.\n',
     )),

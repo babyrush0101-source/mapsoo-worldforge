@@ -25,7 +25,11 @@ import {
   assertTrustedWorldAssetGeneration,
   type WorldAssetGenerationResult,
 } from '../core/world-asset-provider';
-import { prepareWorldLayoutPackEntry, WORLD_LAYOUT_PACK_PATH } from '../core/world-layout-pack-binding';
+import {
+  prepareWorldLayoutPackEntry,
+  selectWorldLayoutAwarePackSchema,
+  WORLD_LAYOUT_PACK_PATH,
+} from '../core/world-layout-pack-binding';
 import type { WorldLayoutPlan } from '../core/world-layout-plan';
 
 const ZIP_DATE = new Date(Date.UTC(1980, 0, 1));
@@ -77,7 +81,11 @@ export async function buildAlpha10WorldAssetPack(
   const generatedEntries = await Promise.all(run.payloads.map(async (payload) => entry(payload.path, payload.mediaType, payload.readBytes())));
   const supportEntries = await Promise.all([
     entry('generation-receipt.json', 'application/json', json(receipt)),
-    entry('schema/mapsoo-pack-0.7.schema.json', 'application/schema+json', json(packSchema)),
+    entry(
+      'schema/mapsoo-pack-0.7.schema.json',
+      'application/schema+json',
+      json(selectWorldLayoutAwarePackSchema(packSchema, Boolean(preparedLayout))),
+    ),
     entry('schema/mapsoo-side-platformer-scene-0.2.schema.json', 'application/schema+json', json(sceneSchema)),
     entry('schema/mapsoo-side-platformer-collision-0.2.schema.json', 'application/schema+json', json(collisionSchema)),
     entry('schema/mapsoo-side-platformer-navigation-0.2.schema.json', 'application/schema+json', json(navigationSchema)),

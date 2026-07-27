@@ -30,7 +30,11 @@ import {
   assertTrustedWorldAssetGeneration,
   type WorldAssetGenerationResult,
 } from '../core/world-asset-provider';
-import { prepareWorldLayoutPackEntry, WORLD_LAYOUT_PACK_PATH } from '../core/world-layout-pack-binding';
+import {
+  prepareWorldLayoutPackEntry,
+  selectWorldLayoutAwarePackSchema,
+  WORLD_LAYOUT_PACK_PATH,
+} from '../core/world-layout-pack-binding';
 import type { WorldLayoutPlan } from '../core/world-layout-plan';
 
 const ZIP_DATE = new Date(Date.UTC(1980, 0, 1));
@@ -108,7 +112,11 @@ export async function buildAlpha11WorldAssetPack(
     entry(payload.path, payload.mediaType, payload.readBytes())));
   const supportEntries = await Promise.all([
     entry('generation-receipt.json', 'application/json', json(receipt)),
-    entry('schema/mapsoo-pack-0.8.schema.json', 'application/schema+json', json(packSchema)),
+    entry(
+      'schema/mapsoo-pack-0.8.schema.json',
+      'application/schema+json',
+      json(selectWorldLayoutAwarePackSchema(packSchema, Boolean(preparedLayout))),
+    ),
     entry('schema/mapsoo-isometric-action-scene-0.3.schema.json', 'application/schema+json', json(sceneSchema)),
     entry('schema/mapsoo-isometric-action-collision-0.3.schema.json', 'application/schema+json', json(collisionSchema)),
     entry('schema/mapsoo-isometric-action-navigation-0.3.schema.json', 'application/schema+json', json(navigationSchema)),

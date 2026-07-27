@@ -153,6 +153,21 @@ describe('reference-world profile router', () => {
           path: 'world-layout-plan.json',
         },
       });
+      const schemaStem = generated.packSchemaVersion.split('.').slice(0, 2).join('.');
+      const schemaEntry = Object.values(zip.files)
+        .find(({ name }) => name.endsWith(`/schema/mapsoo-pack-${schemaStem}.schema.json`));
+      expect(schemaEntry).toBeDefined();
+      expect(JSON.parse(await schemaEntry!.async('text'))).toMatchObject({
+        properties: { layout: { $ref: '#/$defs/layoutBinding' } },
+        $defs: {
+          layoutBinding: {
+            properties: {
+              document_type: { const: 'world-layout-plan' },
+              path: { const: 'world-layout-plan.json' },
+            },
+          },
+        },
+      });
     }
   });
 

@@ -31,7 +31,11 @@ import {
   assertTrustedWorldAssetGeneration,
   type WorldAssetGenerationResult,
 } from '../core/world-asset-provider';
-import { prepareWorldLayoutPackEntry, WORLD_LAYOUT_PACK_PATH } from '../core/world-layout-pack-binding';
+import {
+  prepareWorldLayoutPackEntry,
+  selectWorldLayoutAwarePackSchema,
+  WORLD_LAYOUT_PACK_PATH,
+} from '../core/world-layout-pack-binding';
 import type { WorldLayoutPlan } from '../core/world-layout-plan';
 
 const ZIP_DATE = new Date(Date.UTC(1980, 0, 1));
@@ -95,7 +99,11 @@ export async function buildAlpha12WorldAssetPack(
     entry(payload.path, payload.mediaType, payload.readBytes())));
   const supportEntries = await Promise.all([
     entry('generation-receipt.json', 'application/json', json(receipt)),
-    entry('schema/mapsoo-pack-0.9.schema.json', 'application/schema+json', json(packSchema)),
+    entry(
+      'schema/mapsoo-pack-0.9.schema.json',
+      'application/schema+json',
+      json(selectWorldLayoutAwarePackSchema(packSchema, Boolean(preparedLayout))),
+    ),
     entry('schema/mapsoo-layered-depth-scene-0.4.schema.json', 'application/schema+json', json(sceneSchema)),
     entry('schema/mapsoo-layered-depth-collision-0.4.schema.json', 'application/schema+json', json(collisionSchema)),
     entry('schema/mapsoo-layered-depth-navigation-0.4.schema.json', 'application/schema+json', json(navigationSchema)),
