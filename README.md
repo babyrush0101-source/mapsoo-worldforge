@@ -166,6 +166,13 @@ SpriteCook—stable asset references, reusable style references, budget checks,
 tight transparent crops and explicit Godot export manifests—without making a
 SpriteCook account, MCP session or response format part of the WorldForge
 core. Other model providers and local tools remain interchangeable.
+The optional server-only
+[SpriteCook production adapter](docs/59_SPRITECOOK_PROVIDER_ADAPTER.md) now
+implements that same neutral port for all four profiles. Its default is a
+zero-request dry-run; an execution imports at most two authorized references,
+submits one synchronous generation, downloads one allowlisted PNG, and then
+hands the candidate to the existing provider-independent normalization and
+review path. No live SpriteCook request or account connection is claimed.
 
 A separately labelled **synthetic technical fixture** now exercises that full
 path without a model call. Its deterministic candidate passed real headless

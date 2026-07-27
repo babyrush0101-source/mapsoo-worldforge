@@ -1,6 +1,6 @@
 # Model-backed production art
 
-Status: **implemented source adapter and resumable workflow; internal-review
+Status: **implemented OpenAI and SpriteCook source adapters and resumable workflow; internal-review
 only; not yet an automatically approved production pack**
 
 This document describes the first real image-model boundary in Mapsoo
@@ -22,7 +22,7 @@ world dialogue
   -> append-only resumable task journal
   -> choose exactly one task at a time
   -> explicit remote-upload authorization
-  -> GPT Image 2 image-edit request
+  -> explicitly selected OpenAI or SpriteCook adapter
   -> bounded source PNG
   -> deterministic alpha / resize / grid checks
   -> ProductionArtOutput + scrubbed evidence
@@ -39,6 +39,11 @@ The relevant code is:
   credential isolation, PNG limits, and the trusted runner;
 - [`src/adapters/openai/openai-production-art-provider.ts`](../src/adapters/openai/openai-production-art-provider.ts):
   the server-only OpenAI image-edit adapter;
+- [`src/adapters/spritecook/spritecook-production-art-provider.ts`](../src/adapters/spritecook/spritecook-production-art-provider.ts):
+  the server-only SpriteCook import/generation/download adapter;
+- [`src/core/production-art-prompt.ts`](../src/core/production-art-prompt.ts):
+  the shared task, grid, originality, and character-preservation prompt
+  contract used by both remote adapters;
 - [`src/adapters/normalize-production-art-png.ts`](../src/adapters/normalize-production-art-png.ts):
   deterministic chroma removal, nearest-neighbor resize, transparent-RGB
   cleanup, mapped-cell checks, hashes, output record, and evidence;
@@ -47,7 +52,7 @@ The relevant code is:
 - [`src/providers/production-art-replay-provider.ts`](../src/providers/production-art-replay-provider.ts):
   a local replay provider bound to the plan, task, source SHA-256, ordered
   reference ids, and private reference digests;
-- [`scripts/run-openai-production-art-source.ts`](../scripts/run-openai-production-art-source.ts):
+- [`scripts/run-production-art-source.ts`](../scripts/run-production-art-source.ts):
   the local, one-task CLI;
 - [`src/core/production-art-workflow.ts`](../src/core/production-art-workflow.ts):
   provider-bound request accounting, direction approval, state transitions,
@@ -82,20 +87,33 @@ Dry-run prints the selected task, exact model source resolution, required
 reference roles, quality, and review policy. It performs zero uploads and zero
 paid requests.
 
+Select SpriteCook without connecting an account:
+
+```bash
+pnpm production-art:model -- \
+  --provider spritecook \
+  --profile topdown-farm \
+  --task scene-direction
+```
+
 A real request requires both independent switches:
 
 ```text
 --execute --allow-remote-upload
 ```
 
-It also requires `OPENAI_API_KEY` in the process environment. The key is passed
-only to the HTTP request. It is not included in the plan, prompt evidence,
-candidate, output record, filesystem path, or error body.
+Execution requires `OPENAI_API_KEY` or `SPRITECOOK_API_KEY`, matching the
+selected provider, in the private process environment. The key is passed only
+to provider HTTP requests. It is not included in the plan, prompt evidence,
+candidate, output record, filesystem path, workflow state, or error body.
 
-Every CLI invocation authorizes at most one request for exactly one provider,
-task, and ordered reference-id list. Existing permission to adapt or
-redistribute a reference image does **not** imply permission to upload it to a
-third-party model service.
+Every CLI invocation authorizes exactly one provider, task, and ordered
+reference-id list. OpenAI uses one HTTP request. SpriteCook uses at most four:
+up to two reference imports, one synchronous generation, and one allowlisted
+asset download. The workflow still counts this as one task attempt and never
+retries it automatically. Existing permission to adapt or redistribute a
+reference image does **not** imply permission to upload it to a third-party
+model service.
 
 ## Resumable, cost-bounded complete workflow
 
@@ -104,6 +122,11 @@ its per-task authorization. Copy
 [`config/production-art-workflow.example.json`](../config/production-art-workflow.example.json)
 to a private location and point its fields at local files. The job file itself
 contains private paths and must not be committed.
+
+The optional job fields `provider: "spritecook"`, `model`, and `resolution`
+select the SpriteCook adapter. Omitting `provider` preserves the pinned OpenAI
+path. Provider, model, and resolution are part of the immutable private-input
+binding, so changing them requires a new workflow id.
 
 Private consumers should normally generate that job through the neutral bridge:
 

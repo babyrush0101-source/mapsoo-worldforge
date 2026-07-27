@@ -24,6 +24,9 @@ const PREPARE_FLAGS = new Set([
   '--character-id',
   '--character-identity-semantics',
   '--completed-at',
+  '--provider',
+  '--model',
+  '--resolution',
   '--quality',
   '--request-budget',
 ]);
@@ -55,7 +58,9 @@ function usage(): string {
     '    --character-id <neutral-kebab-case-id> \\',
     '    [--character-identity-semantics <human-confirmed-character.json>] \\',
     '    --completed-at <canonical-UTC-ISO> \\',
-    '    [--quality low|medium|high] [--request-budget <integer>]',
+    '    [--provider openai|spritecook] [--model <spritecook-model>] \\',
+    '    [--resolution 1K|2K|4K] [--quality low|medium|high] \\',
+    '    [--request-budget <integer>]',
     '',
     'Finalize an already reviewed and headless-smoked runtime delivery:',
     '  pnpm world-delivery:workspace -- finalize \\',
@@ -172,6 +177,20 @@ async function prepare(argv: readonly string[]): Promise<void> {
   if (quality && quality !== 'low' && quality !== 'medium' && quality !== 'high') {
     throw new Error('--quality must be low, medium, or high.');
   }
+  const provider = values.get('--provider');
+  if (provider && provider !== 'openai' && provider !== 'spritecook') {
+    throw new Error('--provider must be openai or spritecook.');
+  }
+  const resolution = values.get('--resolution');
+  if (resolution && !['1K', '2K', '4K'].includes(resolution)) {
+    throw new Error('--resolution must be 1K, 2K, or 4K.');
+  }
+  if (
+    (provider ?? 'openai') === 'openai'
+    && (values.has('--model') || values.has('--resolution'))
+  ) {
+    throw new Error('--model and --resolution require --provider spritecook.');
+  }
   const result = await prepareWorldDeliveryWorkspace({
     intake: await readStrictJson(required(values, '--intake'), 'Confirmed intake'),
     referenceRoot: resolveInputPath(
@@ -189,6 +208,9 @@ async function prepare(argv: readonly string[]): Promise<void> {
       }
       : {}),
     completedAt: required(values, '--completed-at'),
+    ...(provider ? { provider } : {}),
+    ...(values.has('--model') ? { model: values.get('--model') } : {}),
+    ...(resolution ? { resolution: resolution as '1K' | '2K' | '4K' } : {}),
     ...(quality ? { quality } : {}),
     ...(requestBudgetText ? { requestBudget: Number(requestBudgetText) } : {}),
   });

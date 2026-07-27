@@ -274,6 +274,53 @@ describe('world delivery workspace preparation', () => {
     })).toEqual(manifest);
   });
 
+  it('prepares a provider-neutral SpriteCook workflow without contacting it', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'mapsoo-spritecook-workspace-'));
+    roots.push(root);
+    const intake = await intakeFixture(root, 'topdown-farm');
+    const workspace = resolve(root, 'private-workspace');
+    const manifest = await prepareWorldDeliveryWorkspace({
+      intake,
+      referenceRoot: root,
+      workspace,
+      characterId: 'neutral-traveler',
+      provider: 'spritecook',
+      model: 'gemini-3.1-flash-image',
+      resolution: '2K',
+      completedAt: COMPLETED_AT,
+    });
+    expect(manifest.remote_request_count).toBe(0);
+    const jobPath = resolve(
+      workspace,
+      'production-art-workflow-job.json',
+    );
+    const job = JSON.parse(await readFile(jobPath, 'utf8'));
+    expect(job).toMatchObject({
+      provider: 'spritecook',
+      model: 'gemini-3.1-flash-image',
+      resolution: '2K',
+    });
+    expect(new Ajv2020().compile(workflowJobSchema)(job)).toBe(true);
+    const { stdout } = await execFileAsync(process.execPath, [
+      resolve(process.cwd(), 'node_modules/vite-node/vite-node.mjs'),
+      resolve(process.cwd(), 'scripts/run-production-art-workflow.ts'),
+      '--job',
+      jobPath,
+    ], {
+      cwd: process.cwd(),
+      windowsHide: true,
+      maxBuffer: 1024 * 1024,
+    });
+    expect(JSON.parse(stdout)).toMatchObject({
+      mode: 'dry-run',
+      provider: {
+        id: 'spritecook-game-art',
+        model: 'gemini-3.1-flash-image',
+      },
+      remote_request_count_this_invocation: 0,
+    });
+  });
+
   it('fails closed when reference bytes change or an existing workspace differs', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'mapsoo-world-workspace-'));
     roots.push(root);

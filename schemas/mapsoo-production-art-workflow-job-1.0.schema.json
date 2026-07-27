@@ -23,6 +23,14 @@
     "document_type": { "const": "production-art-workflow-job" },
     "workflow_id": { "$ref": "#/$defs/safeId" },
     "profile": { "$ref": "#/$defs/profile" },
+    "provider": { "enum": ["openai", "spritecook"] },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "resolution": { "enum": ["1K", "2K", "4K"] },
     "quality": { "enum": ["low", "medium", "high"] },
     "request_budget": {
       "type": "integer",
@@ -45,6 +53,40 @@
     "approved_direction": { "$ref": "#/$defs/localPath" },
     "private_output_root": { "$ref": "#/$defs/localPath" }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "provider": { "const": "openai" } },
+        "required": ["provider"]
+      },
+      "then": {
+        "properties": {
+          "model": false,
+          "resolution": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "model": {} },
+        "required": ["model"]
+      },
+      "then": {
+        "properties": { "provider": { "const": "spritecook" } },
+        "required": ["provider"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "resolution": {} },
+        "required": ["resolution"]
+      },
+      "then": {
+        "properties": { "provider": { "const": "spritecook" } },
+        "required": ["provider"]
+      }
+    }
+  ],
   "$defs": {
     "safeId": {
       "type": "string",

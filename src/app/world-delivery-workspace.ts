@@ -123,6 +123,9 @@ export interface PrepareWorldDeliveryWorkspaceInput {
   readonly workspace: string;
   readonly characterId: string;
   readonly completedAt: string;
+  readonly provider?: 'openai' | 'spritecook';
+  readonly model?: string;
+  readonly resolution?: '1K' | '2K' | '4K';
   readonly quality?: 'low' | 'medium' | 'high';
   readonly requestBudget?: number;
   readonly characterIdentitySemantics?: unknown;
@@ -391,6 +394,34 @@ export async function prepareWorldDeliveryWorkspace(
   if (!['low', 'medium', 'high'].includes(quality)) {
     throw new Error('Production quality must be low, medium, or high.');
   }
+  const provider = input.provider ?? 'openai';
+  if (!['openai', 'spritecook'].includes(provider)) {
+    throw new Error('Production provider must be openai or spritecook.');
+  }
+  if (
+    provider === 'openai'
+    && (input.model !== undefined || input.resolution !== undefined)
+  ) {
+    throw new Error(
+      'Model and resolution overrides are accepted only for SpriteCook.',
+    );
+  }
+  if (
+    input.model !== undefined
+    && (
+      input.model.length < 1
+      || input.model.length > 80
+      || !/^[a-z0-9][a-z0-9._-]*$/.test(input.model)
+    )
+  ) {
+    throw new Error('SpriteCook model id is invalid.');
+  }
+  if (
+    input.resolution !== undefined
+    && !['1K', '2K', '4K'].includes(input.resolution)
+  ) {
+    throw new Error('SpriteCook resolution must be 1K, 2K, or 4K.');
+  }
   const plan = createProductionArtPlan(intake.profile, {
     distribution: 'internal-review',
     license: 'LicenseRef-Proprietary',
@@ -477,6 +508,13 @@ export async function prepareWorldDeliveryWorkspace(
     document_type: 'production-art-workflow-job',
     workflow_id: intake.intake_id,
     profile: intake.profile,
+    ...(provider === 'spritecook'
+      ? {
+        provider,
+        ...(input.model ? { model: input.model } : {}),
+        resolution: input.resolution ?? '2K',
+      }
+      : {}),
     quality,
     request_budget: requestBudget,
     world_brief_file: resolve(workspace, 'world-brief.txt'),

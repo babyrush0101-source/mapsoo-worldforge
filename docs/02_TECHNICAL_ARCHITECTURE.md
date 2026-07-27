@@ -251,7 +251,7 @@ confirmed world
   -> WorldLayoutPlan + ProductionArtPlan
   -> ProductionArtProvider port
        -> built-in offline adapter
-       -> optional SpriteCook adapter
+       -> optional server-only SpriteCook adapter (implemented)
        -> optional model/artist adapter
   -> untrusted candidates
   -> normalize + validate + human review
@@ -263,7 +263,7 @@ confirmed world
 
 角色参考图的像素签名只证明几何和颜色来源相同，不能证明发型、脸部、服装或装备仍然是同一角色。`CharacterIdentitySemantics 1.0` 因此作为私有、人工确认的输入存在：核心校验其角色身份、来源摘要和确认 checkpoint，按 profile 编译允许的镜头/方向适配规则；模型 adapter 只在该任务获得单次 prompt/reference 上传授权后使用原始语义。公开 Pack、workflow state 和 receipt 不包含这些描述。
 
-SpriteCook 适合作为可选 adapter，复用其参考图驱动的 Sprite、动画和 TileSet 工作流；WorldForge 仍负责把这些候选组织成已确认世界的完整资产角色、地图计划和 Godot 可加载包。集成采用用户自带账号/授权，不复制其产品 UI，不把第三方 API 转售为 WorldForge 自有 API，并保留离线 provider 与其他 adapter 的同等入口。
+SpriteCook 作为已实现的可选 adapter，先复用其参考图驱动的通用 Sprite 生成；其专用动画和 TileSet 工作流仍作为后续 adapter 能力，不并入核心。WorldForge 仍负责把候选组织成已确认世界的完整资产角色、地图计划和 Godot 可加载包。集成采用用户自带账号/授权，不复制其产品 UI，不把第三方 API 转售为 WorldForge 自有 API，并保留离线 provider 与其他 adapter 的同等入口。实现与未完成边界见 [`59_SPRITECOOK_PROVIDER_ADAPTER.md`](59_SPRITECOOK_PROVIDER_ADAPTER.md)。
 
 SpriteCook 只允许两种薄接入方式，不成为运行时依赖：
 

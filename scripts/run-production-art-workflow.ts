@@ -18,6 +18,11 @@ import {
   OPENAI_PRODUCTION_ART_PROVIDER_ID,
 } from '../src/adapters/openai/openai-production-art-provider';
 import {
+  SPRITECOOK_DEFAULT_MODEL,
+  SPRITECOOK_PRODUCTION_ART_PROVIDER_ID,
+  type SpriteCookProductionArtResolution,
+} from '../src/adapters/spritecook/spritecook-production-art-provider';
+import {
   assertValidProductionArtOutput,
   createProductionArtPlan,
   type ProductionArtPlan,
@@ -106,6 +111,9 @@ interface WorkflowJob {
   readonly document_type: 'production-art-workflow-job';
   readonly workflow_id: string;
   readonly profile: WorldAssetProfile;
+  readonly provider?: 'openai' | 'spritecook';
+  readonly model?: string;
+  readonly resolution?: SpriteCookProductionArtResolution;
   readonly quality: ProductionArtWorkflowQuality;
   readonly request_budget: number;
   readonly world_brief_file: string;
@@ -122,7 +130,7 @@ interface WorkflowJob {
 
 interface TaskRunnerSummary {
   readonly status: 'candidate-written' | 'candidate-written-projection-rejected';
-  readonly remote_request_count: 1;
+  readonly remote_request_count: number;
   readonly profile: WorldAssetProfile;
   readonly task_id: string;
   readonly source_sha256: string;
@@ -310,6 +318,12 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     value,
     'character_identity_semantics_file',
   );
+  const hasProvider = Object.prototype.hasOwnProperty.call(value, 'provider');
+  const hasModel = Object.prototype.hasOwnProperty.call(value, 'model');
+  const hasResolution = Object.prototype.hasOwnProperty.call(
+    value,
+    'resolution',
+  );
   if (
     !exactKeys(value, [
       'character_id',
@@ -324,6 +338,9 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
       'style_bible_file',
       'workflow_id',
       'world_brief_file',
+      ...(hasProvider ? ['provider'] : []),
+      ...(hasModel ? ['model'] : []),
+      ...(hasResolution ? ['resolution'] : []),
       ...(hasCharacterIdentitySemantics
         ? ['character_identity_semantics_file']
         : []),
@@ -337,6 +354,27 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     || value.workflow_id.length > 80
     || !SAFE_ID.test(value.workflow_id)
     || !WORLD_ASSET_PROFILES.includes(value.profile as WorldAssetProfile)
+    || (
+      hasProvider
+      && !['openai', 'spritecook'].includes(value.provider as string)
+    )
+    || (
+      (value.provider ?? 'openai') === 'openai'
+      && (hasModel || hasResolution)
+    )
+    || (
+      hasModel
+      && (
+        typeof value.model !== 'string'
+        || value.model.length < 1
+        || value.model.length > 80
+        || !/^[a-z0-9][a-z0-9._-]*$/.test(value.model)
+      )
+    )
+    || (
+      hasResolution
+      && !['1K', '2K', '4K'].includes(value.resolution as string)
+    )
     || !['low', 'medium', 'high'].includes(value.quality as string)
     || !Number.isSafeInteger(value.request_budget)
     || (value.request_budget as number) < 1
@@ -466,6 +504,16 @@ function privateInputBinding(input: {
   const fields: readonly [string, string | Uint8Array][] = [
     ['schema', 'production-art-private-input-binding-v1'],
     ['profile', input.job.profile],
+    ['provider', input.job.provider ?? 'openai'],
+    [
+      'model',
+      input.job.provider === 'spritecook'
+        ? input.job.model ?? SPRITECOOK_DEFAULT_MODEL
+        : OPENAI_PRODUCTION_ART_MODEL,
+    ],
+    ['resolution', input.job.provider === 'spritecook'
+      ? input.job.resolution ?? '2K'
+      : 'provider-default'],
     ['quality', input.job.quality],
     ['character-id', input.job.character_id],
     ['confirmed-intake-sha256', input.job.private_input_binding.confirmed_intake_sha256],
@@ -619,16 +667,39 @@ async function acquireWorkflowLock(directory: string): Promise<() => Promise<voi
   };
 }
 
+function workflowProvider(job: WorkflowJob): {
+  readonly choice: 'openai' | 'spritecook';
+  readonly id: string;
+  readonly model: string;
+  readonly credentialName: 'OPENAI_API_KEY' | 'SPRITECOOK_API_KEY';
+} {
+  if (job.provider === 'spritecook') {
+    return Object.freeze({
+      choice: 'spritecook',
+      id: SPRITECOOK_PRODUCTION_ART_PROVIDER_ID,
+      model: job.model ?? SPRITECOOK_DEFAULT_MODEL,
+      credentialName: 'SPRITECOOK_API_KEY',
+    });
+  }
+  return Object.freeze({
+    choice: 'openai',
+    id: OPENAI_PRODUCTION_ART_PROVIDER_ID,
+    model: OPENAI_PRODUCTION_ART_MODEL,
+    credentialName: 'OPENAI_API_KEY',
+  });
+}
+
 function assertStateMatchesJob(
   state: ProductionArtWorkflowState,
   job: WorkflowJob,
   inputBindingSha256: string,
 ): void {
+  const provider = workflowProvider(job);
   if (
     state.workflow_id !== job.workflow_id
     || state.profile !== job.profile
-    || state.provider.id !== OPENAI_PRODUCTION_ART_PROVIDER_ID
-    || state.provider.model !== OPENAI_PRODUCTION_ART_MODEL
+    || state.provider.id !== provider.id
+    || state.provider.model !== provider.model
     || state.provider.quality !== job.quality
     || state.request_budget !== job.request_budget
     || state.input_binding_sha256 !== inputBindingSha256
@@ -659,6 +730,8 @@ function taskArguments(
   task: ProductionArtTask,
 ): string[] {
   const values = [
+    '--provider',
+    job.provider ?? 'openai',
     '--profile',
     job.profile,
     '--task',
@@ -670,6 +743,10 @@ function taskArguments(
     '--style-bible-file',
     job.style_bible_file,
   ];
+  if (job.provider === 'spritecook') {
+    if (job.model) values.push('--model', job.model);
+    values.push('--resolution', job.resolution ?? '2K');
+  }
   if (task.task_id === 'scene-direction') {
     values.push(
       '--environment-reference',
@@ -728,7 +805,7 @@ async function runTaskProcess(
   readonly stderr: string;
 }> {
   const viteNode = resolve('node_modules/vite-node/vite-node.mjs');
-  const runner = resolve('scripts/run-openai-production-art-source.ts');
+  const runner = resolve('scripts/run-production-art-source.ts');
   const child = spawn(process.execPath, [viteNode, runner, ...taskArguments(job, task)], {
     cwd: process.cwd(),
     env: process.env,
@@ -780,7 +857,9 @@ function parseTaskSummary(stdout: string): TaskRunnerSummary {
     !isPlainObject(value)
     || !['candidate-written', 'candidate-written-projection-rejected']
       .includes(value.status as string)
-    || value.remote_request_count !== 1
+    || !Number.isSafeInteger(value.remote_request_count)
+    || (value.remote_request_count as number) < 1
+    || (value.remote_request_count as number) > 4
     || !WORLD_ASSET_PROFILES.includes(value.profile as WorldAssetProfile)
     || typeof value.task_id !== 'string'
     || typeof value.source_sha256 !== 'string'
@@ -1033,6 +1112,7 @@ function workflowSummary(
       : 0,
     workflow_id: state.workflow_id,
     profile: state.profile,
+    provider: state.provider,
     state_revision: state.state_revision,
     request_budget: state.request_budget,
     requests_started: state.requests_started,
@@ -1158,13 +1238,14 @@ async function main(): Promise<void> {
   const directory = safeWorkflowDirectory(workflowRoot, job.profile, job.workflow_id);
   const releaseLock = await acquireWorkflowLock(directory);
   try {
+    const selectedProvider = workflowProvider(job);
     let state = await readLatestState(directory, plan)
       ?? createProductionArtWorkflowState({
         workflowId: job.workflow_id,
         plan,
         provider: {
-          id: OPENAI_PRODUCTION_ART_PROVIDER_ID,
-          model: OPENAI_PRODUCTION_ART_MODEL,
+          id: selectedProvider.id,
+          model: selectedProvider.model,
           quality: job.quality,
         },
         inputBindingSha256,
@@ -1241,8 +1322,10 @@ async function main(): Promise<void> {
       ), null, 2));
       return;
     }
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is required only for --execute.');
+    if (!process.env[selectedProvider.credentialName]) {
+      throw new Error(
+        `${selectedProvider.credentialName} is required only for --execute.`,
+      );
     }
 
     let requestsThisInvocation = 0;
