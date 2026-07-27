@@ -12,6 +12,10 @@ import {
   validateWorldMaterialPalettePackBinding,
   type WorldMaterialPalettePackBinding,
 } from './world-material-palette';
+import {
+  validateWorldTerrainAutotilePackBinding,
+  type WorldTerrainAutotilePackBinding,
+} from './world-terrain-autotile-set';
 
 export const PACK_1_0_SCHEMA_VERSION = '1.0.0-draft.1' as const;
 export const PACK_1_0_PLANE_BINDINGS = Object.freeze([
@@ -116,6 +120,7 @@ export interface Pack10Manifest {
   }>;
   readonly layout?: Readonly<WorldLayoutPackBinding>;
   readonly material_palette?: Readonly<WorldMaterialPalettePackBinding>;
+  readonly terrain_autotiles?: Readonly<WorldTerrainAutotilePackBinding>;
   readonly files: readonly Pack10FileRecord[];
   readonly license: Readonly<{
     output: Readonly<{
@@ -491,6 +496,12 @@ export function validatePack10Manifest(manifest: Pack10Manifest): Pack10Manifest
   issues.push(...validateWorldMaterialPalettePackBinding(
     manifest.material_palette,
     manifest.layout,
+    manifest.files,
+  ));
+  issues.push(...validateWorldTerrainAutotilePackBinding(
+    manifest.terrain_autotiles,
+    manifest.layout,
+    manifest.material_palette,
     manifest.files,
   ));
   const previewBinding = roles.get('world.preview')?.binding;

@@ -16,6 +16,10 @@ import {
   validateWorldMaterialPalettePackBinding,
   type WorldMaterialPalettePackBinding,
 } from './world-material-palette';
+import {
+  validateWorldTerrainAutotilePackBinding,
+  type WorldTerrainAutotilePackBinding,
+} from './world-terrain-autotile-set';
 
 export const ALPHA9_PACK_SCHEMA_VERSION = '0.6.0' as const;
 export const ALPHA9_PACK_VERSION = '0.1.0-alpha.9' as const;
@@ -86,6 +90,7 @@ export interface Alpha9PackManifest {
   }>;
   readonly layout?: Readonly<WorldLayoutPackBinding>;
   readonly material_palette?: Readonly<WorldMaterialPalettePackBinding>;
+  readonly terrain_autotiles?: Readonly<WorldTerrainAutotilePackBinding>;
   readonly files: readonly Alpha9FileRecord[];
   readonly license: Readonly<{
     output: Readonly<PackOutputLicense>;
@@ -166,6 +171,7 @@ export function validateAlpha9PackManifest(manifest: Alpha9PackManifest): Alpha9
     manifest.runtime.navigation.path, manifest.license.output.notice_path,
     ...(manifest.layout ? [manifest.layout.path] : []),
     ...(manifest.material_palette ? [manifest.material_palette.path] : []),
+    ...(manifest.terrain_autotiles ? [manifest.terrain_autotiles.path] : []),
   ];
   for (const path of referencedPaths) {
     if (!safePath(path) || !paths.has(path)) issues.push({ code: 'file.missing-reference', message: `Manifest path is absent from files: ${path}.` });
@@ -183,6 +189,12 @@ export function validateAlpha9PackManifest(manifest: Alpha9PackManifest): Alpha9
   issues.push(...validateWorldMaterialPalettePackBinding(
     manifest.material_palette,
     manifest.layout,
+    manifest.files,
+  ));
+  issues.push(...validateWorldTerrainAutotilePackBinding(
+    manifest.terrain_autotiles,
+    manifest.layout,
+    manifest.material_palette,
     manifest.files,
   ));
   if (manifest.provenance.contains_generative_ai && (!manifest.provenance.model_provider?.trim() || !manifest.provenance.model?.trim())) issues.push({ code: 'provenance.model', message: 'Generative output must disclose model provider and model.' });

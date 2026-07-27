@@ -34,6 +34,10 @@ import {
   prepareWorldMaterialPalettePackEntry,
   WORLD_MATERIAL_PALETTE_PATH,
 } from '../core/world-material-palette';
+import {
+  prepareWorldTerrainAutotilePackEntry,
+  WORLD_TERRAIN_AUTOTILE_PATH,
+} from '../core/world-terrain-autotile-set';
 
 const ZIP_DATE = new Date(Date.UTC(1980, 0, 1));
 const MANIFEST_PATH = 'mapsoo.manifest.json';
@@ -78,6 +82,18 @@ export interface Pack10ProductionEnvironmentArtifact {
   readonly layers: LayeredDepthProductionLayerProjection;
   readonly environmentAtlases: LayeredDepthProductionAtlasProjection;
   readonly generationEvidence: readonly ProductionArtGenerationEvidence[];
+}
+
+export interface Pack10TerrainAutotileArtifact {
+  readonly cell: Readonly<{ width: number; height: number }>;
+  readonly images: readonly Readonly<{
+    material: string;
+    path: string;
+    png: Readonly<{
+      byteLength: number;
+      readBytes(): Uint8Array;
+    }>;
+  }>[];
 }
 
 export interface Pack10ProductionReviewCandidate {
@@ -619,6 +635,7 @@ export async function buildPack10ProductionReviewCandidate(
   environmentValue: Pack10ProductionEnvironmentArtifact,
   options: Pack10CharacterReviewCandidateOptions,
   layoutPlan?: WorldLayoutPlan,
+  terrainAutotileValue?: Pack10TerrainAutotileArtifact,
 ): Promise<Pack10ProductionReviewCandidate> {
   const [characterCandidate, environment, preparedLayout] = await Promise.all([
     buildPack10CharacterReviewCandidate(baseZipBytes, player, npc, options),
@@ -665,6 +682,81 @@ export async function buildPack10ProductionReviewCandidate(
     payloads.set(WORLD_MATERIAL_PALETTE_PATH, Uint8Array.from(preparedPalette.bytes));
     assertSafeText(WORLD_MATERIAL_PALETTE_PATH, preparedPalette.bytes);
   }
+  let preparedTerrainAutotiles:
+    | Awaited<ReturnType<typeof prepareWorldTerrainAutotilePackEntry>>
+    | undefined;
+  if (terrainAutotileValue !== undefined) {
+    if (!preparedLayout || !preparedPalette) {
+      fail(
+        'production-review.invalid-output',
+        'Terrain autotiles require the exact optional layout and material palette.',
+      );
+    }
+    if (
+      terrainAutotileValue.cell.width !== 64
+      || terrainAutotileValue.cell.height !== 32
+      || terrainAutotileValue.images.length !== preparedPalette.palette.entries.length
+    ) {
+      fail(
+        'production-review.invalid-output',
+        'Layered-depth terrain autotiles require complete 64 by 32 cell coverage.',
+      );
+    }
+    const images = [];
+    for (const image of terrainAutotileValue.images) {
+      if (
+        !SAFE_PATH.test(image.path)
+        || !image.path.startsWith('terrain-autotiles/')
+        || image.png.byteLength < 33
+        || image.png.byteLength > 32 * 1024 * 1024
+        || payloads.has(image.path)
+      ) {
+        fail(
+          'production-review.invalid-output',
+          `Terrain autotile image declaration is invalid: ${image.path}.`,
+        );
+      }
+      const bytes = image.png.readBytes();
+      if (!(bytes instanceof Uint8Array) || bytes.byteLength !== image.png.byteLength) {
+        fail(
+          'production-review.integrity',
+          `Terrain autotile image bytes are unstable: ${image.path}.`,
+        );
+      }
+      assertMetadataFreePng(image.path, bytes);
+      const decoded = await decodeReferenceImageRgba(bytes, 'image/png');
+      if (decoded.width !== 256 || decoded.height !== 128) {
+        fail(
+          'production-review.invalid-output',
+          `Terrain autotile image must be a 4 by 4 grid of 64 by 32 cells: ${image.path}.`,
+        );
+      }
+      payloads.set(image.path, Uint8Array.from(bytes));
+      images.push(Object.freeze({
+        material: image.material,
+        path: image.path,
+        sha256: await sha256(bytes),
+      }));
+    }
+    try {
+      preparedTerrainAutotiles = await prepareWorldTerrainAutotilePackEntry(
+        preparedLayout,
+        preparedPalette,
+        terrainAutotileValue.cell,
+        images,
+      );
+    } catch {
+      fail(
+        'production-review.invalid-output',
+        'Terrain autotile images do not exactly cover the material palette.',
+      );
+    }
+    payloads.set(
+      WORLD_TERRAIN_AUTOTILE_PATH,
+      Uint8Array.from(preparedTerrainAutotiles.bytes),
+    );
+    assertSafeText(WORLD_TERRAIN_AUTOTILE_PATH, preparedTerrainAutotiles.bytes);
+  }
   const previousFiles = new Map(loaded.manifest.files.map((file) => [file.path, file]));
   const files = await fileRecords(payloads, previousFiles);
   const providers = new Set([
@@ -689,6 +781,9 @@ export async function buildPack10ProductionReviewCandidate(
     roles,
     ...(preparedLayout ? { layout: preparedLayout.binding } : {}),
     ...(preparedPalette ? { material_palette: preparedPalette.binding } : {}),
+    ...(preparedTerrainAutotiles
+      ? { terrain_autotiles: preparedTerrainAutotiles.binding }
+      : {}),
     files,
     provenance: Object.freeze({
       output_provenance: 'hybrid',

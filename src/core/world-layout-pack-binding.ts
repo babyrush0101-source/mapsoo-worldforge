@@ -54,7 +54,7 @@ export function selectWorldLayoutAwarePackSchema(
   }
   const properties = Object.fromEntries(
     Object.entries(schema.properties).filter(([key]) =>
-      key !== 'layout' && key !== 'material_palette'),
+      key !== 'layout' && key !== 'material_palette' && key !== 'terrain_autotiles'),
   );
   const selected: Record<string, unknown> = {
     ...schema,
@@ -63,7 +63,9 @@ export function selectWorldLayoutAwarePackSchema(
   if (isRecord(schema.$defs)) {
     const definitions = Object.fromEntries(
       Object.entries(schema.$defs).filter(([key]) =>
-        key !== 'layoutBinding' && key !== 'materialPaletteBinding'),
+        key !== 'layoutBinding'
+        && key !== 'materialPaletteBinding'
+        && key !== 'terrainAutotileBinding'),
     );
     if (Object.keys(definitions).length === 0) {
       delete selected.$defs;

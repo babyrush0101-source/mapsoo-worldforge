@@ -71,6 +71,8 @@ static func validate_and_prepare(
 		manifest_keys.append("layout")
 	if manifest.has("material_palette"):
 		manifest_keys.append("material_palette")
+	if manifest.has("terrain_autotiles"):
+		manifest_keys.append("terrain_autotiles")
 	_require_keys(manifest, manifest_keys, "Pack 1.0 manifest", errors)
 	var pack := _dict(manifest.get("pack"), "pack", errors)
 	var generator := _dict(pack.get("generator"), "pack.generator", errors)

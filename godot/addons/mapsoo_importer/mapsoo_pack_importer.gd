@@ -11,6 +11,9 @@ const WorldLayoutAttachment = preload(
 const WorldMaterialPaletteAttachment = preload(
 	"res://addons/mapsoo_importer/mapsoo_world_material_palette_attachment.gd"
 )
+const WorldTerrainAutotileAttachment = preload(
+	"res://addons/mapsoo_importer/mapsoo_world_terrain_autotile_attachment.gd"
+)
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd")
 
 const LEGACY_SCHEMA_VERSION := "0.1.0"
@@ -109,6 +112,16 @@ static func import_pack(
 		errors.append(palette_validation.error)
 		return _result(false, errors, warnings)
 	validation.world_material_palette = palette_validation.palette
+	var autotile_validation := WorldTerrainAutotileAttachment.validate_optional(
+		manifest,
+		pack_root,
+		validation.world_layout,
+		validation.world_material_palette
+	)
+	if not autotile_validation.ok:
+		errors.append(autotile_validation.error)
+		return _result(false, errors, warnings)
+	validation.world_terrain_autotiles = autotile_validation.autotiles
 
 	var pack_id: String = validation.pack_id
 	var output_dir := "%s/%s" % [OUTPUT_ROOT, pack_id]
@@ -203,6 +216,17 @@ static func import_pack(
 		_cleanup_transaction_directory(staging_dir, warnings)
 		errors.append(palette_scene_binding.error)
 		return _result(false, errors, warnings)
+	var autotile_scene_binding := WorldTerrainAutotileAttachment.bind_scene(
+		scene_build.root,
+		validation.world_layout,
+		validation.world_material_palette,
+		validation.world_terrain_autotiles
+	)
+	if not autotile_scene_binding.ok:
+		scene_build.root.free()
+		_cleanup_transaction_directory(staging_dir, warnings)
+		errors.append(autotile_scene_binding.error)
+		return _result(false, errors, warnings)
 	var packed_scene := PackedScene.new()
 	var pack_error := packed_scene.pack(scene_build.root)
 	if pack_error != OK:
@@ -249,7 +273,8 @@ static func import_pack(
 		_has_structures(validation.schema_version),
 		validation.schema_version,
 		validation.world_layout,
-		validation.world_material_palette
+		validation.world_material_palette,
+		validation.world_terrain_autotiles
 	)
 	if not staged_validation.ok:
 		_cleanup_transaction_directory(staging_dir, warnings)
@@ -529,7 +554,8 @@ static func _validate_staged_resources(
 	expect_structures_container: bool = false,
 	schema_version: String = "",
 	expected_world_layout: Dictionary = {},
-	expected_world_material_palette: Dictionary = {}
+	expected_world_material_palette: Dictionary = {},
+	expected_world_terrain_autotiles: Dictionary = {}
 ) -> Dictionary:
 	var tile_set := ResourceLoader.load(tileset_path, "TileSet", ResourceLoader.CACHE_MODE_IGNORE_DEEP) as TileSet
 	if tile_set == null:
@@ -545,14 +571,24 @@ static func _validate_staged_resources(
 	if not layout_validation.ok:
 		world.free()
 		return {"ok": false, "error": layout_validation.error}
-	var palette_validation := WorldMaterialPaletteAttachment.validate_bound_scene(
+	if expected_world_terrain_autotiles.is_empty():
+		var palette_validation := WorldMaterialPaletteAttachment.validate_bound_scene(
+			world,
+			expected_world_layout,
+			expected_world_material_palette
+		)
+		if not palette_validation.ok:
+			world.free()
+			return {"ok": false, "error": palette_validation.error}
+	var autotile_validation := WorldTerrainAutotileAttachment.validate_bound_scene(
 		world,
 		expected_world_layout,
-		expected_world_material_palette
+		expected_world_material_palette,
+		expected_world_terrain_autotiles
 	)
-	if not palette_validation.ok:
+	if not autotile_validation.ok:
 		world.free()
-		return {"ok": false, "error": palette_validation.error}
+		return {"ok": false, "error": autotile_validation.error}
 	if schema_version == COMPLETE_FARM_SCHEMA_VERSION:
 		var ground_layer := world.get_node_or_null("Ground") as TileMapLayer
 		var alpha9_valid := ground_layer != null and world.get_node_or_null("Water") is TileMapLayer and world.get_node_or_null("Paths") is TileMapLayer and world.get_node_or_null("Soil") is TileMapLayer
@@ -865,6 +901,7 @@ static func _validate_and_prepare(
 		"schema_version": "",
 		"world_layout": {},
 		"world_material_palette": {},
+		"world_terrain_autotiles": {},
 	}
 
 	var schema_version_value: Variant = manifest.get("schema_version")

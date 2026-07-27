@@ -17,6 +17,10 @@ import {
   validateWorldMaterialPalettePackBinding,
   type WorldMaterialPalettePackBinding,
 } from './world-material-palette';
+import {
+  validateWorldTerrainAutotilePackBinding,
+  type WorldTerrainAutotilePackBinding,
+} from './world-terrain-autotile-set';
 
 export const ALPHA11_PACK_SCHEMA_VERSION = '0.8.0' as const;
 export const ALPHA11_PACK_VERSION = '0.1.0-alpha.11' as const;
@@ -126,6 +130,7 @@ export interface Alpha11PackManifest {
   }>;
   readonly layout?: Readonly<WorldLayoutPackBinding>;
   readonly material_palette?: Readonly<WorldMaterialPalettePackBinding>;
+  readonly terrain_autotiles?: Readonly<WorldTerrainAutotilePackBinding>;
   readonly files: readonly Readonly<{
     path: string;
     media_type: 'image/png' | 'application/json' | 'application/schema+json' | 'text/markdown';
@@ -223,6 +228,8 @@ export function validateAlpha11PackManifest(manifest: Alpha11PackManifest): Alph
     manifest.runtime.navigation.path,
     manifest.license.output.notice_path,
     ...(manifest.layout ? [manifest.layout.path] : []),
+    ...(manifest.material_palette ? [manifest.material_palette.path] : []),
+    ...(manifest.terrain_autotiles ? [manifest.terrain_autotiles.path] : []),
   ];
   if (referenced.some((path) => !known.has(path))) {
     issues.push({ code: 'manifest.file-reference', message: 'Every referenced path must exist in files.' });
@@ -231,6 +238,12 @@ export function validateAlpha11PackManifest(manifest: Alpha11PackManifest): Alph
   issues.push(...validateWorldMaterialPalettePackBinding(
     manifest.material_palette,
     manifest.layout,
+    manifest.files,
+  ));
+  issues.push(...validateWorldTerrainAutotilePackBinding(
+    manifest.terrain_autotiles,
+    manifest.layout,
+    manifest.material_palette,
     manifest.files,
   ));
   for (const code of validatePackOutputAuthorization(manifest.license.output, manifest.provenance)) {

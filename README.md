@@ -230,6 +230,8 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 - [Model-backed production art and safe single-task CLI](docs/49_MODEL_BACKED_PRODUCTION_ART.md)
 - [Live-model four-profile direction review](docs/52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md)
 - [Operator-model complete internal candidate and golden-sample gaps](docs/53_OPERATOR_MODEL_GOLDEN_SAMPLE.md)
+- [Confirmed world layout plan and production material binding](docs/54_WORLD_LAYOUT_PLAN.md)
+- [Provider-neutral 16-variant world terrain autotiles](docs/55_WORLD_TERRAIN_AUTOTILES.md)
 - [10-minute first Godot import](docs/10_FIRST_GODOT_IMPORT.md)
 - [Safe Godot re-import contract](docs/11_SAFE_GODOT_REIMPORT.md)
 - [Alpha.9 reference-to-farm scope and acceptance](docs/19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)

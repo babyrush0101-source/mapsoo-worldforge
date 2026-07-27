@@ -16,6 +16,14 @@ layered-depth worlds. It proves complete role coverage, visible projected
 persistence, and fail-closed tamper handling. The Pack 1.0 controlled smoke
 also sends a real palette attachment through the complete importer transaction.
 
+`world_terrain_autotile_smoke.gd` applies the optional provider-neutral 4 by 4
+terrain enhancement after the safe single-cell palette fallback. It proves
+explicit N/E/S/W masks, multiple selected variants, all four profiles,
+persisted atlas coordinates, and fail-closed coverage/hash/grid tamper handling
+with Godot 4.3 and 4.7. The Pack 1.0 controlled importer smoke additionally
+loads a real four-material JSON/PNG attachment, persists it transactionally,
+and rejects a chained-hash mismatch.
+
 1. generate a deterministic PNG/JSON/manifest fixture;
 2. let the editor import the new PNG resources;
 3. call `MapsooPackImporter.import_pack()` and validate the resulting resources.

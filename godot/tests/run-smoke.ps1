@@ -103,6 +103,10 @@ try {
         "--headless", "--path", $godotRoot,
         "--script", "res://tests/world_material_palette_smoke.gd"
     )
+    Invoke-Godot "WorldTerrainAutotile smoke test" @(
+        "--headless", "--path", $godotRoot,
+        "--script", "res://tests/world_terrain_autotile_smoke.gd"
+    )
 }
 finally {
     if (-not $KeepGenerated) {

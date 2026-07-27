@@ -34,6 +34,7 @@
     },
     "layout": { "$ref": "#/$defs/layoutBinding" },
     "material_palette": { "$ref": "#/$defs/materialPaletteBinding" },
+    "terrain_autotiles": { "$ref": "#/$defs/terrainAutotileBinding" },
     "files": { "type": "array", "minItems": 1, "maxItems": 512, "items": { "$ref": "#/$defs/file" } },
     "license": {
       "type": "object", "additionalProperties": false, "required": ["output"],
@@ -62,6 +63,7 @@
     "pathObject": { "type": "object", "additionalProperties": false, "required": ["path"], "properties": { "path": { "$ref": "#/$defs/path" } } },
     "layoutBinding": { "type": "object", "additionalProperties": false, "required": ["schema_version", "document_type", "plan_id", "path", "sha256"], "properties": { "schema_version": { "const": "1.0.0" }, "document_type": { "const": "world-layout-plan" }, "plan_id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }, "path": { "const": "world-layout-plan.json" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
     "materialPaletteBinding": { "type": "object", "additionalProperties": false, "required": ["schema_version", "document_type", "palette_id", "layout_plan_sha256", "path", "sha256"], "properties": { "schema_version": { "const": "1.0.0" }, "document_type": { "const": "world-material-palette" }, "palette_id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }, "layout_plan_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "path": { "const": "world-material-palette.json" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "terrainAutotileBinding": { "type": "object", "additionalProperties": false, "required": ["schema_version", "document_type", "set_id", "layout_plan_sha256", "material_palette_sha256", "path", "sha256"], "properties": { "schema_version": { "const": "1.0.0" }, "document_type": { "const": "world-terrain-autotile-set" }, "set_id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }, "layout_plan_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "material_palette_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "path": { "const": "world-terrain-autotiles.json" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
     "layer": { "type": "object", "additionalProperties": false, "required": ["id", "order"], "properties": { "id": { "enum": ["void", "floor", "elevation", "walls", "props", "actors", "effects"] }, "order": { "type": "integer", "minimum": 0, "maximum": 6 } } },
     "atlas": { "type": "object", "additionalProperties": false, "required": ["id", "path"], "properties": { "id": { "enum": ["terrain", "hazards", "props", "structures", "collectibles", "effects", "shadows", "player", "enemy-melee", "enemy-ranged"] }, "path": { "$ref": "#/$defs/path" } } },
     "role": { "type": "object", "additionalProperties": false, "required": ["role", "path"], "properties": { "role": { "type": "string", "minLength": 1, "maxLength": 80 }, "path": { "$ref": "#/$defs/path" } } },

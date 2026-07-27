@@ -135,13 +135,27 @@ profile, makes it visible, and verifies the saved scene on reload. This is the
 same port for all four profiles and for built-in, model-backed, artist-authored,
 or optional third-party authoring adapters.
 
-The first rendering mode is deliberately `single-cell`: it proves exact asset
-selection, visible coverage, projection, persistence, and tamper rejection. It
-does not yet choose auto-terrain transitions, visual variants, animated tiles,
-or final art direction. Those remain replaceable authoring inputs; for example,
-a SpriteCook export can be converted to this neutral mapping without making
-SpriteCook a core or runtime dependency. Profile gameplay completion, human
-art approval, and physical Raspberry Pi performance remain separate gates.
+The required rendering mode remains deliberately `single-cell`: it proves exact
+asset selection, visible coverage, projection, persistence, and tamper
+rejection while providing a safe fallback. The optional
+`WorldTerrainAutotileSet 1.0` now binds the exact layout and palette bytes, maps
+all 16 N/E/S/W same-material masks to explicit 4 by 4 atlas cells, and replaces
+the fallback in the shared Godot layer. The selector works for all four
+profiles, survives saved-scene reload, and rejects incomplete or changed input
+before mutation.
+
+This adopts the compact, reviewable 16-combination authoring idea used by tools
+such as SpriteCook without making any provider a core or runtime dependency.
+SpriteCook's published base template uses corner masks, while this first
+portable runtime uses edge masks, so an adapter must explicitly transform and
+prove the mapping rather than blindly rename an export. The Pack 1.0
+internal-review builder and transactional Godot importer now carry the exact
+JSON/PNG attachment through manifest, byte, dimension, persistence, and source
+snapshot checks. Production entry points for the other three profiles, visual
+variants beyond neighbor topology, animated tiles, final art direction,
+profile gameplay completion, human art approval, and physical Raspberry Pi
+performance remain separate gates. See
+[`55_WORLD_TERRAIN_AUTOTILES.md`](55_WORLD_TERRAIN_AUTOTILES.md).
 
 ## Fail-closed behavior
 

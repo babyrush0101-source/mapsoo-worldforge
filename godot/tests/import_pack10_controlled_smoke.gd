@@ -33,6 +33,7 @@ const TEST_IDS := [
 	"neutral-pack10-absolute-rejection",
 	"neutral-pack10-traversal-rejection",
 	"neutral-pack10-layout-smoke",
+	"neutral-pack10-autotile-rejection",
 ]
 
 
@@ -71,6 +72,17 @@ func _run() -> void:
 		layout_result.scene_path, "public", "CC0-1.0", "public", true,
 	) or layout_importer.get("version") != "1.0.0-layout.3":
 		_fail("WorldLayoutPlan-bound Pack 1.0 import failed: %s" % layout_result.errors)
+		return
+	var autotile_attack_path := _materialize(
+		recipe, TEST_IDS[9], "public", "autotile-hash"
+	)
+	if autotile_attack_path.is_empty():
+		return
+	var autotile_rejected := Importer.import_pack(autotile_attack_path)
+	if autotile_rejected.ok or not _errors_contain(
+		autotile_rejected.errors, "terrain_autotiles"
+	):
+		_fail("Pack 1.0 accepted a terrain autotile chained-hash mismatch.")
 		return
 
 	var internal_path := _materialize(recipe, TEST_IDS[1], "internal-review")
@@ -125,7 +137,8 @@ func _run() -> void:
 	print(
 		"MAPSOO_PACK10_CONTROLLED_OK schema=1.0.0-draft.1"
 		+ " public=pass internal-review=grant-gated private=grant-gated"
-		+ " scripts=reject shaders=reject urls=reject absolute=reject traversal=reject",
+		+ " scripts=reject shaders=reject urls=reject absolute=reject traversal=reject"
+		+ " autotile-tamper=reject",
 	)
 	quit(0)
 
@@ -213,7 +226,7 @@ func _materialize(
 	paths.append("license-assets.md")
 
 	var manifest := _manifest(recipe, pack_id, distribution, paths, root)
-	if attack == "layout":
+	if attack in ["layout", "autotile-hash"]:
 		var plan := _layout_plan()
 		if not _write_json(root.path_join("world-layout-plan.json"), plan):
 			return ""
@@ -274,6 +287,71 @@ func _materialize(
 			"path": "world-material-palette.json",
 			"sha256": palette_record.sha256,
 		}
+		var autotile_entries: Array = []
+		for entry_value: Variant in palette.entries:
+			var entry: Dictionary = entry_value
+			var material := str(entry.material)
+			var image_path := "terrain-autotiles/%s.png" % material
+			if not _write_autotile_png(root.path_join(image_path), autotile_entries.size()):
+				return ""
+			var image_record := _file_record(root, image_path, "image/png")
+			manifest.files.append(image_record)
+			var tiles: Array = []
+			for mask: int in range(16):
+				tiles.append({
+					"mask": mask,
+					"column": mask % 4,
+					"row": mask / 4,
+				})
+			autotile_entries.append({
+				"material": material,
+				"role": entry.role,
+				"image": {
+					"path": image_path,
+					"sha256": image_record.sha256,
+					"width": 256,
+					"height": 128,
+				},
+				"tiles": tiles,
+			})
+		var autotiles := {
+			"schema_version": "1.0.0",
+			"document_type": "world-terrain-autotile-set",
+			"set_id": "autotiles-neutral-layered-layout",
+			"profile": "layered-depth-2d",
+			"layout": {
+				"plan_id": plan.plan_id,
+				"sha256": layout_record.sha256,
+			},
+			"palette": {
+				"palette_id": palette.palette_id,
+				"sha256": palette_record.sha256,
+			},
+			"selection": {
+				"kind": "edge-mask-16",
+				"bit_order": ["north", "east", "south", "west"],
+				"outside": "different-material",
+			},
+			"cell": {"width": 64, "height": 32},
+			"entries": autotile_entries,
+		}
+		if not _write_json(root.path_join("world-terrain-autotiles.json"), autotiles):
+			return ""
+		var autotile_record := _file_record(
+			root, "world-terrain-autotiles.json", "application/json"
+		)
+		manifest.files.append(autotile_record)
+		manifest.terrain_autotiles = {
+			"schema_version": "1.0.0",
+			"document_type": "world-terrain-autotile-set",
+			"set_id": autotiles.set_id,
+			"layout_plan_sha256": layout_record.sha256,
+			"material_palette_sha256": palette_record.sha256,
+			"path": "world-terrain-autotiles.json",
+			"sha256": autotile_record.sha256,
+		}
+		if attack == "autotile-hash":
+			manifest.terrain_autotiles.material_palette_sha256 = "f".repeat(64)
 	elif attack in ["script", "shader"]:
 		var extension := "gd" if attack == "script" else "gdshader"
 		var payload_path := "payload.%s" % extension
@@ -610,6 +688,22 @@ func _write_png(path: String, width: int, height: int, color: Color) -> bool:
 	return _save_png(path, image)
 
 
+func _write_autotile_png(path: String, material_index: int) -> bool:
+	var cell := Vector2i(64, 32)
+	var image := Image.create_empty(cell.x * 4, cell.y * 4, false, Image.FORMAT_RGBA8)
+	for mask: int in range(16):
+		image.fill_rect(
+			Rect2i(Vector2i((mask % 4) * cell.x, (mask / 4) * cell.y), cell),
+			Color.from_hsv(
+				float((material_index * 16 + mask) % 64) / 64.0,
+				0.35 + float(mask % 4) * 0.08,
+				0.58 + float(mask / 4) * 0.06,
+				1.0
+			)
+		)
+	return _save_png(path, image)
+
+
 func _save_png(path: String, image: Image) -> bool:
 	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir())) != OK:
 		_fail("Unable to create fixture image directory.")
@@ -694,6 +788,10 @@ func _validate_scene(
 					== "profile-layout-v1"
 				and world.get_meta("mapsoo_material_palette_status", "")
 					== "production-tiles-v1"
+				and world.get_meta("mapsoo_terrain_autotile_status", "")
+					== "terrain-autotiles-v1"
+				and world.get_meta("mapsoo_terrain_autotile_set_id", "")
+					== "autotiles-neutral-layered-layout"
 				and (
 					world.get_node_or_null(
 						"MapsooLayoutMaterialization/Terrain/LogicalCells"

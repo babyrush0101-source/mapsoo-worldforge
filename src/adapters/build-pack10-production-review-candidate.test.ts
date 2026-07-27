@@ -6,6 +6,7 @@ import {
   Pack10ProductionReviewCandidateError,
   buildPack10ProductionReviewCandidate,
   type Pack10ProductionEnvironmentArtifact,
+  type Pack10TerrainAutotileArtifact,
 } from './build-pack10-production-review-candidate';
 import type { Pack10CharacterReviewArtifact } from './build-pack10-character-review-candidate';
 import { encodeRgbaPng } from './canvas/encode-png';
@@ -109,6 +110,30 @@ async function layeredLayoutPlan() {
     approved_intent_preview_sha256: '4'.repeat(64),
   });
   return buildWorldLayoutPlanFromConfirmedIntake(intake);
+}
+
+function terrainAutotilesFor(
+  layoutPlan: Awaited<ReturnType<typeof layeredLayoutPlan>>,
+): Pack10TerrainAutotileArtifact {
+  const terrain = layoutPlan.terrain_layout.kind === 'bands'
+    ? layoutPlan.terrain_layout.bands
+    : layoutPlan.terrain_layout.zones;
+  const materials = [...new Set(terrain.map(({ material }) => material))]
+    .sort((left, right) => left.localeCompare(right, 'en'));
+  return Object.freeze({
+    cell: Object.freeze({ width: 64, height: 32 }),
+    images: Object.freeze(materials.map((material, index) => {
+      const bytes = baseSolidPng(256, 128, 70 + index);
+      return Object.freeze({
+        material,
+        path: `terrain-autotiles/${material}.png`,
+        png: Object.freeze({
+          byteLength: bytes.byteLength,
+          readBytes: () => Uint8Array.from(bytes),
+        }),
+      });
+    })),
+  });
 }
 
 async function basePack(): Promise<Uint8Array> {
@@ -621,6 +646,111 @@ describe('Pack 1.0 complete production-art review candidate builder', () => {
       sha256: await sha256(paletteBytes),
     });
     expect(candidate.manifest.material_palette?.sha256).toBe(await sha256(paletteBytes));
+  }, PACK10_PRODUCTION_REVIEW_TEST_TIMEOUT_MS);
+
+  it('embeds a complete provider-neutral terrain autotile attachment for internal review', async () => {
+    const [base, inputs, layoutPlan] = await Promise.all([
+      basePack(),
+      productionInputs(),
+      layeredLayoutPlan(),
+    ]);
+    const autotiles = terrainAutotilesFor(layoutPlan);
+    const candidate = await buildPack10ProductionReviewCandidate(
+      base,
+      inputs.player,
+      inputs.npc,
+      inputs.environment,
+      OPTIONS,
+      layoutPlan,
+      autotiles,
+    );
+
+    expect(validatePack10Manifest(candidate.manifest)).toEqual([]);
+    expect(candidate.manifest.terrain_autotiles).toMatchObject({
+      schema_version: '1.0.0',
+      document_type: 'world-terrain-autotile-set',
+      layout_plan_sha256: candidate.manifest.layout?.sha256,
+      material_palette_sha256: candidate.manifest.material_palette?.sha256,
+      path: 'world-terrain-autotiles.json',
+    });
+    expect(candidate.manifest.distribution).toBe('internal-review');
+    expect(candidate.manifest.license.output).toMatchObject({
+      id: 'LicenseRef-UNRELEASED',
+      permits_redistribution: false,
+      permits_commercial_use: false,
+    });
+
+    const archive = await JSZip.loadAsync(candidate.bytes, { checkCRC32: true });
+    const documentBytes = await archive.file('world-terrain-autotiles.json')!.async('uint8array');
+    const document = JSON.parse(new TextDecoder().decode(documentBytes));
+    expect(document).toMatchObject({
+      document_type: 'world-terrain-autotile-set',
+      profile: 'layered-depth-2d',
+      selection: {
+        kind: 'edge-mask-16',
+        bit_order: ['north', 'east', 'south', 'west'],
+        outside: 'different-material',
+      },
+      cell: { width: 64, height: 32 },
+    });
+    expect(document.entries).toHaveLength(autotiles.images.length);
+    expect(document.entries.every((entry: { tiles: unknown[] }) => entry.tiles.length === 16))
+      .toBe(true);
+    for (const image of autotiles.images) {
+      const bytes = await archive.file(image.path)!.async('uint8array');
+      const record = candidate.manifest.files.find(({ path }) => path === image.path);
+      expect(record).toMatchObject({
+        media_type: 'image/png',
+        bytes: bytes.byteLength,
+        sha256: await sha256(bytes),
+      });
+    }
+    expect(candidate.manifest.terrain_autotiles?.sha256).toBe(await sha256(documentBytes));
+  }, PACK10_PRODUCTION_REVIEW_TEST_TIMEOUT_MS);
+
+  it('rejects incomplete or incorrectly sized terrain autotile authoring input', async () => {
+    const [base, inputs, layoutPlan] = await Promise.all([
+      basePack(),
+      productionInputs(),
+      layeredLayoutPlan(),
+    ]);
+    const complete = terrainAutotilesFor(layoutPlan);
+    await expect(buildPack10ProductionReviewCandidate(
+      base,
+      inputs.player,
+      inputs.npc,
+      inputs.environment,
+      OPTIONS,
+      layoutPlan,
+      { ...complete, images: complete.images.slice(1) },
+    )).rejects.toEqual(expect.objectContaining({
+      code: 'production-review.invalid-output',
+    }));
+
+    const wrongBytes = baseSolidPng(128, 128, 99);
+    await expect(buildPack10ProductionReviewCandidate(
+      base,
+      inputs.player,
+      inputs.npc,
+      inputs.environment,
+      OPTIONS,
+      layoutPlan,
+      {
+        ...complete,
+        images: [
+          {
+            ...complete.images[0],
+            png: {
+              byteLength: wrongBytes.byteLength,
+              readBytes: () => Uint8Array.from(wrongBytes),
+            },
+          },
+          ...complete.images.slice(1),
+        ],
+      },
+    )).rejects.toEqual(expect.objectContaining({
+      code: 'production-review.invalid-output',
+    }));
   }, PACK10_PRODUCTION_REVIEW_TEST_TIMEOUT_MS);
 
   it('rejects missing environment evidence and changed projected plane bytes', async () => {
