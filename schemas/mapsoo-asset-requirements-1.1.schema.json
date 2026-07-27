@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-asset-requirements-1.1.schema.json",
+  "title": "Mapsoo AssetRequirements 1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "requirements_id",
+    "profile",
+    "source",
+    "layout",
+    "requirements"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.1.0" },
+    "document_type": { "const": "asset-requirements" },
+    "requirements_id": {
+      "type": "string",
+      "pattern": "^asset-requirements-[a-f0-9]{16}$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constraints_sha256", "layout_plan_sha256"],
+      "properties": {
+        "constraints_sha256": { "$ref": "#/$defs/sha256" },
+        "layout_plan_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route_shape",
+        "scale",
+        "verticality",
+        "water",
+        "settlement_density",
+        "hazard_level",
+        "landmark_count",
+        "terrain_layout",
+        "collision_mode",
+        "navigation_mode",
+        "width",
+        "height",
+        "region_count",
+        "traversal_node_count"
+      ],
+      "properties": {
+        "route_shape": { "enum": ["direct", "fork-rejoin", "loop"] },
+        "scale": { "enum": ["compact", "standard", "extended"] },
+        "verticality": { "enum": ["low", "medium", "high"] },
+        "water": { "enum": ["none", "crossing", "basin"] },
+        "settlement_density": { "enum": ["sparse", "settled", "dense"] },
+        "hazard_level": { "enum": ["calm", "guarded", "dangerous"] },
+        "landmark_count": { "type": "integer", "minimum": 2, "maximum": 4 },
+        "terrain_layout": { "enum": ["bands", "zones"] },
+        "collision_mode": {
+          "enum": [
+            "side-solids",
+            "topdown-obstacles",
+            "isometric-footprints",
+            "depth-lane-blockers"
+          ]
+        },
+        "navigation_mode": {
+          "enum": [
+            "platform-links",
+            "orthogonal-grid",
+            "diamond-grid",
+            "depth-lanes"
+          ]
+        },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "region_count": { "type": "integer", "minimum": 1 },
+        "traversal_node_count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/requirement" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement_id",
+        "binding",
+        "category",
+        "usage",
+        "structural_values",
+        "variants",
+        "required_output"
+      ],
+      "properties": {
+        "requirement_id": {
+          "type": "string",
+          "pattern": "^requirement-[0-9]{3}$"
+        },
+        "binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "role"],
+          "properties": {
+            "status": { "const": "canonical-role" },
+            "role": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+            }
+          }
+        },
+        "category": {
+          "enum": [
+            "terrain",
+            "hazard",
+            "prop",
+            "structure",
+            "collectible",
+            "background",
+            "foreground",
+            "lighting",
+            "effect",
+            "character",
+            "preview"
+          ]
+        },
+        "usage": { "enum": ["layout-critical", "profile-complete"] },
+        "structural_values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["axis", "value"],
+            "properties": {
+              "axis": {
+                "enum": [
+                  "route-shape",
+                  "scale",
+                  "verticality",
+                  "water",
+                  "settlement-density",
+                  "hazard-level",
+                  "landmark-count"
+                ]
+              },
+              "value": {
+                "oneOf": [
+                  { "type": "string", "minLength": 1 },
+                  { "type": "integer", "minimum": 1 }
+                ]
+              }
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["variant_id", "identity_kind"],
+                "properties": {
+                  "variant_id": { "const": "canonical" },
+                  "identity_kind": { "const": "canonical-role" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["variant_id", "identity_kind", "layout_ref"],
+                "properties": {
+                  "variant_id": {
+                    "type": "string",
+                    "pattern": "^landmark-[0-9]{3}$"
+                  },
+                  "identity_kind": { "const": "layout-landmark" },
+                  "layout_ref": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["kind", "id"],
+                    "properties": {
+                      "kind": { "const": "landmark" },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^landmark-[0-9]{3}$"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "required_output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unit", "count"],
+          "properties": {
+            "unit": { "const": "role-variant" },
+            "count": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    }
+  }
+}

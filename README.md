@@ -62,6 +62,18 @@ layout-critical requirements remain inspectable, but paid execution fails
 before credentials or provider calls. This is traceability and scheduling
 evidence, not a claim that final artwork has already been generated.
 
+The parallel, review-only `AssetRequirements 1.1` and `ProductionArtPlan 1.1`
+contracts now express real per-world visual variants without changing any 1.0
+bytes or runtime behavior. Structural choices such as `loop`, `extended`, or
+`dense` remain typed values; they are not misread as image counts. Two to four
+confirmed landmarks become two to four label-free variant slots, each bound to
+one deterministic atlas cell. The plan carries the complete requirements
+SHA-256, requirement assignments, slot IDs, row-major placement, composite
+preview sheets, and character pose-grid bindings. The 1.1 path is not yet
+accepted by the production provider, pack projectors, or Godot importer, so it
+cannot silently replace the stable 1.0 delivery path. See
+[AssetRequirements and ProductionArtPlan 1.1](docs/60_ASSET_REQUIREMENTS_PRODUCTION_ART_1_1.md).
+
 The fourth-round image is explicitly an **intent preview**, not final artwork.
 After references and complete assets are generated, the browser instead shows
 the exact `scene.previewAssetId` PNG included in the downloadable pack. An

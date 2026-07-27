@@ -254,9 +254,14 @@ binding may be inspected in dry-run mode, but `--execute` stops before reading
 a provider credential or making a remote request.
 
 This binding proves requirement-to-task lineage; it is not evidence that final
-art exists. Multiple independently addressable atlas cells for one canonical
-role remain a future versioned `ProductionArtPlan` capability rather than an
-incompatible change to Plan 1.0.
+art exists. Parallel `AssetRequirements 1.1` and `ProductionArtPlan 1.1`
+contracts now provide independently addressable atlas cells for one canonical
+role without changing Plan 1.0. Structural enum values no longer masquerade as
+output counts, while each confirmed landmark becomes one label-free
+`layout-landmark` variant with an exact requirement, slot, and atlas cell.
+These contracts are review-only until the provider, normalizer, variant map,
+pack projectors, and Godot importer all accept the 1.1 chain. See
+[`60_ASSET_REQUIREMENTS_PRODUCTION_ART_1_1.md`](60_ASSET_REQUIREMENTS_PRODUCTION_ART_1_1.md).
 
 The browser now presents and hashes the structured constraint choices at the
 map-layout checkpoint, carries the frozen intent through the application
