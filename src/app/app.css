@@ -112,8 +112,9 @@ main { width: min(1540px, calc(100% - 40px)); margin: 0 auto; }
 .creation-dialogue-history, .creation-dialogue-turn { min-width: 0; padding: clamp(22px, 3vw, 38px); background: #0e1714; }
 .creation-dialogue-history > strong { color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .creation-dialogue-history > p { margin: 16px 0 0; color: #697b72; font-size: 10px; line-height: 1.5; }
-.creation-dialogue-history ol { display: grid; gap: 7px; margin: 16px 0 0; padding: 0; list-style: none; }
-.creation-dialogue-history button { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 10px; background: #0a1210; color: var(--ink); text-align: left; }
+.creation-dialogue-history ol { display: grid; min-width: 0; gap: 7px; margin: 16px 0 0; padding: 0; list-style: none; }
+.creation-dialogue-history li { min-width: 0; }
+.creation-dialogue-history button { width: 100%; min-width: 0; max-width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 10px; background: #0a1210; color: var(--ink); text-align: left; }
 .creation-dialogue-history button:hover, .creation-dialogue-history button:focus-visible { border-color: var(--accent); }
 .creation-dialogue-history button span, .creation-dialogue-history button small { display: block; }
 .creation-dialogue-history button span { font-size: 10px; font-weight: 800; }
@@ -156,6 +157,9 @@ main { width: min(1540px, calc(100% - 40px)); margin: 0 auto; }
 .reference-generator-status.error { color: #ff8f87; }
 .reference-generator-output { display: flex; flex-direction: column; }
 .reference-generator-output > img, .reference-output-placeholder { width: 100%; aspect-ratio: 16 / 9; border: 1px solid #26352e; background: #09100e; image-rendering: pixelated; object-fit: contain; }
+.reference-exported-preview { display: grid; width: 100%; margin: 0; overflow: hidden; border: 1px solid #26352e; background: #09100e; image-rendering: pixelated; }
+.reference-exported-preview img { width: 100%; min-height: 0; aspect-ratio: 16 / 9; object-fit: contain; }
+.reference-exported-preview figcaption { padding: 9px 12px; border-top: 1px solid #26352e; color: var(--muted); background: #0a1210; font-size: 9px; line-height: 1.4; }
 .reference-output-placeholder { display: grid; place-content: center; gap: 8px; color: var(--muted); text-align: center; }
 .reference-output-placeholder strong { color: var(--ink); font-size: 15px; }
 .reference-output-placeholder span { max-width: 320px; font-size: 10px; line-height: 1.5; }

@@ -37,6 +37,7 @@ export interface WorldCreationAssetHandoff {
   readonly description: string;
   readonly sessionRevision: number;
   readonly checkpoints: readonly ConfirmedDialogueCheckpoint[];
+  readonly approvedIntentPreviewSha256: string;
 }
 
 interface WorldCreationDialogueProps {
@@ -127,6 +128,7 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
       setSession(next);
       setReply(STARTER_REPLIES[next.stage] ?? '');
       if (next.stage === 'asset-generation' && next.phase !== 'blocked') {
+        if (!visualSampleSha256) throw new Error('The approved intent preview digest is missing.');
         const description = [
           `World: ${nextAnswers['world-brief'] ?? ''}`,
           `Art direction: ${nextAnswers['art-direction'] ?? ''}`,
@@ -143,6 +145,7 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
           description,
           sessionRevision: next.revision,
           checkpoints: Object.freeze(checkpoints),
+          approvedIntentPreviewSha256: visualSampleSha256,
         });
       }
       setNotice(next.phase === 'blocked'
@@ -257,10 +260,11 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
                     height={styleSample.height}
                   />
                   <figcaption>
-                    <strong>Representative world grammar sample</strong>
+                    <strong>Intent preview · not the final exported artwork</strong>
                     <span>
                       320×180 · {styleSample.metrics.distinctColorBuckets} color buckets · review traversal,
-                      depth, landmark contrast and character scale. Your uploaded character is applied during complete generation.
+                      depth, landmark contrast and character scale. Its digest is carried into generation; review the
+                      real pack preview again after your references and complete assets are generated.
                     </span>
                   </figcaption>
                 </figure>
@@ -279,7 +283,7 @@ export function WorldCreationDialogue({ onReadyForAssets }: WorldCreationDialogu
               <strong>The four creative decisions are confirmed.</strong>
               <p>
                 {capability.completeAssetProvider
-                  ? 'Continue to the complete pack generator. The next integration step binds these checkpoint hashes to the generated asset revision.'
+                  ? 'Continue to the complete pack generator. The confirmed intent preview and checkpoint hashes will be bound to the real exported preview and asset revision.'
                   : 'This profile can be planned and visually sampled, but complete pack generation and playtest remain capability-gated.'}
               </p>
               {capability.completeAssetProvider && <a href="#reference-generator">Continue to asset generation ↓</a>}

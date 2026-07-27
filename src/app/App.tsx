@@ -372,6 +372,7 @@ export function App() {
             sessionRevision: creationHandoff.sessionRevision,
             checkpoints: creationHandoff.checkpoints,
           } : undefined}
+          initialApprovedIntentPreviewSha256={creationHandoff?.approvedIntentPreviewSha256}
         />
 
         <section className="workbench" aria-label="World generator workbench">

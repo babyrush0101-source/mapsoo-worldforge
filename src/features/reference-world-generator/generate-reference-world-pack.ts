@@ -8,6 +8,10 @@ import {
 import { bindGenerationRequestV2 } from '../../core/generation-request-v2';
 import { extractCharacterIdentitySignature } from '../../core/character-identity-signature';
 import { extractEnvironmentArtSignature } from '../../core/environment-art-signature';
+import {
+  createExportedWorldReviewEvidence,
+  type ExportedWorldReviewEvidence,
+} from '../../core/exported-world-review-evidence';
 import { runWorldAssetProvider, type WorldAssetGenerationResult } from '../../core/world-asset-provider';
 import {
   createWorldAssetRevision,
@@ -36,6 +40,7 @@ export interface GenerateReferenceWorldPackInput {
   readonly seed: string;
   readonly completedAt: string;
   readonly confirmation?: ConfirmedDialogueInput;
+  readonly approvedIntentPreviewSha256?: string;
   readonly signal?: AbortSignal;
 }
 
@@ -54,6 +59,8 @@ export interface GeneratedReferenceWorldPack {
   readonly characterIdentitySignatureSha256: string;
   /** Local-only normalized color/value/structure analysis; not serialized into the public request. */
   readonly environmentArtSignatureSha256: string;
+  /** Binds the displayed pack preview to the exact runtime and visual asset revision under review. */
+  readonly reviewEvidence: ExportedWorldReviewEvidence;
 }
 
 function abortIfNeeded(signal?: AbortSignal): void {
@@ -168,6 +175,15 @@ export async function generateReferenceWorldPack(input: GenerateReferenceWorldPa
   abortIfNeeded(input.signal);
   const preview = result.payloads.find((payload) => payload.assetId === 'world-preview');
   if (!preview) throw new Error('Generated pack is missing its world preview.');
+  const reviewEvidence = await createExportedWorldReviewEvidence({
+    bundle: result.bundle,
+    payloads: result.payloads,
+    requestFingerprintSha256: result.requestFingerprintSha256,
+    ...(confirmationBinding ? { dialogueBindingSha256: confirmationBinding.binding_sha256 } : {}),
+    ...(input.approvedIntentPreviewSha256
+      ? { approvedIntentPreviewSha256: input.approvedIntentPreviewSha256 }
+      : {}),
+  });
   const assetRevision = await createWorldAssetRevision({
     worldId: input.worldId,
     profile: input.profile,
@@ -195,5 +211,6 @@ export async function generateReferenceWorldPack(input: GenerateReferenceWorldPa
     assetRevision,
     characterIdentitySignatureSha256: characterIdentity.signature_sha256,
     environmentArtSignatureSha256: environmentArt.signature_sha256,
+    reviewEvidence,
   });
 }

@@ -9,14 +9,14 @@ The product is a guided world-building conversation, not a one-shot image prompt
 1. **World brief** — describe the place, inhabitants, mood, target hardware, and choose or accept a recommended profile.
 2. **Art direction** — confirm palette, materials, lighting, character scale, rendering treatment, and reference rights.
 3. **Map layout** — confirm spawn, main route, landmarks, interactions or hazards, and exit.
-4. **Style sample** — review a combined scene plus representative terrain, prop, structure, and character animation samples.
+4. **Style sample** — review an intent preview for world grammar, traversal, depth, landmarks, and character scale. It is not presented as final exported artwork.
 5. **Complete assets** — expand only the approved sample into the profile's full role and animation contract.
 6. **Godot map** — freeze the asset revision, import it, build a scene, and pass headless smoke checks.
 7. **Enter the world** — launch the map with the selected character, then return to the conversation with playtest feedback.
 
 Every confirmation creates a checkpoint. A revision never overwrites an approved asset pack or Godot map in place.
 
-The browser now exposes the first four confirmation rounds as an interactive guided conversation. After the first three decisions, the fourth round renders a real 320×180 representative profile sample for visual review. Its image SHA-256 is included in the style-sample checkpoint alongside the user's approval notes. The sample establishes world grammar, depth, traversal, landmark contrast, and character scale; the user's decoded character identity is applied during complete generation.
+The browser now exposes the first four confirmation rounds as an interactive guided conversation. After the first three decisions, the fourth round renders a deterministic 320×180 profile intent preview. Its image SHA-256 is included in the style-sample checkpoint alongside the user's approval notes. This preview establishes world grammar, depth, traversal, landmark contrast, and character scale, but it is not described as production art or as the exact final scene. The user's decoded character identity and environment analysis are applied during complete generation.
 
 The trusted core reducer in `src/core/world-creation-session.ts` owns the complete seven-stage transition model. Every command includes `expectedRevision`, so a stale model response, duplicated click, or late generation job cannot overwrite a newer decision.
 
@@ -31,7 +31,21 @@ four ordered checkpoint snapshot hashes
 
 No raw answer, reference path, source image digest, or private session identifier appears in this public binding. Pack 0.7 embeds it in `generation-receipt.json`. Published Pack 0.6 bytes remain immutable, so the current farm workflow returns the same binding as an external audit result until a future versioned pack can add it.
 
-Complete generation now also creates a `WorldAssetRevision` that binds the exact ZIP digest, serialized manifest digest, request fingerprint, dialogue binding, profile, compatibility versions, and generated Godot scene path. The preview is reviewable before download. Explicit approval creates a `FrozenWorldLaunchBinding`; a changed pack, manifest, request, dialogue, profile, or scene can no longer reuse that launch approval.
+Complete generation now also creates a `WorldAssetRevision` that binds the exact ZIP digest, serialized manifest digest, request fingerprint, dialogue binding, profile, compatibility versions, and generated Godot scene path. The browser displays the exact `scene.previewAssetId` PNG emitted into the pack, not the earlier intent preview.
+
+Before that image can be approved, `ExportedWorldReviewEvidence` verifies the preview bytes against their asset-record SHA-256 and binds:
+
+```text
+approved intent-preview SHA-256
+  + four-round dialogue binding
+  + exact generation-request fingerprint
+  + scene / collision / navigation SHA-256
+  + deterministic visual-asset-set SHA-256
+  + exact exported preview SHA-256
+  -> exported-world review binding SHA-256
+```
+
+This evidence does not claim that baseline procedural art is production-quality art. It proves which exact exported preview, runtime data, and visual asset revision the user is reviewing. Explicit approval then creates a `FrozenWorldLaunchBinding`; a changed pack, manifest, request, dialogue, profile, scene, or preview can no longer reuse that launch approval.
 
 ## Freeze rule
 
@@ -85,10 +99,9 @@ Initial constraints:
 
 ## Next implementation slice
 
-1. Render implemented previews from the exported scene and atlas data, not from an independent composition.
-2. Connect completed model workflow run sets to the full provider bundle
+1. Connect completed model workflow run sets to the full provider bundle
    builders for all four profiles, not only the layered-depth review assembler.
-3. Split large character pose inventories into smaller continuity-bound review
+2. Split large character pose inventories into smaller continuity-bound review
    batches before assembling the canonical atlas.
-4. Collect playtest feedback and branch a new revision without overwriting the playable one.
-5. Test the reproducible ARM64 runtime artifact on a physical Raspberry Pi 4B and record frame time, memory, temperature and display-driver results.
+3. Collect playtest feedback and branch a new revision without overwriting the playable one.
+4. Test the reproducible ARM64 runtime artifact on a physical Raspberry Pi 4B and record frame time, memory, temperature and display-driver results.

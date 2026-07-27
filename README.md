@@ -29,6 +29,13 @@ The current **unpublished Alpha12 development candidate** expands that workflow 
 
 The intended user path is: **world brief → art direction → map layout → style sample → complete assets → Godot map → enter the world**. The first four stages run in the browser; complete packs, trusted Godot importers, controllers, and headless playability tests exist for all four profiles. The candidate is not yet a public release and physical Raspberry Pi 4B performance validation remains pending.
 
+The fourth-round image is explicitly an **intent preview**, not final artwork.
+After references and complete assets are generated, the browser instead shows
+the exact `scene.previewAssetId` PNG included in the downloadable pack. An
+`ExportedWorldReviewEvidence` SHA-256 chain binds that PNG to the confirmed
+intent, dialogue, generation request, scene/collision/navigation data, and the
+complete visual-asset set before the asset revision can be frozen.
+
 The public [character-reference conformance
 fixture](docs/48_CHARACTER_REFERENCE_CONFORMANCE.md) now decodes one synthetic
 `64 × 96` reference, carries the same deterministic identity signature and

@@ -19,6 +19,7 @@ interface ReferenceWorldGeneratorProps {
   readonly initialProfile?: ImplementedReferenceWorldProfile;
   readonly initialDescription?: string;
   readonly initialConfirmation?: ConfirmedDialogueInput;
+  readonly initialApprovedIntentPreviewSha256?: string;
 }
 
 const PROFILE_COPY = Object.freeze({
@@ -76,6 +77,7 @@ export function ReferenceWorldGenerator({
   initialProfile = 'topdown-farm',
   initialDescription = 'A welcoming riverside world with readable paths, landmarks and a distinctive player character.',
   initialConfirmation,
+  initialApprovedIntentPreviewSha256,
 }: ReferenceWorldGeneratorProps) {
   const abortRef = useRef<AbortController | null>(null);
   const generationRef = useRef(0);
@@ -97,6 +99,8 @@ export function ReferenceWorldGenerator({
   const [frozenLaunch, setFrozenLaunch] = useState<FrozenWorldLaunchBinding | null>(null);
   const [characterIdentitySha256, setCharacterIdentitySha256] = useState<string | null>(null);
   const [environmentArtSha256, setEnvironmentArtSha256] = useState<string | null>(null);
+  const [reviewBindingSha256, setReviewBindingSha256] = useState<string | null>(null);
+  const [exportedPreviewSha256, setExportedPreviewSha256] = useState<string | null>(null);
 
   useEffect(() => () => {
     abortRef.current?.abort();
@@ -120,6 +124,8 @@ export function ReferenceWorldGenerator({
     setFrozenLaunch(null);
     setCharacterIdentitySha256(null);
     setEnvironmentArtSha256(null);
+    setReviewBindingSha256(null);
+    setExportedPreviewSha256(null);
     replacePreviewUrl(null);
     setState('idle');
     setNotice(nextNotice);
@@ -159,6 +165,7 @@ export function ReferenceWorldGenerator({
       const generated = await generateReferenceWorldPack({
         profile, environment, character, worldId, description, seed,
         completedAt: new Date().toISOString(), confirmation: initialConfirmation, signal: controller.signal,
+        approvedIntentPreviewSha256: initialApprovedIntentPreviewSha256,
       });
       if (controller.signal.aborted || token !== generationRef.current) return;
       const previewBuffer = new ArrayBuffer(generated.previewBytes.byteLength);
@@ -171,6 +178,8 @@ export function ReferenceWorldGenerator({
       setFrozenLaunch(null);
       setCharacterIdentitySha256(generated.characterIdentitySignatureSha256);
       setEnvironmentArtSha256(generated.environmentArtSignatureSha256);
+      setReviewBindingSha256(generated.reviewEvidence.review_binding_sha256);
+      setExportedPreviewSha256(generated.reviewEvidence.preview.sha256);
       setState('ready');
       setNotice(`Complete Pack ${generated.packSchemaVersion} ready for visual review: ${generated.generatedFileCount} generated files, ${generated.requiredRoleCount} required roles, ${generated.characterClipCount} character clips.`);
     } catch (error) {
@@ -251,7 +260,12 @@ export function ReferenceWorldGenerator({
           <p className={`reference-generator-status ${state === 'error' ? 'error' : ''}`} aria-live="polite">{notice}</p>
         </div>
         <div className="reference-generator-output">
-          {previewUrl ? <img src={previewUrl} alt={copy.alt} /> : (
+          {previewUrl ? (
+            <figure className="reference-exported-preview">
+              <img src={previewUrl} alt={copy.alt} />
+              <figcaption>Exact exported preview · approve this image to freeze the downloadable asset revision.</figcaption>
+            </figure>
+          ) : (
             <div className="reference-output-placeholder"><strong>World preview</strong><span>{copy.placeholder}</span></div>
           )}
           <div className="reference-output-meta">
@@ -268,6 +282,12 @@ export function ReferenceWorldGenerator({
             <span>{environmentArtSha256
               ? `Environment art analysis ${environmentArtSha256.slice(0, 12)}… · local only`
               : 'No environment art analysis yet'}</span>
+            <span>{exportedPreviewSha256
+              ? `Exported preview ${exportedPreviewSha256.slice(0, 12)}… · exact pack asset`
+              : 'No exported preview yet'}</span>
+            <span>{reviewBindingSha256
+              ? `Review chain ${reviewBindingSha256.slice(0, 12)}… · intent + runtime + visual assets`
+              : 'No review chain yet'}</span>
             <span>{frozenLaunch
               ? `Frozen launch ${frozenLaunch.launch_binding_sha256.slice(0, 12)}…`
               : 'Awaiting visual approval'}</span>

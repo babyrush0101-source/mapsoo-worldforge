@@ -115,6 +115,17 @@ describe('reference-world profile router', () => {
     expect(side.previewBytes.slice(0, 8)).toEqual(Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]));
     expect(isometric.previewBytes.slice(0, 8)).toEqual(Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]));
     expect(layered.previewBytes.slice(0, 8)).toEqual(Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    for (const generated of [farm, side, isometric, layered]) {
+      expect(generated.reviewEvidence).toMatchObject({
+        profile: generated.profile,
+        request_fingerprint_sha256: generated.assetRevision.request_fingerprint_sha256,
+        dialogue_binding_sha256: null,
+        approved_intent_preview_sha256: null,
+        preview: { asset_id: 'world-preview', path: 'previews/world.png' },
+      });
+      expect(generated.reviewEvidence.preview.sha256).toBe(await sha256(generated.previewBytes));
+      expect(generated.reviewEvidence.review_binding_sha256).toMatch(/^[a-f0-9]{64}$/);
+    }
     expect(farm.assetRevision).toMatchObject({
       world_id: 'route-topdown-farm',
       profile: 'topdown-farm',
@@ -177,6 +188,27 @@ describe('reference-world profile router', () => {
     const receipt = JSON.parse(await receiptEntry!.async('text'));
     expect(receipt.request.dialogue_binding).toEqual(side.confirmationBinding);
     expect(JSON.stringify(receipt.request.dialogue_binding)).not.toContain('description projected');
+  });
+
+  it('carries the approved intent preview into the exact exported-preview review chain', async () => {
+    const [environment, character] = await references();
+    const approvedIntentPreviewSha256 = 'e'.repeat(64);
+    const generated = await generateReferenceWorldPack({
+      profile: 'layered-depth-2d',
+      environment,
+      character,
+      worldId: 'confirmed-review-chain',
+      description: 'A dialogue-confirmed layered world.',
+      seed: 'review-chain-seed',
+      completedAt: '2026-07-20T12:00:00.000Z',
+      confirmation,
+      approvedIntentPreviewSha256,
+    });
+    expect(generated.reviewEvidence).toMatchObject({
+      dialogue_binding_sha256: generated.confirmationBinding?.binding_sha256,
+      approved_intent_preview_sha256: approvedIntentPreviewSha256,
+      preview: { sha256: await sha256(generated.previewBytes) },
+    });
   });
 
   it('carries one decoded character palette into both implemented profile atlases', async () => {
