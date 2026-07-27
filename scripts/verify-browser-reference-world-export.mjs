@@ -121,11 +121,18 @@ async function verify() {
   vite.stderr.on('data', (chunk) => { viteErrors += String(chunk); });
   try {
     await waitForServer(url, vite);
-    const { stdout } = await execFileAsync(chromeExecutable(), [
-      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-networking',
-      '--disable-component-update', '--no-first-run', `--user-data-dir=${profile}`, '--virtual-time-budget=120000', '--dump-dom', url,
-    ], { maxBuffer: 64 * 1024 * 1024, timeout: 90_000, windowsHide: true });
-    const exports = decodeDom(stdout);
+    let browserDom = '';
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const { stdout } = await execFileAsync(chromeExecutable(), [
+        '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-networking',
+        '--disable-component-update', '--no-first-run', `--user-data-dir=${profile}`, '--virtual-time-budget=120000', '--dump-dom', url,
+      ], { maxBuffer: 64 * 1024 * 1024, timeout: 90_000, windowsHide: true });
+      browserDom = stdout;
+      // A cold CI runner can dump the initial page before Vite's async module
+      // graph settles. Retry only that pre-result state; all failures stay fatal.
+      if (!/<html\b[^>]*\bdata-state="loading"/i.test(browserDom)) break;
+    }
+    const exports = decodeDom(browserDom);
     assert(Array.isArray(exports) && exports.length === 4, 'Browser result must contain four profile exports.');
     assert(
       exports.every((entry) => entry.characterIdentitySignatureSha256 === exports[0].characterIdentitySignatureSha256),
