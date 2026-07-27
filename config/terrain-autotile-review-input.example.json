@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0.0",
+  "document_type": "terrain-autotile-review-input",
+  "cell": {
+    "width": 32,
+    "height": 32
+  },
+  "images": [
+    {
+      "material": "farmland",
+      "source": "normalized/farmland.png",
+      "pack_path": "terrain-autotiles/topdown-farm/farmland.png"
+    },
+    {
+      "material": "grass",
+      "source": "normalized/grass.png",
+      "pack_path": "terrain-autotiles/topdown-farm/grass.png"
+    },
+    {
+      "material": "meadow",
+      "source": "normalized/meadow.png",
+      "pack_path": "terrain-autotiles/topdown-farm/meadow.png"
+    },
+    {
+      "material": "stone-path",
+      "source": "normalized/stone-path.png",
+      "pack_path": "terrain-autotiles/topdown-farm/stone-path.png"
+    },
+    {
+      "material": "water",
+      "source": "normalized/water.png",
+      "pack_path": "terrain-autotiles/topdown-farm/water.png"
+    }
+  ]
+}

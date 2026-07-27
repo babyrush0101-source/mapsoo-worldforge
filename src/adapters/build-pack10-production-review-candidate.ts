@@ -11,6 +11,10 @@ import {
   type Pack10CharacterReviewArtifact,
   type Pack10CharacterReviewCandidateOptions,
 } from './build-pack10-character-review-candidate';
+import {
+  assertCanonicalMetadataFreePng,
+  CanonicalPngError,
+} from './canonical-png';
 import { decodeReferenceImageRgba } from './decode-reference-image-rgba';
 import type { ProductionArtGenerationEvidence } from './normalize-production-art-png';
 import type {
@@ -19,6 +23,13 @@ import type {
 import type {
   LayeredDepthProductionLayerProjection,
 } from './project-layered-depth-production-layers';
+import type {
+  TerrainAutotileAuthoringArtifact,
+} from './terrain-autotile-authoring-artifact';
+import {
+  prepareTerrainAutotileAttachment,
+  TerrainAutotileAttachmentError,
+} from './prepare-terrain-autotile-attachment';
 import {
   assertPack10Manifest,
   type Pack10FileRecord,
@@ -34,10 +45,6 @@ import {
   prepareWorldMaterialPalettePackEntry,
   WORLD_MATERIAL_PALETTE_PATH,
 } from '../core/world-material-palette';
-import {
-  prepareWorldTerrainAutotilePackEntry,
-  WORLD_TERRAIN_AUTOTILE_PATH,
-} from '../core/world-terrain-autotile-set';
 
 const ZIP_DATE = new Date(Date.UTC(1980, 0, 1));
 const MANIFEST_PATH = 'mapsoo.manifest.json';
@@ -51,7 +58,6 @@ const URL_OR_EXECUTABLE =
   /(?:https?|file):\/\/|www\.|#!\/|\bshader_type\b|\bextends\s+Node\b|<script\b/i;
 const SAFE_PATH =
   /^(?!\/)(?!.*\\)(?!.*(?:^|\/)\.\.?(?:\/|$))[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*(?:\/[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*)*$/;
-const PNG_SIGNATURE = Object.freeze([137, 80, 78, 71, 13, 10, 26, 10]);
 const REQUIRED_ENVIRONMENT_EVIDENCE_TASKS = 12;
 
 const ajv = new Ajv2020({ strict: true, allErrors: true });
@@ -84,17 +90,7 @@ export interface Pack10ProductionEnvironmentArtifact {
   readonly generationEvidence: readonly ProductionArtGenerationEvidence[];
 }
 
-export interface Pack10TerrainAutotileArtifact {
-  readonly cell: Readonly<{ width: number; height: number }>;
-  readonly images: readonly Readonly<{
-    material: string;
-    path: string;
-    png: Readonly<{
-      byteLength: number;
-      readBytes(): Uint8Array;
-    }>;
-  }>[];
-}
+export type Pack10TerrainAutotileArtifact = TerrainAutotileAuthoringArtifact;
 
 export interface Pack10ProductionReviewCandidate {
   readonly filename: string;
@@ -169,55 +165,20 @@ function assertSafeText(path: string, bytes: Uint8Array): void {
   }
 }
 
-function readUint32(bytes: Uint8Array, offset: number): number {
-  return (
-    bytes[offset] * 0x1000000
-    + bytes[offset + 1] * 0x10000
-    + bytes[offset + 2] * 0x100
-    + bytes[offset + 3]
-  );
-}
-
 function assertMetadataFreePng(path: string, bytes: Uint8Array): void {
-  if (
-    bytes.byteLength < 33
-    || PNG_SIGNATURE.some((value, index) => bytes[index] !== value)
-  ) {
-    fail('production-review.integrity', `PNG signature is invalid: ${path}.`);
-  }
-  let offset = 8;
-  let chunkIndex = 0;
-  let sawIdat = false;
-  let sawIend = false;
-  while (offset < bytes.byteLength) {
-    if (offset + 12 > bytes.byteLength) {
-      fail('production-review.integrity', `PNG chunk is truncated: ${path}.`);
-    }
-    const length = readUint32(bytes, offset);
-    const end = offset + 12 + length;
-    if (!Number.isSafeInteger(length) || end > bytes.byteLength) {
-      fail('production-review.integrity', `PNG chunk length is invalid: ${path}.`);
-    }
-    const type = new TextDecoder('ascii').decode(bytes.subarray(offset + 4, offset + 8));
+  try {
+    assertCanonicalMetadataFreePng(bytes);
+  } catch (error) {
     if (
-      (chunkIndex === 0 && type !== 'IHDR')
-      || !['IHDR', 'IDAT', 'IEND'].includes(type)
-      || (type === 'IHDR' && chunkIndex !== 0)
-      || (type === 'IEND' && (length !== 0 || end !== bytes.byteLength))
-      || sawIend
+      error instanceof CanonicalPngError
+      && error.code === 'canonical-png.metadata'
     ) {
       fail(
         'production-review.privacy',
         `PNG ${path} contains metadata or a non-canonical chunk inventory.`,
       );
     }
-    if (type === 'IDAT') sawIdat = true;
-    if (type === 'IEND') sawIend = true;
-    offset = end;
-    chunkIndex += 1;
-  }
-  if (!sawIdat || !sawIend || offset !== bytes.byteLength) {
-    fail('production-review.integrity', `PNG chunk inventory is incomplete: ${path}.`);
+    fail('production-review.integrity', `PNG is invalid: ${path}.`);
   }
 }
 
@@ -683,7 +644,7 @@ export async function buildPack10ProductionReviewCandidate(
     assertSafeText(WORLD_MATERIAL_PALETTE_PATH, preparedPalette.bytes);
   }
   let preparedTerrainAutotiles:
-    | Awaited<ReturnType<typeof prepareWorldTerrainAutotilePackEntry>>
+    | Awaited<ReturnType<typeof prepareTerrainAutotileAttachment>>['prepared']
     | undefined;
   if (terrainAutotileValue !== undefined) {
     if (!preparedLayout || !preparedPalette) {
@@ -692,70 +653,25 @@ export async function buildPack10ProductionReviewCandidate(
         'Terrain autotiles require the exact optional layout and material palette.',
       );
     }
-    if (
-      terrainAutotileValue.cell.width !== 64
-      || terrainAutotileValue.cell.height !== 32
-      || terrainAutotileValue.images.length !== preparedPalette.palette.entries.length
-    ) {
-      fail(
-        'production-review.invalid-output',
-        'Layered-depth terrain autotiles require complete 64 by 32 cell coverage.',
-      );
-    }
-    const images = [];
-    for (const image of terrainAutotileValue.images) {
-      if (
-        !SAFE_PATH.test(image.path)
-        || !image.path.startsWith('terrain-autotiles/')
-        || image.png.byteLength < 33
-        || image.png.byteLength > 32 * 1024 * 1024
-        || payloads.has(image.path)
-      ) {
-        fail(
-          'production-review.invalid-output',
-          `Terrain autotile image declaration is invalid: ${image.path}.`,
-        );
-      }
-      const bytes = image.png.readBytes();
-      if (!(bytes instanceof Uint8Array) || bytes.byteLength !== image.png.byteLength) {
-        fail(
-          'production-review.integrity',
-          `Terrain autotile image bytes are unstable: ${image.path}.`,
-        );
-      }
-      assertMetadataFreePng(image.path, bytes);
-      const decoded = await decodeReferenceImageRgba(bytes, 'image/png');
-      if (decoded.width !== 256 || decoded.height !== 128) {
-        fail(
-          'production-review.invalid-output',
-          `Terrain autotile image must be a 4 by 4 grid of 64 by 32 cells: ${image.path}.`,
-        );
-      }
-      payloads.set(image.path, Uint8Array.from(bytes));
-      images.push(Object.freeze({
-        material: image.material,
-        path: image.path,
-        sha256: await sha256(bytes),
-      }));
-    }
     try {
-      preparedTerrainAutotiles = await prepareWorldTerrainAutotilePackEntry(
+      const attachment = await prepareTerrainAutotileAttachment(
         preparedLayout,
         preparedPalette,
-        terrainAutotileValue.cell,
-        images,
+        Object.freeze({ width: 64, height: 32 }),
+        terrainAutotileValue,
+        new Set(payloads.keys()),
       );
-    } catch {
+      preparedTerrainAutotiles = attachment.prepared;
+      for (const [path, bytes] of attachment.payloads) {
+        payloads.set(path, Uint8Array.from(bytes));
+      }
+    } catch (error) {
+      if (!(error instanceof TerrainAutotileAttachmentError)) throw error;
       fail(
         'production-review.invalid-output',
-        'Terrain autotile images do not exactly cover the material palette.',
+        `Terrain autotile authoring input is invalid: ${error.code}.`,
       );
     }
-    payloads.set(
-      WORLD_TERRAIN_AUTOTILE_PATH,
-      Uint8Array.from(preparedTerrainAutotiles.bytes),
-    );
-    assertSafeText(WORLD_TERRAIN_AUTOTILE_PATH, preparedTerrainAutotiles.bytes);
   }
   const previousFiles = new Map(loaded.manifest.files.map((file) => [file.path, file]));
   const files = await fileRecords(payloads, previousFiles);

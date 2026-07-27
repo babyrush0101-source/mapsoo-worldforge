@@ -90,7 +90,7 @@ foreach ($consolePath in $GodotConsoles) {
         'shared runtime semantics used by the Pack importer attachment'
     )
     not_proven = @(
-        'real third-party authoring adapter'
+        'real SpriteCook or artist-authored PNG seam quality'
         'human art-direction approval'
         'physical Raspberry Pi performance'
     )

@@ -4,11 +4,18 @@ import reviewSchema from '../../schemas/mapsoo-production-art-pack-review-1.0.sc
 import reviewManifestSchema from '../../schemas/mapsoo-production-review-pack-manifest-1.0.schema.json';
 import type { ProductionArtRunInventory } from './materialize-production-art-run-inventory';
 import {
+  prepareTerrainAutotileAttachment,
+  TerrainAutotileAttachmentError,
+} from './prepare-terrain-autotile-attachment';
+import {
   projectProductionReviewPackVisuals,
   type ProductionReviewBaseManifest,
   type ProductionReviewPackProfile,
   type ProductionReviewVisualProjection,
 } from './project-production-review-pack-visuals';
+import type {
+  TerrainAutotileAuthoringArtifact,
+} from './terrain-autotile-authoring-artifact';
 import type { ProductionArtPlan } from '../core/production-art-contract';
 import {
   assertAlpha9PackManifest,
@@ -30,6 +37,19 @@ import {
   type Alpha11PackManifest,
   type Alpha11SceneSidecar,
 } from '../core/pack-manifest-alpha11';
+import {
+  materializeWorldLayoutPlan,
+} from '../core/world-layout-plan';
+import type {
+  PreparedWorldLayoutPackEntry,
+} from '../core/world-layout-pack-binding';
+import {
+  materializeWorldMaterialPalette,
+  type PreparedWorldMaterialPalettePackEntry,
+} from '../core/world-material-palette';
+import type {
+  WorldTerrainAutotilePackBinding,
+} from '../core/world-terrain-autotile-set';
 
 // @ts-expect-error The public privacy helper is intentionally plain ESM.
 import { containsPrivateConsumerToken } from '../../scripts/lib/private-consumer-boundary.mjs';
@@ -42,6 +62,14 @@ const PUBLISHED_PACK_SCHEMA_PATHS: Readonly<Record<ProductionReviewPackProfile, 
   'side-platformer': 'schema/mapsoo-pack-0.7.schema.json',
   'isometric-action': 'schema/mapsoo-pack-0.8.schema.json',
 });
+const TERRAIN_AUTOTILE_CELL_BY_PROFILE = Object.freeze({
+  'topdown-farm': Object.freeze({ width: 32, height: 32 }),
+  'side-platformer': Object.freeze({ width: 32, height: 32 }),
+  'isometric-action': Object.freeze({ width: 64, height: 32 }),
+} satisfies Readonly<Record<
+ProductionReviewPackProfile,
+Readonly<{ width: number; height: number }>
+>>);
 
 interface FileRecord {
   readonly path: string;
@@ -60,6 +88,9 @@ export interface ProductionReviewPackOptions {
   readonly title: string;
   readonly createdAt: string;
 }
+
+export type ProductionReviewTerrainAutotileArtifact =
+  TerrainAutotileAuthoringArtifact;
 
 export interface ProductionArtPackReviewRecord {
   readonly schema_version: '1.0.0';
@@ -309,6 +340,7 @@ function transformManifest(
   files: readonly FileRecord[],
   provider: string,
   model: string,
+  terrainAutotiles?: WorldTerrainAutotilePackBinding,
 ): ProductionReviewBaseManifest {
   const shared = {
     ...manifest,
@@ -319,6 +351,7 @@ function transformManifest(
       created_at: options.createdAt,
     },
     files,
+    ...(terrainAutotiles ? { terrain_autotiles: terrainAutotiles } : {}),
     license: {
       output: {
         id: 'LicenseRef-UNRELEASED' as const,
@@ -371,6 +404,108 @@ function assertTextPrivacy(path: string, bytes: Uint8Array): void {
   }
 }
 
+async function prepareReviewTerrainAutotileAttachment(
+  base: Readonly<{
+    manifest: ProductionReviewBaseManifest;
+    files: Readonly<Record<string, Uint8Array>>;
+  }>,
+  value: ProductionReviewTerrainAutotileArtifact,
+): Promise<Readonly<{
+  binding: WorldTerrainAutotilePackBinding;
+  payloads: ReadonlyMap<string, Uint8Array>;
+}>> {
+  const layoutBinding = base.manifest.layout;
+  const paletteBinding = base.manifest.material_palette;
+  if (!layoutBinding || !paletteBinding) {
+    fail(
+      'production-review.terrain-autotile',
+      'Terrain autotiles require a base pack with exact layout and material-palette bindings.',
+    );
+  }
+  const expectedCell = TERRAIN_AUTOTILE_CELL_BY_PROFILE[base.manifest.profile];
+  if (
+    !isRecord(value)
+    || !isRecord(value.cell)
+    || !Array.isArray(value.images)
+    || value.cell.width !== expectedCell.width
+    || value.cell.height !== expectedCell.height
+  ) {
+    fail(
+      'production-review.terrain-autotile',
+      `Terrain autotile cells must be ${expectedCell.width} by ${expectedCell.height} for ${base.manifest.profile}.`,
+    );
+  }
+  const layoutBytes = base.files[layoutBinding.path];
+  const paletteBytes = base.files[paletteBinding.path];
+  if (
+    !layoutBytes
+    || !paletteBytes
+    || await sha256(layoutBytes) !== layoutBinding.sha256
+    || await sha256(paletteBytes) !== paletteBinding.sha256
+  ) {
+    fail(
+      'production-review.terrain-autotile',
+      'Base layout or material-palette bytes differ from their manifest bindings.',
+    );
+  }
+  let preparedLayout: PreparedWorldLayoutPackEntry;
+  let preparedPalette: PreparedWorldMaterialPalettePackEntry;
+  try {
+    const plan = await materializeWorldLayoutPlan(
+      parseJson<unknown>(layoutBytes, 'Base world layout plan'),
+    );
+    const palette = await materializeWorldMaterialPalette(
+      parseJson<unknown>(paletteBytes, 'Base world material palette'),
+      { plan, layoutPlanSha256: layoutBinding.sha256 },
+    );
+    if (
+      plan.profile !== base.manifest.profile
+      || paletteBinding.layout_plan_sha256 !== layoutBinding.sha256
+      || paletteBinding.palette_id !== palette.palette_id
+    ) {
+      fail(
+        'production-review.terrain-autotile',
+        'Base terrain authoring bindings are inconsistent.',
+      );
+    }
+    preparedLayout = Object.freeze({
+      plan,
+      bytes: Uint8Array.from(layoutBytes),
+      binding: layoutBinding,
+    });
+    preparedPalette = Object.freeze({
+      palette,
+      bytes: Uint8Array.from(paletteBytes),
+      binding: paletteBinding,
+    });
+  } catch (error) {
+    if (error instanceof ProductionReviewPackError) throw error;
+    fail(
+      'production-review.terrain-autotile',
+      'Base layout or material palette is not a valid terrain authoring source.',
+    );
+  }
+  try {
+    const attachment = await prepareTerrainAutotileAttachment(
+      preparedLayout,
+      preparedPalette,
+      expectedCell,
+      value,
+      new Set(Object.keys(base.files)),
+    );
+    return Object.freeze({
+      binding: attachment.prepared.binding,
+      payloads: attachment.payloads,
+    });
+  } catch (error) {
+    if (!(error instanceof TerrainAutotileAttachmentError)) throw error;
+    fail(
+      'production-review.terrain-autotile',
+      `Terrain autotile authoring input is invalid: ${error.code}.`,
+    );
+  }
+}
+
 /**
  * Replaces every visible production role over a validated procedural base
  * while retaining its deterministic scene, collision and navigation data.
@@ -380,6 +515,7 @@ export async function buildProductionReviewPack(
   inventory: ProductionArtRunInventory,
   baseArtifact: ProductionReviewBasePackArtifact,
   options: ProductionReviewPackOptions,
+  terrainAutotileValue?: ProductionReviewTerrainAutotileArtifact,
 ): Promise<ProductionReviewPack> {
   assertOptions(options);
   if (plan.profile === 'layered-depth-2d') {
@@ -396,6 +532,9 @@ export async function buildProductionReviewPack(
     base.manifest,
     base.files,
   );
+  const terrainAutotiles = terrainAutotileValue === undefined
+    ? undefined
+    : await prepareReviewTerrainAutotileAttachment(base, terrainAutotileValue);
   const review = reviewRecord(projection, inventory, await sha256(base.manifestBytes));
   const provider = cleanModelText(inventory.providers, 'Provider');
   const model = cleanModelText(inventory.models, 'Model');
@@ -423,6 +562,11 @@ export async function buildProductionReviewPack(
     'schema/mapsoo-production-review-pack-manifest-1.0.schema.json',
     json(reviewManifestSchema),
   );
+  if (terrainAutotiles) {
+    for (const [path, bytes] of terrainAutotiles.payloads) {
+      replacements.set(path, Uint8Array.from(bytes));
+    }
+  }
 
   const outputBytes = new Map<string, Uint8Array>();
   for (const [path, bytes] of Object.entries(base.files)) {
@@ -440,7 +584,14 @@ export async function buildProductionReviewPack(
   const fileRecords = await Promise.all([...outputBytes].map(([path, bytes]) =>
     record(path, mediaType(path), bytes)));
   fileRecords.sort((left, right) => left.path.localeCompare(right.path, 'en'));
-  const manifest = transformManifest(base.manifest, options, fileRecords, provider, model);
+  const manifest = transformManifest(
+    base.manifest,
+    options,
+    fileRecords,
+    provider,
+    model,
+    terrainAutotiles?.binding,
+  );
   validateReviewManifest(manifest);
   const manifestBytes = json(manifest);
   for (const [path, bytes] of outputBytes) assertTextPrivacy(path, bytes);

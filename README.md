@@ -108,6 +108,15 @@ The provider-neutral
 [live-model four-profile direction review](docs/52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md)
 catches world-landmark and character-identity drift before one profile is
 selected and later asset tasks are unlocked.
+The optional terrain-transition layer now also has a zero-network local
+SpriteCook 17-piece importer. It strips the optional guide grid and reorders
+the documented N/E/S/W cells into the same neutral 4 by 4 mask contract used
+by Godot. SpriteCook's incompatible 15-piece corner-mask and 1024-upscale
+exports are rejected rather than guessed; imported sheets remain
+non-publishable until human art and rights review. A complete normalized
+top-down material set can now enter the existing production-review pack
+builder without introducing any SpriteCook field into the manifest or Godot
+runtime.
 
 A separately labelled **synthetic technical fixture** now exercises that full
 path without a model call. Its deterministic candidate passed real headless

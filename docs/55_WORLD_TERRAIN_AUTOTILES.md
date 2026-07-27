@@ -75,22 +75,85 @@ visible and reviewable. WorldForge adopts the compact sheet and explicit
 combination-map idea, not SpriteCook's product, UI, account system, response
 format, or runtime.
 
-SpriteCook describes its base template as a corner-mask convention. The first
+SpriteCook's **15-piece** template is a corner-mask convention. The first
 WorldForge runtime contract is an N/E/S/W edge-mask convention because the
-existing portable pack and Godot tests already use that semantic. An adapter
-must therefore inspect or transform a SpriteCook export; it must never relabel
-a corner-mask sheet as an edge-mask sheet without proving the mapping.
+existing portable pack and Godot tests already use that semantic. A 15-piece
+sheet must therefore never be relabelled as an edge-mask sheet.
 
-The intended thin adapter has only two responsibilities:
+SpriteCook's **17-piece** 5 by 5 guide is different: its lower four rows contain
+all 16 explicit N/E/S/W connection combinations, plus one separate
+inner-corner helper. That gives the implemented local adapter a lossless,
+auditable mapping:
 
-1. accept a user-exported or API-returned candidate PNG under the user's own
-   authorization and license;
-2. normalize it into the neutral 4 by 4 PNG plus explicit mask-coordinate
-   metadata.
+1. accept one native user-exported 17-piece PNG;
+2. remove the optional one-pixel grid and ignore only the documented blank and
+   helper cells;
+3. reorder the 16 connection cells into masks `0` through `15`;
+4. emit a deterministic metadata-free 4 by 4 PNG and source/output hash report.
 
 All dimension, hash, role coverage, privacy, rights, human-review, pack, and
 runtime gates remain owned by WorldForge. Removing the adapter leaves the
 offline baseline and single-cell fallback operational.
+
+### Local 17-piece import
+
+In SpriteCook's Tileset Base Generator select:
+
+- `17-piece`;
+- tile size `16`, `32`, or `64`;
+- optional `Black grid`;
+- leave `1024 upscale` off.
+
+Then normalize the downloaded PNG locally:
+
+```bash
+pnpm terrain-autotile:spritecook:import -- \
+  --source <spritecook-17-piece.png> \
+  --out <worldforge-edge-mask-16.png> \
+  --report <worldforge-edge-mask-16.json> \
+  --target-cell 32
+```
+
+The command makes zero network requests. The report contains hashes,
+dimensions, adapter identity, and all 16 source-to-target cells; it contains no
+source path, prompt, credential, or remote response. Existing output is not
+overwritten. The `15-piece` corner-mask mode and `1024 upscale` mode are
+rejected rather than guessed.
+The report is validated by
+`mapsoo-terrain-autotile-authoring-import-1.0.schema.json`.
+
+The normalized PNG is only an authoring candidate. Importing it does not prove
+that an AI preserved seams, that each cell has the intended material, that the
+source may be redistributed, or that public release is authorized. The report
+therefore fixes `human_review` to `required` and `public_release` to
+`not-authorized`.
+
+The adapter is intentionally local-file only. SpriteCook's public API currently
+documents generic generation and animation requests, but the WorldForge core
+does not need its account, key, polling, billing, or response format. A future
+remote wrapper may download a user-authorized PNG and call this exact same
+normalizer without changing the pack or Godot contracts.
+
+Normalize one 17-piece result for every layout material, then copy
+`config/terrain-autotile-review-input.example.json` beside those local files
+and adjust only its material/source mappings. The input file is operator-local:
+its `source` paths are resolved relative to that JSON and are never embedded.
+Attach the set to an existing top-down production review build with:
+
+```bash
+pnpm production-art:review-pack:build -- \
+  --base-pack <base.zip> \
+  --runs-manifest <production-art-run-set.json> \
+  --out <review.zip> \
+  --pack-id <lowercase-kebab-id> \
+  --title <review-title> \
+  --created-at <canonical-UTC-ISO> \
+  --terrain-autotiles <terrain-autotile-review-input.json>
+```
+
+The builder independently reopens every PNG, rejects metadata and wrong
+dimensions, verifies complete material coverage, regenerates every hash and
+binding, and keeps the resulting archive non-redistributable.
 
 ## Pack and importer boundary
 
@@ -100,6 +163,13 @@ complete set of metadata-free 256 by 128 PNGs (4 by 4 cells at 64 by 32),
 derives their hashes, writes the canonical JSON, and keeps the result
 `LicenseRef-UNRELEASED`, non-redistributable, non-commercial, and at all review
 gates `pending`.
+
+The existing `buildProductionReviewPack()` now accepts the same neutral
+authoring shape for `topdown-farm`, `side-platformer`, and `isometric-action`.
+It requires respectively `32x32`, `32x32`, and `64x32` cells and exact layout
+and material-palette bytes from the base pack. The SpriteCook 17-piece adapter
+currently supplies the first real `topdown-farm` path; other providers may
+produce the same neutral PNGs without changing the builder.
 
 The Pack schemas expose an optional `terrain_autotiles` binding chained to both
 layout and palette hashes. The Godot importer:
@@ -120,15 +190,11 @@ all three optional layout-related definitions.
 
 ## Remaining work
 
-The generic contract and importer work for all four profiles, while the first
-production authoring entry point is intentionally limited to the
-non-redistributable Pack 1.0 layered-depth review builder. Remaining work is:
+The generic contract, all four internal-review builder boundaries, and Godot
+importer are implemented. Remaining work is:
 
-- expose the same optional authoring input from the other three
-  non-redistributable production-review builders without changing published
-  historical pack bytes;
-- implement and test one actual SpriteCook/user-export adapter against the
-  neutral boundary;
+- add a separate, geometry-correct 2:1 authoring adapter for isometric and
+  layered-depth cells instead of stretching the square top-down guide;
 - add visual seam and topology review captures using real generated or
   artist-authored transition sheets;
 - decide whether approved public packs may include the images only after

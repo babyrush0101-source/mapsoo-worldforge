@@ -10,7 +10,11 @@ import {
   buildProductionReviewPack,
   ProductionReviewPackError,
   type ProductionReviewBasePackArtifact,
+  type ProductionReviewTerrainAutotileArtifact,
 } from './build-production-review-pack';
+import {
+  normalizeSpriteCookTopdown17Export,
+} from './spritecook/normalize-spritecook-topdown17-export';
 import {
   materializeProductionArtRunInventory,
 } from './materialize-production-art-run-inventory';
@@ -327,6 +331,52 @@ async function basePack(
   return { byteLength: pack.bytes.byteLength, readBytes: () => pack.bytes.slice() };
 }
 
+const SPRITECOOK_TOPDOWN17_SOURCE_CELL_BY_MASK = Object.freeze([
+  [0, 4], [0, 3], [1, 4], [1, 3],
+  [0, 1], [0, 2], [1, 1], [1, 2],
+  [3, 4], [3, 3], [2, 4], [2, 3],
+  [3, 1], [3, 2], [2, 1], [2, 2],
+] as const);
+
+function spriteCookTopdown17Fixture(materialIndex: number): Uint8Array {
+  const tileSize = 16;
+  const size = tileSize * 5;
+  const rgba = new Uint8Array(size * size * 4);
+  SPRITECOOK_TOPDOWN17_SOURCE_CELL_BY_MASK.forEach(([column, row], mask) => {
+    fillRect(
+      rgba,
+      size,
+      column * tileSize,
+      row * tileSize,
+      tileSize,
+      tileSize,
+      color(materialIndex * 19 + mask + 1),
+    );
+  });
+  return encodeRgbaPng(size, size, rgba);
+}
+
+async function topdownSpriteCookAutotiles(
+  targetCellSize: 16 | 32 | 64 = 32,
+): Promise<ProductionReviewTerrainAutotileArtifact> {
+  const materials = ['farmland', 'grass', 'meadow', 'stone-path', 'water'];
+  const images = await Promise.all(materials.map(async (material, index) => {
+    const normalized = await normalizeSpriteCookTopdown17Export(
+      spriteCookTopdown17Fixture(index),
+      { targetCellSize },
+    );
+    return Object.freeze({
+      material,
+      path: `terrain-autotiles/topdown-farm/${material}.png`,
+      png: normalized.png,
+    });
+  }));
+  return Object.freeze({
+    cell: Object.freeze({ width: 32, height: 32 }),
+    images: Object.freeze(images),
+  });
+}
+
 const cases = [
   'topdown-farm',
   'side-platformer',
@@ -439,6 +489,89 @@ describe('three-profile production review pack builder', () => {
     },
     30_000,
   );
+
+  it('embeds complete SpriteCook-normalized top-down transitions through the neutral contract', async () => {
+    const [{ plan, inventory }, base, terrainAutotiles] = await Promise.all([
+      productionInput('topdown-farm'),
+      basePack('topdown-farm', true),
+      topdownSpriteCookAutotiles(),
+    ]);
+    const options = {
+      packId: 'neutral-topdown-transition-review',
+      title: 'Neutral Top-down Transition Review',
+      createdAt: '2026-07-27T23:00:00.000Z',
+    };
+    const first = await buildProductionReviewPack(
+      plan,
+      inventory,
+      base,
+      options,
+      terrainAutotiles,
+    );
+    const replay = await buildProductionReviewPack(
+      plan,
+      inventory,
+      base,
+      options,
+      terrainAutotiles,
+    );
+    expect(first.bytes).toEqual(replay.bytes);
+    expect(first.manifest.terrain_autotiles).toMatchObject({
+      schema_version: '1.0.0',
+      document_type: 'world-terrain-autotile-set',
+      layout_plan_sha256: first.manifest.layout?.sha256,
+      material_palette_sha256: first.manifest.material_palette?.sha256,
+      path: 'world-terrain-autotiles.json',
+    });
+    expect(first.manifest.files.filter(({ path }) =>
+      path.startsWith('terrain-autotiles/topdown-farm/'))).toHaveLength(5);
+    const archive = await JSZip.loadAsync(first.bytes);
+    const manifestPath = Object.keys(archive.files).find((path) =>
+      path.endsWith('/mapsoo.manifest.json'))!;
+    const root = manifestPath.slice(0, -'mapsoo.manifest.json'.length);
+    const attachment = JSON.parse(await archive.file(
+      `${root}world-terrain-autotiles.json`,
+    )!.async('string'));
+    expect(attachment.selection).toEqual({
+      kind: 'edge-mask-16',
+      bit_order: ['north', 'east', 'south', 'west'],
+      outside: 'different-material',
+    });
+    expect(attachment.entries.map(({ material }: { material: string }) =>
+      material)).toEqual(['farmland', 'grass', 'meadow', 'stone-path', 'water']);
+    expect(attachment.entries.every(({ tiles }: { tiles: unknown[] }) =>
+      tiles.length === 16)).toBe(true);
+    expect(first.manifest.license.output.permits_redistribution).toBe(false);
+    expect(first.review.gates.human_art).toBe('pending');
+  }, 30_000);
+
+  it('rejects incomplete or wrongly sized normalized top-down transitions', async () => {
+    const [{ plan, inventory }, base, complete, wrongSize] = await Promise.all([
+      productionInput('topdown-farm'),
+      basePack('topdown-farm', true),
+      topdownSpriteCookAutotiles(),
+      topdownSpriteCookAutotiles(16),
+    ]);
+    const options = {
+      packId: 'invalid-topdown-transition-review',
+      title: 'Invalid Top-down Transition Review',
+      createdAt: '2026-07-27T23:00:00.000Z',
+    };
+    await expect(buildProductionReviewPack(
+      plan,
+      inventory,
+      base,
+      options,
+      { ...complete, images: complete.images.slice(1) },
+    )).rejects.toMatchObject({ code: 'production-review.terrain-autotile' });
+    await expect(buildProductionReviewPack(
+      plan,
+      inventory,
+      base,
+      options,
+      wrongSize,
+    )).rejects.toMatchObject({ code: 'production-review.terrain-autotile' });
+  }, 30_000);
 
   it('rejects a base pack from another profile before projection', async () => {
     const [{ plan, inventory }, base] = await Promise.all([
