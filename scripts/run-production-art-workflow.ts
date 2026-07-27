@@ -60,6 +60,7 @@ import {
 } from '../src/core/character-profile-revision';
 import { createProductionArtRunSet } from '../src/core/production-art-run-set';
 import {
+  fingerprintWorldLayoutPlan,
   materializeWorldLayoutPlan,
   serializeCanonicalWorldLayoutPlan,
 } from '../src/core/world-layout-plan';
@@ -67,6 +68,15 @@ import {
   materializeCharacterIdentitySemantics,
   serializeCharacterIdentitySemanticsCanonical,
 } from '../src/core/character-identity-semantics';
+import {
+  materializeAssetRequirements,
+  serializeCanonicalAssetRequirements,
+} from '../src/core/asset-requirements';
+import {
+  materializeProductionArtRequirementsBinding,
+  serializeCanonicalProductionArtRequirementsBinding,
+  type ProductionArtRequirementsBinding,
+} from '../src/core/production-art-requirements-binding';
 
 const WORKFLOW_ROOT = 'docs/visual-qa/production-art/workflows';
 const MODEL_RUN_ROOT = 'docs/visual-qa/production-art/model-runs';
@@ -120,6 +130,8 @@ interface WorkflowJob {
   readonly style_bible_file: string;
   readonly character_identity_semantics_file?: string;
   readonly world_layout_plan_file?: string;
+  readonly asset_requirements_file?: string;
+  readonly production_art_requirements_binding_file?: string;
   readonly environment_reference: string;
   readonly character_reference: string;
   readonly character_id: string;
@@ -314,6 +326,15 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     value,
     'world_layout_plan_file',
   );
+  const hasAssetRequirements = Object.prototype.hasOwnProperty.call(
+    value,
+    'asset_requirements_file',
+  );
+  const hasProductionArtRequirementsBinding =
+    Object.prototype.hasOwnProperty.call(
+      value,
+      'production_art_requirements_binding_file',
+    );
   const hasCharacterIdentitySemantics = Object.prototype.hasOwnProperty.call(
     value,
     'character_identity_semantics_file',
@@ -345,6 +366,10 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
         ? ['character_identity_semantics_file']
         : []),
       ...(hasWorldLayoutPlan ? ['world_layout_plan_file'] : []),
+      ...(hasAssetRequirements ? ['asset_requirements_file'] : []),
+      ...(hasProductionArtRequirementsBinding
+        ? ['production_art_requirements_binding_file']
+        : []),
       ...(hasApprovedDirection ? ['approved_direction'] : []),
       ...(hasPrivateOutputRoot ? ['private_output_root'] : []),
     ])
@@ -386,6 +411,16 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
       && !safePathValue(value.character_identity_semantics_file)
     )
     || (hasWorldLayoutPlan && !safePathValue(value.world_layout_plan_file))
+    || hasAssetRequirements !== hasProductionArtRequirementsBinding
+    || (hasAssetRequirements && !hasWorldLayoutPlan)
+    || (
+      hasAssetRequirements
+      && !safePathValue(value.asset_requirements_file)
+    )
+    || (
+      hasProductionArtRequirementsBinding
+      && !safePathValue(value.production_art_requirements_binding_file)
+    )
     || !safePathValue(value.environment_reference)
     || !safePathValue(value.character_reference)
     || (hasApprovedDirection && !safePathValue(value.approved_direction))
@@ -497,6 +532,8 @@ function privateInputBinding(input: {
   readonly styleBible: string;
   readonly characterIdentitySemantics?: Uint8Array;
   readonly worldLayoutPlan?: Uint8Array;
+  readonly assetRequirements?: Uint8Array;
+  readonly productionArtRequirementsBinding?: Uint8Array;
   readonly environmentReference: Uint8Array;
   readonly characterReference: Uint8Array;
 }): string {
@@ -540,6 +577,15 @@ function privateInputBinding(input: {
       : []),
     ...(input.worldLayoutPlan
       ? [['world-layout-plan', input.worldLayoutPlan] as const]
+      : []),
+    ...(input.assetRequirements
+      ? [['asset-requirements', input.assetRequirements] as const]
+      : []),
+    ...(input.productionArtRequirementsBinding
+      ? [[
+        'production-art-requirements-binding',
+        input.productionArtRequirementsBinding,
+      ] as const]
       : []),
     ['environment-reference', input.environmentReference],
     ['character-reference', input.characterReference],
@@ -1183,6 +1229,8 @@ async function main(): Promise<void> {
     styleBible,
     characterIdentitySemanticsBytes,
     worldLayoutPlanBytes,
+    assetRequirementsBytes,
+    productionArtRequirementsBindingBytes,
     environmentReference,
     characterReference,
     approvedDirection,
@@ -1197,6 +1245,15 @@ async function main(): Promise<void> {
       : undefined,
     job.world_layout_plan_file
       ? readBoundedBinary(job.world_layout_plan_file, 'World layout plan')
+      : undefined,
+    job.asset_requirements_file
+      ? readBoundedBinary(job.asset_requirements_file, 'Asset requirements')
+      : undefined,
+    job.production_art_requirements_binding_file
+      ? readBoundedBinary(
+        job.production_art_requirements_binding_file,
+        'Production art requirements binding',
+      )
       : undefined,
     readBoundedBinary(job.environment_reference, 'Environment reference'),
     readBoundedBinary(job.character_reference, 'Character reference'),
@@ -1233,10 +1290,12 @@ async function main(): Promise<void> {
       );
     }
   }
+  let worldLayoutPlanSha256: string | undefined;
   if (worldLayoutPlanBytes) {
     const layoutRecord = parseJsonRecord(worldLayoutPlanBytes, 'World layout plan');
     const layout = await materializeWorldLayoutPlan(layoutRecord);
     const canonicalBytes = await serializeCanonicalWorldLayoutPlan(layout);
+    worldLayoutPlanSha256 = await fingerprintWorldLayoutPlan(layout);
     if (
       canonicalBytes.byteLength !== worldLayoutPlanBytes.byteLength
       || canonicalBytes.some((byte, index) => byte !== worldLayoutPlanBytes[index])
@@ -1250,6 +1309,65 @@ async function main(): Promise<void> {
       );
     }
   }
+  let productionArtRequirementsBinding:
+    ProductionArtRequirementsBinding | undefined;
+  if (assetRequirementsBytes && productionArtRequirementsBindingBytes) {
+    if (!worldLayoutPlanSha256) {
+      throw new Error(
+        'Asset requirements require a canonical world layout plan.',
+      );
+    }
+    if (
+      assetRequirementsBytes.byteLength > 512 * 1024
+      || productionArtRequirementsBindingBytes.byteLength > 512 * 1024
+    ) {
+      throw new Error(
+        'Asset requirements and their production-art binding cannot exceed 512 KiB each.',
+      );
+    }
+    const assetRequirements = await materializeAssetRequirements(
+      parseJsonRecord(assetRequirementsBytes, 'Asset requirements'),
+    );
+    const canonicalAssetRequirements =
+      await serializeCanonicalAssetRequirements(assetRequirements);
+    productionArtRequirementsBinding =
+      await materializeProductionArtRequirementsBinding(
+        parseJsonRecord(
+          productionArtRequirementsBindingBytes,
+          'Production art requirements binding',
+        ),
+        {
+          assetRequirements,
+          productionArtPlan: plan,
+        },
+      );
+    const canonicalBinding =
+      await serializeCanonicalProductionArtRequirementsBinding(
+        productionArtRequirementsBinding,
+      );
+    if (
+      canonicalAssetRequirements.byteLength !== assetRequirementsBytes.byteLength
+      || canonicalAssetRequirements.some((byte, index) =>
+        byte !== assetRequirementsBytes[index])
+      || canonicalBinding.byteLength
+        !== productionArtRequirementsBindingBytes.byteLength
+      || canonicalBinding.some((byte, index) =>
+        byte !== productionArtRequirementsBindingBytes[index])
+      || assetRequirements.profile !== job.profile
+      || productionArtRequirementsBinding.profile !== job.profile
+      || assetRequirements.source.layout_plan_sha256
+        !== worldLayoutPlanSha256
+    ) {
+      throw new Error(
+        'Asset requirements and their production-art binding must be canonical and match the workflow profile.',
+      );
+    }
+    if (args.execute && productionArtRequirementsBinding.status === 'blocked') {
+      throw new Error(
+        'Production art requirements are unresolved; remote execution is blocked.',
+      );
+    }
+  }
   const inputBindingSha256 = privateInputBinding({
     job,
     worldBrief,
@@ -1258,6 +1376,15 @@ async function main(): Promise<void> {
       ? { characterIdentitySemantics: characterIdentitySemanticsBytes }
       : {}),
     ...(worldLayoutPlanBytes ? { worldLayoutPlan: worldLayoutPlanBytes } : {}),
+    ...(assetRequirementsBytes
+      ? { assetRequirements: assetRequirementsBytes }
+      : {}),
+    ...(productionArtRequirementsBindingBytes
+      ? {
+        productionArtRequirementsBinding:
+          productionArtRequirementsBindingBytes,
+      }
+      : {}),
     environmentReference,
     characterReference,
   });

@@ -157,6 +157,16 @@ runtime preview, asset revision and review evidence are written under
 pack is immediately ready for the matching Godot importer, while remaining
 clearly labelled `procedural-placeholder` with final art required.
 
+The workspace also compiles `asset-requirements.json` and
+`production-art-requirements-binding.json`. The latter maps each resolved
+world-specific requirement to its exact canonical task and SHA-256 binds both
+the requirements and the unchanged `ProductionArtPlan 1.0`. The workflow job
+requires the pair together with the canonical layout plan. Their bytes are
+part of the existing immutable private-input digest, so changing requirements
+under an existing workflow id cannot reuse stale state. A binding with an
+unresolved layout-critical blocker remains available for dry-run inspection,
+but remote execution stops before credential access or a provider request.
+
 The generated model-art job declares an absolute `private_output_root` outside
 this repository. The workflow writes its append-only states under
 `<private-output-root>/workflows/` and all source/normalized candidates under

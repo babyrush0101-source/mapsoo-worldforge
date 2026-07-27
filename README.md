@@ -52,9 +52,15 @@ The verified constraints and layout can now also compile to
 that reuses the existing four-profile role catalogs instead of defining new
 SpriteCook-specific roles. All seven structural axes change concrete
 requirements; unsupported combinations remain explicitly unresolved rather
-than borrowing an unrelated tile. Production-workflow binding is the next
-step, so this contract does not yet claim that world-specific final art has
-been generated.
+than borrowing an unrelated tile. A separate
+`ProductionArtRequirementsBinding 1.0` now maps every resolved requirement to
+the exact canonical production task and binds the complete requirements and
+plan bytes by SHA-256. The private workspace writes both artifacts and includes
+their canonical bytes in the resumable workflow input binding, so two worlds
+with the same profile cannot silently share workflow state. Unresolved
+layout-critical requirements remain inspectable, but paid execution fails
+before credentials or provider calls. This is traceability and scheduling
+evidence, not a claim that final artwork has already been generated.
 
 The fourth-round image is explicitly an **intent preview**, not final artwork.
 After references and complete assets are generated, the browser instead shows

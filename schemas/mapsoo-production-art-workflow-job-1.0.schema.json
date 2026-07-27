@@ -41,6 +41,8 @@
     "style_bible_file": { "$ref": "#/$defs/localPath" },
     "character_identity_semantics_file": { "$ref": "#/$defs/localPath" },
     "world_layout_plan_file": { "$ref": "#/$defs/localPath" },
+    "asset_requirements_file": { "$ref": "#/$defs/localPath" },
+    "production_art_requirements_binding_file": { "$ref": "#/$defs/localPath" },
     "environment_reference": { "$ref": "#/$defs/localPath" },
     "character_reference": { "$ref": "#/$defs/localPath" },
     "character_id": {
@@ -84,6 +86,32 @@
       "then": {
         "properties": { "provider": { "const": "spritecook" } },
         "required": ["provider"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "asset_requirements_file": {} },
+        "required": ["asset_requirements_file"]
+      },
+      "then": {
+        "properties": {
+          "world_layout_plan_file": {},
+          "production_art_requirements_binding_file": {}
+        },
+        "required": [
+          "world_layout_plan_file",
+          "production_art_requirements_binding_file"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": { "production_art_requirements_binding_file": {} },
+        "required": ["production_art_requirements_binding_file"]
+      },
+      "then": {
+        "properties": { "asset_requirements_file": {} },
+        "required": ["asset_requirements_file"]
       }
     }
   ],

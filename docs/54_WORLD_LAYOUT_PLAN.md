@@ -235,11 +235,28 @@ scene, collision, and navigation roles never become image tasks.
 The artifact contains the constraints and plan digests plus coarse layout
 values, but excludes landmark labels, raw dialogue, prompts, references,
 filesystem paths, provider/model fields, credentials, and private image
-digests. The next application step is binding the requirements digest and
-variant slots into `ProductionArtPlan` and workflow state. Until that is
-implemented, the existing profile-complete production plan remains the
-execution path and the new artifact is not presented as proof that world-
-specific art has been generated.
+digests.
+
+`ProductionArtRequirementsBinding 1.0` is the small compatibility bridge to
+the existing profile-complete `ProductionArtPlan 1.0`. It keeps that plan,
+RunSet, provider port, atlas projectors, and Godot contracts unchanged. Each
+canonical-role requirement maps to one exact plan task, while unresolved
+layout-critical requirements become stable blockers. The binding carries full
+canonical SHA-256 values for both source artifacts, not only their shortened
+IDs.
+
+The private world-delivery workspace writes `asset-requirements.json` and
+`production-art-requirements-binding.json`. The workflow validates both against
+the canonical plan and the exact `WorldLayoutPlan`, then includes their bytes
+in its existing immutable input digest. Reusing the same workflow ID with a
+different world layout or requirement set therefore fails closed. A blocked
+binding may be inspected in dry-run mode, but `--execute` stops before reading
+a provider credential or making a remote request.
+
+This binding proves requirement-to-task lineage; it is not evidence that final
+art exists. Multiple independently addressable atlas cells for one canonical
+role remain a future versioned `ProductionArtPlan` capability rather than an
+incompatible change to Plan 1.0.
 
 The browser now presents and hashes the structured constraint choices at the
 map-layout checkpoint, carries the frozen intent through the application

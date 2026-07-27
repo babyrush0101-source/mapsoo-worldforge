@@ -205,7 +205,9 @@ describe('world delivery workspace preparation', () => {
       manifest.baseline.review_evidence_path,
       'confirmed-intake.json',
       'confirmed-intake-projection.json',
+      'asset-requirements.json',
       'production-art-workflow-job.json',
+      'production-art-requirements-binding.json',
       'references/environment.png',
       'references/character.png',
       'style-bible.txt',
@@ -262,6 +264,31 @@ describe('world delivery workspace preparation', () => {
     expect(job.world_layout_plan_file).toBe(
       resolve(workspace, 'world-layout-plan.json'),
     );
+    expect(job.asset_requirements_file).toBe(
+      resolve(workspace, 'asset-requirements.json'),
+    );
+    expect(job.production_art_requirements_binding_file).toBe(
+      resolve(workspace, 'production-art-requirements-binding.json'),
+    );
+    expect(new Ajv2020().compile(workflowJobSchema)(job)).toBe(true);
+    const assetRequirements = JSON.parse(await readFile(
+      resolve(workspace, 'asset-requirements.json'),
+      'utf8',
+    ));
+    const requirementsBinding = JSON.parse(await readFile(
+      resolve(workspace, 'production-art-requirements-binding.json'),
+      'utf8',
+    ));
+    expect(assetRequirements).toMatchObject({
+      document_type: 'asset-requirements',
+      profile,
+    });
+    expect(requirementsBinding).toMatchObject({
+      document_type: 'production-art-requirements-binding',
+      profile,
+    });
+    expect(requirementsBinding.source.asset_requirements_sha256)
+      .toMatch(/^[a-f0-9]{64}$/u);
     expect(job.private_output_root).toBe(
       resolve(root, 'private-workspace-production-art-output'),
     );
@@ -318,6 +345,52 @@ describe('world delivery workspace preparation', () => {
         model: 'gemini-3.1-flash-image',
       },
       remote_request_count_this_invocation: 0,
+    });
+  });
+
+  it('blocks unresolved world requirements before any remote execution', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'mapsoo-blocked-workspace-'));
+    roots.push(root);
+    const intake = await intakeFixture(root, 'side-platformer');
+    const workspace = resolve(root, 'private-workspace');
+    await prepareWorldDeliveryWorkspace({
+      intake,
+      referenceRoot: root,
+      workspace,
+      characterId: 'neutral-traveler',
+      characterIdentitySemantics: characterSemantics(intake),
+      completedAt: COMPLETED_AT,
+    });
+    const binding = JSON.parse(await readFile(
+      resolve(workspace, 'production-art-requirements-binding.json'),
+      'utf8',
+    ));
+    expect(binding.status).toBe('blocked');
+    await expect(execFileAsync(process.execPath, [
+      resolve(process.cwd(), 'node_modules/vite-node/vite-node.mjs'),
+      resolve(process.cwd(), 'scripts/run-production-art-workflow.ts'),
+      '--job',
+      resolve(workspace, 'production-art-workflow-job.json'),
+      '--execute',
+      '--allow-remote-upload',
+      '--max-requests',
+      '1',
+      '--expected-state-revision',
+      '0',
+      '--expected-next-task',
+      'scene-direction',
+    ], {
+      cwd: process.cwd(),
+      windowsHide: true,
+      maxBuffer: 1024 * 1024,
+      env: {
+        ...process.env,
+        OPENAI_API_KEY: 'must-not-be-used',
+      },
+    })).rejects.toMatchObject({
+      stderr: expect.stringContaining(
+        'Production art requirements are unresolved; remote execution is blocked.',
+      ),
     });
   });
 

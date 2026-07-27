@@ -33,6 +33,17 @@ import {
   createProductionArtPlan,
 } from '../core/production-art-contract';
 import {
+  buildProductionArtRequirementsBinding,
+  serializeCanonicalProductionArtRequirementsBinding,
+} from '../core/production-art-requirements-binding';
+import {
+  buildAssetRequirements,
+  serializeCanonicalAssetRequirements,
+} from '../core/asset-requirements';
+import {
+  deriveWorldLayoutConstraintsFromConfirmedIntake,
+} from '../core/world-layout-constraints';
+import {
   buildWorldLayoutPlanFromConfirmedIntake,
   fingerprintWorldLayoutPlan,
   serializeCanonicalWorldLayoutPlan,
@@ -380,9 +391,17 @@ export async function prepareWorldDeliveryWorkspace(
 ): Promise<PreparedWorldDeliveryWorkspace> {
   const intake = await materializeConfirmedWorldCreationIntake(input.intake);
   const projection = await projectConfirmedWorldCreationIntake(intake);
+  const layoutConstraints =
+    await deriveWorldLayoutConstraintsFromConfirmedIntake(intake);
   const layoutPlan = await buildWorldLayoutPlanFromConfirmedIntake(intake);
   const layoutPlanSha256 = await fingerprintWorldLayoutPlan(layoutPlan);
   const layoutPlanBytes = await serializeCanonicalWorldLayoutPlan(layoutPlan);
+  const assetRequirements = await buildAssetRequirements(
+    layoutConstraints,
+    layoutPlan,
+  );
+  const assetRequirementsBytes =
+    await serializeCanonicalAssetRequirements(assetRequirements);
   const characterId = assertSafeId(input.characterId, 'Character id', 48);
   const characterIdentitySemantics =
     input.characterIdentitySemantics === undefined
@@ -426,6 +445,12 @@ export async function prepareWorldDeliveryWorkspace(
     distribution: 'internal-review',
     license: 'LicenseRef-Proprietary',
   });
+  const productionArtRequirementsBinding =
+    await buildProductionArtRequirementsBinding(assetRequirements, plan);
+  const productionArtRequirementsBindingBytes =
+    await serializeCanonicalProductionArtRequirementsBinding(
+      productionArtRequirementsBinding,
+    );
   const requestBudget = input.requestBudget ?? plan.tasks.length;
   if (
     !Number.isSafeInteger(requestBudget)
@@ -528,6 +553,11 @@ export async function prepareWorldDeliveryWorkspace(
       }
       : {}),
     world_layout_plan_file: resolve(workspace, 'world-layout-plan.json'),
+    asset_requirements_file: resolve(workspace, 'asset-requirements.json'),
+    production_art_requirements_binding_file: resolve(
+      workspace,
+      'production-art-requirements-binding.json',
+    ),
     environment_reference: resolve(workspace, ...environment.name.split('/')),
     character_reference: resolve(workspace, ...character.name.split('/')),
     character_id: characterId,
@@ -548,6 +578,11 @@ export async function prepareWorldDeliveryWorkspace(
     ['confirmed-intake.json', jsonBytes(intake)],
     ['confirmed-intake-projection.json', jsonBytes(projection)],
     ['world-layout-plan.json', layoutPlanBytes],
+    ['asset-requirements.json', assetRequirementsBytes],
+    [
+      'production-art-requirements-binding.json',
+      productionArtRequirementsBindingBytes,
+    ],
     ['world-brief.txt', textBytes(worldBrief(intake))],
     ['style-bible.txt', textBytes(styleBible(intake, layoutPlan))],
     ...(characterIdentitySemantics

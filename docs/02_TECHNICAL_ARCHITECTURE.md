@@ -252,6 +252,7 @@ confirmed world
   -> profile solver
   -> WorldLayoutPlan
   -> provider-neutral AssetRequirements
+  -> ProductionArtRequirementsBinding
   -> ProductionArtPlan
   -> ProductionArtProvider port
        -> built-in offline adapter
