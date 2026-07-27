@@ -45,6 +45,11 @@ a hash-bound internal-review PNG candidate and deterministic normalized output;
 it is dry-run by default and never stores the API key. Player tasks for all four
 profiles now additionally project into portable, complete
 `CharacterProfileRevision` artifacts while preserving normalized atlas bytes.
+The reusable Godot runtime shell can now load any of the four generated world
+profiles and bind a matching revision plus atlas afterward, including through
+fixed `res://mapsoo_characters/<revision-id>/` launch arguments. Switching
+worlds clears the active character binding; the world pack remains immutable
+and internal-review/private character rights stay separate.
 The projector rejects occupied undeclared cells, empty, duplicate, mirrored,
 border-touching and mis-anchored frames. Layered-depth player and NPC tasks also
 project into exact Pack 1.0 `48 × 72` Godot atlases with complete two-frame clip

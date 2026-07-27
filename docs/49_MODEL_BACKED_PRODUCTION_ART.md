@@ -432,7 +432,7 @@ pnpm pi4:pack10-review:godot
 Pinned Godot 4.3 creates an importer-managed scene, TileSet and integrity
 state. A second prepare is `unchanged`. The deterministic Linux ARM64 review
 archive has SHA-256
-`86f210ce9ff45d7acabeccee2ce50af7f3b3173e484bb0ecfe6247c2f40b60c8`;
+`2b06b8433d9a4c85ab2952fd65ed8ff695a4c69dd6bfa77c15134dc1202ea591`;
 an isolated extraction passes a direct Godot 4.3 scene load without the source
 Pack or build workspace. This remains synthetic technical evidence and does
 not change the physical Raspberry Pi gate from `not-tested`.
@@ -507,8 +507,9 @@ This source adapter is a real provider implementation, but the following work is
 still required before claiming “a few dialogue rounds create one complete
 production world”:
 
-- connect the portable player revisions for all four profiles to each complete
-  pack builder and its neutral Godot runtime character slot;
+- connect confirmed dialogue/model runs to automatic character staging; the
+  provider-neutral revision, neutral player slot and reusable runtime-shell
+  binding now work across all four profiles without rebuilding a world;
 - connect accepted layered-depth player, NPC and environment outputs to the
   full `WorldAssetProvider` bundle builder rather than only the review
   assembler;

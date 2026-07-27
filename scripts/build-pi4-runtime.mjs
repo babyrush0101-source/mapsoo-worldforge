@@ -394,7 +394,26 @@ case "$world_id" in
   ${worldIds.join('|')}) ;;
   *) printf 'Unknown bundled world: %s\\n' "$world_id" >&2; exit 64 ;;
 esac
-exec "$bundle_dir/godot" --path "$bundle_dir/project" --mapsoo-scene="res://mapsoo_imports/$world_id/$world_id.world.tscn"
+character_revision_id="\${2:-}"
+character_revision_sha256="\${3:-}"
+character_args=()
+if [[ -n "$character_revision_id" || -n "$character_revision_sha256" ]]; then
+  if [[ ! "$character_revision_id" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] \\
+      || [[ ! "$character_revision_sha256" =~ ^[a-f0-9]{64}$ ]]; then
+    printf 'Character launch requires a safe revision ID and lowercase SHA-256.\\n' >&2
+    exit 64
+  fi
+  character_dir="res://mapsoo_characters/$character_revision_id"
+  character_args=(
+    "--mapsoo-character-revision=$character_dir/character-profile-revision.json"
+    "--mapsoo-character-revision-sha256=$character_revision_sha256"
+    "--mapsoo-character-atlas=$character_dir/character-profile-atlas.png"
+  )
+fi
+exec "$bundle_dir/godot" \\
+  --path "$bundle_dir/project" \\
+  --mapsoo-scene="res://mapsoo_imports/$world_id/$world_id.world.tscn" \\
+  "\${character_args[@]}"
 `;
   const readme = `# Mapsoo Raspberry Pi 4B ARM64 runtime
 
@@ -417,6 +436,25 @@ New worlds are imported and verified before deployment, then copied into
 \`project/mapsoo_imports/<world-id>/\` with their importer ownership state. The
 runtime shell loads an exact generated scene path; it does not recompile the
 Godot application for each world.
+
+An independently reviewed character can be staged without rebuilding a world:
+
+\`\`\`text
+project/mapsoo_characters/<profile-revision-id>/
+  character-profile-revision.json
+  character-profile-atlas.png
+\`\`\`
+
+Then pass its safe revision ID and canonical revision SHA-256:
+
+\`\`\`bash
+./run-mapsoo.sh <world-id> <profile-revision-id> <revision-sha256>
+\`\`\`
+
+The launcher constructs the two fixed resource paths itself. It does not accept
+an arbitrary character path. The runtime verifies the revision bytes, atlas
+bytes, exact world profile and neutral player slot before changing the visible
+character.
 
 The controlled production candidate, when present, is for internal review only. Its
 UNRELEASED assets must not be redistributed or described as a public release.
@@ -441,6 +479,12 @@ UNRELEASED assets must not be redistributed or described as a public release.
       project: 'project/project.godot',
       launcher: 'run-mapsoo.sh',
       default_world_id: 'alpha12-godot-smoke-pack',
+      optional_character_profile: {
+        root: 'project/mapsoo_characters/<profile-revision-id>/',
+        revision: 'character-profile-revision.json',
+        atlas: 'character-profile-atlas.png',
+        launch_arguments: ['profile-revision-id', 'revision-sha256'],
+      },
     },
     bundle_status: extraWorldSet ? 'internal-review' : 'synthetic-fixture',
     worlds: worldRecords,

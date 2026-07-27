@@ -211,7 +211,15 @@ async function main() {
     || manifest?.target?.renderer !== 'gl_compatibility'
     || manifest?.runtime?.version !== '4.3-stable'
     || manifest?.runtime?.executable_sha256 !== digest(runtimeBytes)
-    || manifest?.shell?.default_world_id !== 'alpha12-godot-smoke-pack') {
+    || manifest?.shell?.default_world_id !== 'alpha12-godot-smoke-pack'
+    || manifest?.shell?.optional_character_profile?.root
+      !== 'project/mapsoo_characters/<profile-revision-id>/'
+    || manifest?.shell?.optional_character_profile?.revision
+      !== 'character-profile-revision.json'
+    || manifest?.shell?.optional_character_profile?.atlas
+      !== 'character-profile-atlas.png'
+    || JSON.stringify(manifest?.shell?.optional_character_profile?.launch_arguments)
+      !== JSON.stringify(['profile-revision-id', 'revision-sha256'])) {
     fail('runtime manifest core contract mismatch');
   }
 
@@ -301,8 +309,14 @@ async function main() {
   if (!launcher.includes(`${expectedIds.join('|')}) ;;`)
     || !launcher.includes('Unknown bundled world:')
     || !launcher.includes('res://mapsoo_imports/$world_id/$world_id.world.tscn')
+    || !launcher.includes('^[a-z0-9]+(-[a-z0-9]+)*$')
+    || !launcher.includes('^[a-f0-9]{64}$')
+    || !launcher.includes('res://mapsoo_characters/$character_revision_id')
+    || !launcher.includes('character-profile-revision.json')
+    || !launcher.includes('character-profile-atlas.png')
+    || !launcher.includes('--mapsoo-character-revision-sha256=$character_revision_sha256')
     || launcher.includes('eval ')) {
-    fail('launcher allowlist or exact scene resolution changed');
+    fail('launcher world/character allowlist or exact resource resolution changed');
   }
   verifyPortableText('run-mapsoo.sh', launcherBytes);
   verifyPortableText('runtime-manifest.json', manifestBytes);

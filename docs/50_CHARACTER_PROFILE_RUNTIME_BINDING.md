@@ -85,6 +85,47 @@ Internal-review and private characters travel as separate revision and PNG
 artifacts. Public distribution requires a deliberate rights change plus human
 review.
 
+## Reusable runtime-shell entry point
+
+The reusable Godot shell in `godot/example/main.gd` now exposes the same
+provider-neutral boundary after a world has loaded:
+
+```gdscript
+runtime_shell.bind_player_character(
+	revision_bytes,
+	revision_sha256,
+	atlas_bytes
+)
+```
+
+It also accepts two separately staged files. Both must live under one exact
+portable directory:
+
+```text
+res://mapsoo_characters/<profile-revision-id>/
+  character-profile-revision.json
+  character-profile-atlas.png
+```
+
+Call `bind_player_character_files(...)` from a host, or launch the reusable
+shell with all three arguments:
+
+```bash
+godot --path project -- \
+  --mapsoo-scene=res://mapsoo_imports/<world-id>/<world-id>.world.tscn \
+  --mapsoo-character-revision=res://mapsoo_characters/<revision-id>/character-profile-revision.json \
+  --mapsoo-character-revision-sha256=<canonical-revision-sha256> \
+  --mapsoo-character-atlas=res://mapsoo_characters/<revision-id>/character-profile-atlas.png
+```
+
+The shell rejects partial argument sets, traversal paths, mismatched
+directories, unsafe revision IDs, over-budget files, digest changes, profile
+mismatches and ambiguous player slots. Successful binding publishes only the
+portable character/revision/atlas identities as runtime metadata. Loading a
+different world clears those active-character markers, so the host must bind a
+revision for the new world's exact profile rather than accidentally reusing an
+incompatible atlas.
+
 ## Verification
 
 Run the local compatibility matrix:
@@ -97,10 +138,13 @@ The PowerShell verifier uses repository-local test runtimes when present, then
 falls back to `GODOT_BIN`, `godot4` or `godot` on `PATH`. Multiple paths may be
 passed explicitly with `-GodotConsoles`.
 
-The smoke test creates high-resolution synthetic atlases and proves all four
-profile bindings on Godot 4.3 and 4.7. It checks canonical clips, exact atlas
-regions, pivot offset, nearest filtering, display scale, metadata and
-idempotent replay. Negative tests reject:
+The adapter smoke creates high-resolution synthetic atlases and proves all four
+profile bindings on Godot 4.3 and 4.7. The runtime-shell smoke additionally
+imports and switches among four complete generated worlds, stages one
+character through the file entry point, binds the remaining profiles from
+immutable bytes, and proves idempotent replay. The checks cover canonical
+clips, exact atlas regions, pivot offset, nearest filtering, display scale and
+portable metadata. Negative tests reject:
 
 - changed revision bytes or digest;
 - mismatched profile/clip policy;
@@ -108,7 +152,9 @@ idempotent replay. Negative tests reject:
 - unsafe atlas paths;
 - corrupted PNG bytes;
 - missing player slots;
-- ambiguous player slots.
+- ambiguous player slots;
+- binding before a world is loaded;
+- unsafe runtime-shell artifact paths.
 
 CI runs the same test on Linux and Windows for both Godot versions.
 

@@ -250,6 +250,7 @@ jobs:
             res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd
             res://addons/mapsoo_importer/runtime/mapsoo_character_profile_runtime.gd
             res://addons/mapsoo_importer/mapsoo_importer_plugin.gd
+            res://example/main.gd
             res://tests/import_smoke.gd
             res://tests/import_pack_cli.gd
             res://tests/import_alpha9_smoke.gd
@@ -261,6 +262,7 @@ jobs:
             res://tests/import_alpha12_smoke.gd
             res://tests/import_alpha12_playable_smoke.gd
             res://tests/import_pack10_controlled_smoke.gd
+            res://tests/character_profile_test_fixture.gd
             res://tests/runtime_shell_smoke.gd
             res://tests/character_profile_runtime_smoke.gd
             res://tests/texture_persistence_probe.gd
@@ -466,6 +468,7 @@ jobs:
           log_file="$RUNNER_TEMP/mapsoo-runtime-shell-${{ matrix.version }}.log"
           "$GODOT_BIN" --headless --path godot \
             --script res://tests/runtime_shell_smoke.gd 2>&1 | tee "$log_file"
+          grep -Fq 'MAPSOO_RUNTIME_SHELL_OK safe_path=true farm=true side=true isometric=true layered=true replacement=true character_profiles=4' "$log_file"
           if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
             echo "Godot emitted an engine error during the runtime-shell test." >&2
             exit 1
@@ -602,6 +605,7 @@ jobs:
             'res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd',
             'res://addons/mapsoo_importer/runtime/mapsoo_character_profile_runtime.gd',
             'res://addons/mapsoo_importer/mapsoo_importer_plugin.gd',
+            'res://example/main.gd',
             'res://tests/generate_fixture.gd',
             'res://tests/import_smoke.gd',
             'res://tests/import_pack_cli.gd',
@@ -614,6 +618,7 @@ jobs:
             'res://tests/import_alpha12_smoke.gd',
             'res://tests/import_alpha12_playable_smoke.gd',
             'res://tests/import_pack10_controlled_smoke.gd',
+            'res://tests/character_profile_test_fixture.gd',
             'res://tests/runtime_shell_smoke.gd',
             'res://tests/character_profile_runtime_smoke.gd',
             'res://tests/texture_persistence_probe.gd'
@@ -796,8 +801,13 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $output = @(& $env:GODOT_BIN --headless --path godot --script res://tests/runtime_shell_smoke.gd 2>&1)
-          $output | ForEach-Object { Write-Host $_.ToString() }
-          if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
+          $lines = @($output | ForEach-Object { $_.ToString() })
+          $lines | ForEach-Object { Write-Host $_ }
+          if (
+            $LASTEXITCODE -ne 0 -or
+            $lines -match '^(?:SCRIPT )?ERROR:' -or
+            -not ($lines -match '^MAPSOO_RUNTIME_SHELL_OK safe_path=true farm=true side=true isometric=true layered=true replacement=true character_profiles=4$')
+          ) {
             throw 'Generated-world runtime shell contract failed.'
           }
 

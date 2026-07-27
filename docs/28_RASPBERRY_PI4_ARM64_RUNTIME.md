@@ -31,8 +31,8 @@ pnpm pi4:production-review:verify
 It writes
 `release/pi4-runtime/mapsoo-pi4-arm64-alpha12-production-review.zip`, containing
 the four synthetic fixtures plus `layered-depth-2d-production-v1`. The current
-deterministic archive is 55,668,794 bytes with SHA-256
-`5b80e8b6fe47c23b6b05aea7792ce208b1d770bca1722e7a5907a7970fdbaf6d`.
+deterministic archive is 55,678,262 bytes with SHA-256
+`484218ec9b1102fba27bba619b2105c7dddeed39208b9e945c66167bb4d0c849`.
 
 This fifth world is explicitly `internal-review`, `UNRELEASED`, and
 `standard_pack: false`. It is assembled only from an allowlisted configuration,
@@ -69,8 +69,8 @@ rejects missing, additional or changed managed files.
 
 The resulting local archive is
 `release/pi4-runtime/mapsoo-pi4-arm64-pack10-production-review.zip`. The
-current deterministic artifact is 49,479,756 bytes with SHA-256
-`86f210ce9ff45d7acabeccee2ce50af7f3b3173e484bb0ecfe6247c2f40b60c8`.
+current deterministic artifact is 49,489,218 bytes with SHA-256
+`2b06b8433d9a4c85ab2952fd65ed8ff695a4c69dd6bfa77c15134dc1202ea591`.
 It contains the four synthetic compatibility worlds plus
 `neutral-production-runtime-review`. The generated source Pack, model runs and
 build workspace are not copied into the ARM64 bundle.
@@ -112,6 +112,29 @@ For the Pack 1.0 importer-managed review archive only:
 ./run-mapsoo.sh neutral-production-runtime-review
 ```
 
+To enter a bundled world with an independently reviewed character, copy only
+the canonical revision and its declared atlas into:
+
+```text
+project/mapsoo_characters/<profile-revision-id>/
+  character-profile-revision.json
+  character-profile-atlas.png
+```
+
+Then launch:
+
+```bash
+./run-mapsoo.sh <world-id> <profile-revision-id> <revision-sha256>
+```
+
+The launcher accepts a portable revision ID and lowercase canonical SHA-256,
+then constructs both fixed `res://mapsoo_characters/` paths itself. It never
+accepts an arbitrary filesystem path. The runtime rejects changed bytes,
+unsafe paths, wrong profiles, incomplete animation inventories or an
+ambiguous player slot before replacing the world's `SpriteFrames`. A character
+revision can therefore change without rebuilding the world or the Godot
+application.
+
 The project uses Godot's `gl_compatibility` renderer, a 640×360 viewport, nearest texture filtering, bounded cameras, and a limited number of depth planes/lights suitable for an initial Pi 4B trial.
 
 ## Adding a newly created world
@@ -131,6 +154,11 @@ The shortest controlled path is:
 
 The launcher accepts only bundled safe world IDs and always resolves the exact generated scene path. Pack data cannot supply scripts, shaders, URLs or arbitrary target scenes.
 
+Character staging is a separate transaction: validate the
+`CharacterProfileRevision`, copy its two source-free artifacts under the
+fixed character root, and provide the trusted revision hash at launch. Do not
+merge an internal-review/private character into a public world archive.
+
 ## What is and is not verified
 
 Verified on the build machine:
@@ -146,6 +174,8 @@ Verified on the build machine:
 - deterministic Pack 1.0 Linux ARM64 review archive;
 - direct Godot 4.3 load from the extracted ARM64 project without source Pack
   or workspace access.
+- reusable-shell binding of separate character revisions across all four
+  profiles on desktop Godot 4.3 and 4.7.
 
 Still requires the physical Pi:
 

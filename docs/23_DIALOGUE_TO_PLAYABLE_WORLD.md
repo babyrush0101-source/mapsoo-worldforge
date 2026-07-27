@@ -67,6 +67,14 @@ confirmed dialogue snapshot
 
 The Raspberry Pi should run one reusable Godot runtime shell. Newly created worlds are content packs, not new application builds. The shell loads a generated `.tscn` scene and the character atlas selected by the frozen world revision.
 
+The runtime shell now keeps those revisions independent in practice. It can
+load any of the four generated world profiles first, then bind the exact
+profile-matched `CharacterProfileRevision` and PNG atlas without rebuilding
+the world. File-based launch accepts only one
+`res://mapsoo_characters/<revision-id>/` directory and the trusted canonical
+revision SHA-256; changing worlds clears the active character binding and
+requires a compatible rebind.
+
 Initial constraints:
 
 - Godot 4.3-compatible renderer and importer.
@@ -78,6 +86,7 @@ Initial constraints:
 ## Next implementation slice
 
 1. Render implemented previews from the exported scene and atlas data, not from an independent composition.
-2. Split world and character runtime packs so a character revision can change without rebuilding the world.
+2. Turn the reviewed production-art tasks into one resumable, cost-bounded
+   workflow instead of requiring one manual command per image.
 3. Collect playtest feedback and branch a new revision without overwriting the playable one.
 4. Test the reproducible ARM64 runtime artifact on a physical Raspberry Pi 4B and record frame time, memory, temperature and display-driver results.
