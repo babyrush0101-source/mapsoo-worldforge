@@ -409,3 +409,65 @@ export function createTopdownFarmReplayProvider(
     },
   });
 }
+
+/**
+ * Replays one previously materialized complete bundle only for the exact request
+ * that created it. This is the narrow bridge for reviewed/imported asset packs;
+ * it does not grant release approval or regenerate artwork.
+ */
+export function createFingerprintBoundWorldAssetReplayProvider(
+  id: string,
+  version: string,
+  profile: WorldAssetProfile,
+  fixture: WorldAssetProviderOutput,
+  expectedRequestFingerprintSha256: string,
+): WorldAssetProvider {
+  if (!WORLD_ASSET_PROFILES.includes(profile) || !/^[a-f0-9]{64}$/.test(expectedRequestFingerprintSha256)) {
+    fail('world-provider.invalid-metadata', 'Replay profile or request fingerprint is invalid.');
+  }
+  const bundle = deepFreezeData(cloneBundle(fixture.bundle));
+  const files = Object.freeze(fixture.files.map((file) => Object.freeze({
+    assetId: file.assetId,
+    path: file.path,
+    mediaType: file.mediaType,
+    bytes: file.bytes.slice(),
+  })));
+  return Object.freeze({
+    id,
+    version,
+    displayName: 'Fingerprint-bound World Asset Replay',
+    capabilities: Object.freeze({
+      execution: 'local' as const,
+      determinism: 'replay' as const,
+      outputProvenance: 'recorded-replay' as const,
+      requiresCredentials: false,
+      supportsAbort: true,
+      supportedProfiles: Object.freeze([profile]),
+      requiredReferenceRoles: Object.freeze(['environment-style', 'character'] as const),
+      maxReferenceBytes: 16 * 1024 * 1024,
+      maxOutputBytes: 128 * 1024 * 1024,
+      maxRasterDimension: 8192,
+    }),
+    async generate(job: GenerationRequestJobV2, options?: { readonly signal?: AbortSignal }) {
+      abortIfNeeded(options?.signal, id);
+      const actualFingerprint = await fingerprintGenerationRequestV2(job.request);
+      if (
+        job.request.profile !== profile
+        || bundle.profile !== profile
+        || bundle.jobId !== job.request.id
+        || actualFingerprint !== expectedRequestFingerprintSha256
+      ) {
+        fail('world-provider.invalid-output', 'Replay fixture is bound to a different complete generation request.');
+      }
+      return {
+        bundle,
+        files: files.map((file) => ({
+          assetId: file.assetId,
+          path: file.path,
+          mediaType: file.mediaType,
+          bytes: file.bytes.slice(),
+        })),
+      };
+    },
+  });
+}

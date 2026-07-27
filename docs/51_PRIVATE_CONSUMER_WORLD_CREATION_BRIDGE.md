@@ -133,6 +133,34 @@ A private consumer must therefore keep “generating”, “awaiting approval”
 Rejected or uncertain mandatory tasks stop later paid generation until the
 operator explicitly resolves the same task.
 
+### Accepted Pack re-entry
+
+Layered-depth production art is assembled once into the existing complete
+Pack 1.0 review archive. It is not assembled again inside a consumer-specific
+provider. The neutral re-entry path is:
+
+```text
+reviewed Pack 1.0 ZIP
+  -> strict schema + semantic + exact inventory + SHA-256 verification
+  -> 19 unique runtime PNG/JSON assets
+  -> 36 canonical layered-depth roles
+  -> fingerprint-bound recorded replay provider
+  -> existing trusted WorldAssetProvider runner
+```
+
+`materializePack10WorldAssetOutput()` excludes license and provenance documents
+from runtime payloads while retaining the Pack digest, manifest digest,
+distribution and all four review gates in a separate source receipt.
+`replayPack10WorldAsset()` then invokes the normal provider runner, which
+re-checks complete bundle roles, character clips, reference IDs, PNG/JSON
+integrity and output limits. Changing the world description, seed, profile,
+reference descriptors, rights or digests changes the request fingerprint and
+invalidates the replay.
+
+This is an internal technical bridge, not a release-state conversion. An
+`internal-review` Pack stays internal review; replay success cannot turn
+pending human, rights, runtime or Raspberry Pi gates into passes.
+
 After art approval, deterministic pack projection and Godot import, build the
 PCK and its exact evidence on the trusted host:
 
@@ -358,7 +386,9 @@ Implemented in this repository:
 - separate fail-closed physical Pi 4B acceptance contract and device-only
   collector for startup, frames, memory and temperature;
 - deterministic three-profile production review-pack projection plus the
-  existing layered-depth Pack 1.0 path.
+  existing layered-depth Pack 1.0 path;
+- strict Pack 1.0-to-`WorldAssetProvider` replay projection with complete
+  request-fingerprint binding and preserved review/distribution receipt.
 
 The internal review archives use their own review-manifest schema. They do not
 rewrite or widen the published Pack 0.6, 0.7, or 0.8 schemas, so public release

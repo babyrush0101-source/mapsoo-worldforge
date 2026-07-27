@@ -269,6 +269,22 @@ SpriteCook 只允许两种薄接入方式，不成为运行时依赖：
 
 核心不调用 SpriteCook MCP、不加载其插件，也不把第三方 `.tres` 直接当作可信 pack 内容。四类 profile 共用同一套候选和逻辑材质端口，不为每个供应商或 profile 复制一套 importer。
 
+已经审核并组装完成的 Pack 同样只走薄适配层，不再复制投影器：
+
+```text
+Pack 1.0 ZIP
+  -> adapters/materialize-pack10-world-asset-output
+  -> fingerprint-bound recorded replay provider
+  -> core/runWorldAssetProvider
+  -> Godot importer / World Runner
+```
+
+Pack 1.0 仍是 layered-depth 可见资产、角色动画和地图 sidecar 的唯一组装
+来源。adapter 只校验 ZIP/schema/语义/哈希，把 19 个去重运行时文件映射到
+现有 36 个角色；license、provenance 和审核状态保留在来源 receipt，不作为
+运行时资产，也不会被 replay 自动提升。这样 SpriteCook、模型、艺术家或
+离线工具只需产出同一标准候选/Pack，核心和 Godot 路径保持不变。
+
 新增依赖前使用四个判断：
 
 1. 是否属于上述 WorldForge 核心；若是，维护稳定的内部契约。
