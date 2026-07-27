@@ -474,6 +474,12 @@ jobs:
             exit 1
           fi
 
+      - name: Build, launch, and reproduce a World Runner PCK
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/verify-world-runner-pck.mjs --godot-bin "$GODOT_BIN"
+
       - name: Bind portable character profiles across all world types
         shell: bash
         run: |

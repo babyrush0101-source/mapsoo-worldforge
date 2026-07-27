@@ -173,7 +173,10 @@ function assertTargetArtifact(
   architecture: WorldRunnerArchitecture,
 ): void {
   if (target === 'raspberry-pi-4b' && (kind !== 'godot-pck' || architecture !== 'arm64')) {
-    fail('delivery.target-mismatch', 'Raspberry Pi 4B delivery requires a prebuilt ARM64 Godot PCK.');
+    fail(
+      'delivery.target-mismatch',
+      'Raspberry Pi 4B delivery requires a prebuilt Godot PCK bound to the ARM64 runtime target.',
+    );
   }
   if (target === 'web' && (kind !== 'web-bundle-zip' || architecture !== 'wasm32')) {
     fail('delivery.target-mismatch', 'Web delivery requires a wasm32 web bundle archive.');

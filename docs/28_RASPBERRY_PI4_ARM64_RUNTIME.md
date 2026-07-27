@@ -146,11 +146,18 @@ The shortest controlled path is:
 3. run profile structural and playable smoke tests;
 4. prepare the exact importer-managed scene, TileSet and integrity state with
    the same pinned Godot version used by the runtime;
-5. copy only that three-file directory into
-   `project/mapsoo_imports/<world-id>/`;
-6. rebuild the runtime ZIP, independently verify every hash and load the
-   extracted scene on the build machine;
-7. stage on the Pi and launch `./run-mapsoo.sh <world-id>`.
+5. run `pnpm world-runner:pck:build -- ...` against the frozen Pack and that
+   exact three-file directory;
+6. retain the generated PCK, headless smoke report and build receipt, all bound
+   to the exact Pack SHA-256;
+7. combine the target-neutral PCK with the separately verified Linux ARM64
+   Godot executable, stage both on the Pi and launch with
+   `godot --main-pack <verified-pck>`.
+
+The PCK is Godot content, not an ARM64 executable. `arm64` identifies the
+runtime target in the delivery. The build receipt separately records the
+actual build-host platform and does not turn a desktop smoke into physical Pi
+evidence.
 
 The launcher accepts only bundled safe world IDs and always resolves the exact generated scene path. Pack data cannot supply scripts, shaders, URLs or arbitrary target scenes.
 
@@ -176,6 +183,8 @@ Verified on the build machine:
   or workspace access.
 - reusable-shell binding of separate character revisions across all four
   profiles on desktop Godot 4.3 and 4.7.
+- real `PCKPacker` output launched through `--main-pack`, with an exact
+  world/Pack/profile marker and byte-for-byte rebuild reproducibility.
 
 Still requires the physical Pi:
 

@@ -127,7 +127,7 @@ The target device should not rebuild a new game for every world. The shortest co
 ```text
 frozen portable pack
   -> build machine performs Godot import
-  -> reproducible Linux ARM64 PCK/runtime artifact
+  -> reproducible target-neutral PCK + verified Linux ARM64 runtime
   -> device downloads and verifies SHA-256
   -> staging smoke
   -> atomic promotion with rollback

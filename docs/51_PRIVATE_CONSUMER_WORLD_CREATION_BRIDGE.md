@@ -77,8 +77,35 @@ That invocation is dry-run by default. A real image request still requires the
 separate `--execute --allow-remote-upload` authorization, one reviewed task at
 a time. Scene direction and every later asset remain human-review gates.
 
-After art approval, deterministic pack projection, Godot import, a real
-headless smoke, and runtime artifact build, finalize the handoff:
+After art approval, deterministic pack projection and Godot import, build the
+PCK and its exact evidence on the trusted host:
+
+```bash
+pnpm world-runner:pck:build -- \
+  --bundle-root <staged-bundle-root> \
+  --world-pack packs/world.zip \
+  --imported-world imported/<world-id> \
+  --world-id <world-id> \
+  --godot-bin <trusted-godot-4.3+-binary> \
+  --out runtime/world.pck \
+  --report evidence/smoke.json \
+  --receipt evidence/pck-build-receipt.json
+```
+
+The builder accepts exactly the importer-managed scene, TileSet and integrity
+state. It verifies the Pack manifest hash, state integrity, generated-file
+hashes, world/profile metadata, bundle containment and trusted runtime-script
+references before calling Godot's `PCKPacker`. It then starts Godot from the
+new PCK and requires an exact world ID, Pack SHA-256, profile and scene marker.
+Only after that launch succeeds does it write
+`mapsoo-godot-headless-smoke-report-1.0` and the build receipt.
+
+The `.pck` contains platform-neutral Godot content; it is not an ARM64
+executable. The delivery binds that content to the separately verified Godot
+Linux ARM64 runtime used by the Raspberry Pi. The receipt records the actual
+build host and always says `physical_raspberry_pi_tested: false`.
+
+Finally, finalize the handoff:
 
 ```bash
 pnpm world-delivery:workspace -- finalize \
@@ -176,7 +203,8 @@ Cross-references are semantic, not only structural:
 - runtime-contract pack digest must equal the delivered world-pack digest;
 - launch spawn and player slot must exist in the runtime contract;
 - the character profile must match the world profile and identity digest;
-- Raspberry Pi 4B delivery must be a prebuilt ARM64 `godot-pck`;
+- Raspberry Pi 4B delivery must be a prebuilt `godot-pck` bound to the ARM64
+  runtime target;
 - web delivery must be a wasm32 `web-bundle-zip`;
 - every path must be relative and portable.
 
@@ -205,7 +233,7 @@ The target device should not compile a new Godot project for each user world.
 ```text
 Mapsoo pack
   -> trusted build machine imports and smokes
-  -> reproducible ARM64-compatible PCK
+  -> reproducible target-neutral PCK bound to the ARM64 runtime
   -> delivery manifest and SHA-256
   -> device stages and verifies
   -> atomic promotion or rollback
@@ -229,6 +257,8 @@ Implemented in this repository:
 - strict World Runner delivery materializer and JSON Schema;
 - exact-byte delivery finalizer plus strict Godot headless-smoke report schema;
 - enforced PCK fast path for Raspberry Pi 4B;
+- real Godot `PCKPacker` build, launch-from-PCK smoke, build receipt,
+  negative input tests, and byte-for-byte reproducibility test;
 - deterministic three-profile production review-pack projection plus the
   existing layered-depth Pack 1.0 path.
 
@@ -242,7 +272,7 @@ Still required in the private consumer or trusted build environment:
 - translate the private confirmed projection into the public intake document;
 - run paid model tasks only after the product obtains explicit upload consent
   and the user approves each direction/candidate;
-- build the reviewed pack and real Godot runtime artifact on a trusted host;
+- run the reviewed real-art pack through the trusted PCK builder;
 - register accepted pack/profile digests in the private asset store;
 - adapt the neutral runtime messages to the private launch channels;
 - perform physical Raspberry Pi staging, launch, render, performance, rollback,
