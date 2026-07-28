@@ -77,7 +77,13 @@ func _play_animation(animation_name: String) -> void:
 
 func _connect_hazards() -> void:
 	var world := _world_root()
-	var hazards := world.get_node_or_null("Hazards") if world != null else null
+	var hazards := (
+		world.get_node_or_null("MapsooLayoutMaterialization/Hazards")
+		if world != null
+		else null
+	)
+	if hazards == null and world != null:
+		hazards = world.get_node_or_null("Hazards")
 	if hazards == null:
 		return
 	for child: Node in hazards.get_children():

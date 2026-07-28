@@ -13,7 +13,8 @@
     "rights",
     "images",
     "assets",
-    "bindings"
+    "bindings",
+    "hazards"
   ],
   "properties": {
     "schema_version": { "const": "1.0.0" },
@@ -67,6 +68,11 @@
       "minItems": 1,
       "maxItems": 2048,
       "items": { "$ref": "#/$defs/binding" }
+    },
+    "hazards": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/hazard" }
     }
   },
   "$defs": {
@@ -263,6 +269,25 @@
           "maxItems": 256,
           "items": { "$ref": "#/$defs/pose" }
         }
+      }
+    },
+    "hazard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hazard_id",
+        "binding_usage_id",
+        "kind",
+        "behavior",
+        "logical_rect"
+      ],
+      "properties": {
+        "hazard_id": { "$ref": "#/$defs/safeId160" },
+        "binding_usage_id": { "$ref": "#/$defs/safeId160" },
+        "kind": { "enum": ["spikes", "pit", "contact"] },
+        "behavior": { "const": "respawn" },
+        "logical_rect": { "$ref": "#/$defs/region" },
+        "telegraph_usage_id": { "$ref": "#/$defs/safeId160" }
       }
     }
   }

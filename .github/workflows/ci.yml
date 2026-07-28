@@ -552,14 +552,14 @@ jobs:
             exit 1
           fi
 
-      - name: Apply reviewed terrain and landmarks across all world types
+      - name: Apply reviewed terrain, landmarks, and hazards across all world types
         shell: bash
         run: |
           set -euo pipefail
           log_file="$RUNNER_TEMP/mapsoo-world-art-runtime-overlay-applier-${{ matrix.version }}.log"
           "$GODOT_BIN" --headless --path godot \
             --script res://tests/world_art_runtime_overlay_applier_smoke.gd 2>&1 | tee "$log_file"
-          grep -Eq '^MAPSOO_WORLD_ART_RUNTIME_OVERLAY_APPLIER_OK profiles=4 terrain=[1-9][0-9]* landmarks=[1-9][0-9]* persisted=4 tamper=3$' "$log_file"
+          grep -Eq '^MAPSOO_WORLD_ART_RUNTIME_OVERLAY_APPLIER_OK profiles=4 terrain=[1-9][0-9]* landmarks=[1-9][0-9]* hazards=8 persisted=4 tamper=6$' "$log_file"
           if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
             echo "Godot emitted an engine error during runtime overlay visual application." >&2
             exit 1
@@ -995,7 +995,7 @@ jobs:
             throw 'WorldArtRuntimeOverlay loading failed.'
           }
 
-      - name: Apply reviewed terrain and landmarks across all world types on Windows
+      - name: Apply reviewed terrain, landmarks, and hazards across all world types on Windows
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -1005,7 +1005,7 @@ jobs:
           if (
             $LASTEXITCODE -ne 0 -or
             $lines -match '^(?:SCRIPT )?ERROR:' -or
-            -not ($lines -match '^MAPSOO_WORLD_ART_RUNTIME_OVERLAY_APPLIER_OK profiles=4 terrain=[1-9][0-9]* landmarks=[1-9][0-9]* persisted=4 tamper=3$')
+            -not ($lines -match '^MAPSOO_WORLD_ART_RUNTIME_OVERLAY_APPLIER_OK profiles=4 terrain=[1-9][0-9]* landmarks=[1-9][0-9]* hazards=8 persisted=4 tamper=6$')
           ) {
             throw 'WorldArtRuntimeOverlay visual application failed.'
           }

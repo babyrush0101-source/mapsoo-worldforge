@@ -224,7 +224,10 @@ four profiles. A separate shared applier now replaces the existing logical
 TileMap sources with the selected reviewed terrain cells while preserving
 their exact material source IDs, and attaches reviewed landmark sprites to the
 existing layout markers. Godot 4.3 and 4.7 save/reload tests cover this visible
-terrain and landmark path for all four profiles. Hazard and character visual
+terrain and landmark path for all four profiles. A second shared gameplay
+applier derives reviewed hazard art and `Area2D` collision from deterministic
+logical rectangles in the projection; all four trusted controllers prefer
+these confirmed-layout hazards and retain legacy fallback. Character visual
 application is still pending.
 
 A separately labelled **synthetic technical fixture** now exercises that full

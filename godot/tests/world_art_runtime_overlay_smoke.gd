@@ -166,6 +166,7 @@ func _write_fixture(
 		"images": [image_record],
 		"assets": [asset],
 		"bindings": [binding],
+		"hazards": [],
 	}
 	projection["projection_id"] = "world-art-runtime-projection-%s" % (
 		_canonical_sha256(projection).left(16)

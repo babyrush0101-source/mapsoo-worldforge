@@ -214,6 +214,7 @@ static func bind_scene(root: Node, loaded_overlay: Dictionary) -> Dictionary:
 	container.set_meta("mapsoo_images", (projection.images as Array).duplicate(true))
 	container.set_meta("mapsoo_assets", (projection.assets as Array).duplicate(true))
 	container.set_meta("mapsoo_bindings", (projection.bindings as Array).duplicate(true))
+	container.set_meta("mapsoo_hazards", (projection.hazards as Array).duplicate(true))
 	container.set_meta("mapsoo_textures", textures.duplicate())
 	root.add_child(container)
 	container.owner = root
@@ -243,6 +244,7 @@ static func validate_bound_scene(root: Node, loaded_overlay: Dictionary) -> Dict
 		or container.get_meta("mapsoo_images", []) != projection.get("images")
 		or container.get_meta("mapsoo_assets", []) != projection.get("assets")
 		or container.get_meta("mapsoo_bindings", []) != projection.get("bindings")
+		or container.get_meta("mapsoo_hazards", []) != projection.get("hazards")
 	):
 		return _failure("Persisted WorldArtRuntimeOverlay metadata changed.")
 	var textures: Dictionary = container.get_meta("mapsoo_textures", {})
@@ -386,7 +388,7 @@ static func _validate_projection(
 ) -> Dictionary:
 	if not _exact_keys(projection, [
 		"schema_version", "document_type", "projection_id", "profile", "source",
-		"rights", "images", "assets", "bindings",
+		"rights", "images", "assets", "bindings", "hazards",
 	]):
 		return _failure("Runtime projection has unsupported or missing fields.")
 	if (
@@ -403,6 +405,7 @@ static func _validate_projection(
 		or typeof(projection.get("images")) != TYPE_ARRAY
 		or typeof(projection.get("assets")) != TYPE_ARRAY
 		or typeof(projection.get("bindings")) != TYPE_ARRAY
+		or typeof(projection.get("hazards")) != TYPE_ARRAY
 	):
 		return _failure("Runtime projection identity is invalid.")
 	if (
@@ -439,10 +442,12 @@ static func _validate_projection(
 	var images: Array = projection.images
 	var assets: Array = projection.assets
 	var bindings: Array = projection.bindings
+	var hazards: Array = projection.hazards
 	if (
 		images.size() < 1 or images.size() > 256
 		or assets.size() < 1 or assets.size() > 2048
 		or bindings.size() < 1 or bindings.size() > 2048
+		or hazards.size() > 256
 	):
 		return _failure("Runtime projection inventory size is invalid.")
 	var image_by_task := {}
@@ -481,6 +486,7 @@ static func _validate_projection(
 		if not used:
 			return _failure("Runtime projection contains an unused image.")
 	var previous_binding_key := ""
+	var binding_by_usage := {}
 	for index in bindings.size():
 		var checked := _validate_asset_or_binding(
 			bindings[index],
@@ -502,6 +508,21 @@ static func _validate_projection(
 		if index > 0 and previous_binding_key.casecmp_to(binding_key) >= 0:
 			return _failure("Runtime projection bindings must be unique and sorted.")
 		previous_binding_key = binding_key
+		binding_by_usage["%s/%s" % [binding.usage_kind, binding.usage_id]] = binding
+	var previous_hazard_id := ""
+	for index in hazards.size():
+		var checked := _validate_hazard(
+			hazards[index],
+			index,
+			binding_by_usage
+		)
+		if not checked.ok:
+			return checked
+		var hazard: Dictionary = hazards[index]
+		var hazard_id := str(hazard.hazard_id)
+		if index > 0 and previous_hazard_id.casecmp_to(hazard_id) >= 0:
+			return _failure("Runtime hazards must be unique and sorted.")
+		previous_hazard_id = hazard_id
 	var payload := projection.duplicate(true)
 	payload.erase("projection_id")
 	var expected_id := "world-art-runtime-projection-%s" % _canonical_sha256(payload).left(16)
@@ -639,6 +660,61 @@ static func _binding_matches_asset(binding: Dictionary, asset: Dictionary) -> bo
 		if binding.get(key) != asset.get(key):
 			return false
 	return true
+
+
+static func _validate_hazard(
+	value: Variant,
+	index: int,
+	binding_by_usage: Dictionary
+) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return _failure("Runtime hazard %d is invalid." % index)
+	var hazard: Dictionary = value
+	var keys := [
+		"hazard_id", "binding_usage_id", "kind", "behavior", "logical_rect",
+	]
+	if hazard.has("telegraph_usage_id"):
+		keys.append("telegraph_usage_id")
+	if (
+		not _exact_keys(hazard, keys)
+		or not _safe_id(hazard.get("hazard_id"), 160)
+		or not _safe_id(hazard.get("binding_usage_id"), 160)
+		or hazard.get("kind") not in ["spikes", "pit", "contact"]
+		or hazard.get("behavior") != "respawn"
+		or not _valid_logical_rect(hazard.get("logical_rect"))
+		or (
+			hazard.has("telegraph_usage_id")
+			and not _safe_id(hazard.get("telegraph_usage_id"), 160)
+		)
+	):
+		return _failure("Runtime hazard %d identity is invalid." % index)
+	var binding: Dictionary = binding_by_usage.get(
+		"hazard/%s" % hazard.binding_usage_id,
+		{}
+	)
+	if binding.get("role") != "hazard.%s" % hazard.kind:
+		return _failure("Runtime hazard %d visual binding is invalid." % index)
+	if hazard.has("telegraph_usage_id"):
+		var telegraph: Dictionary = binding_by_usage.get(
+			"hazard/%s" % hazard.telegraph_usage_id,
+			{}
+		)
+		if telegraph.get("role") != "hazard.telegraph":
+			return _failure("Runtime hazard %d telegraph binding is invalid." % index)
+	return {"ok": true, "status": "validated", "error": ""}
+
+
+static func _valid_logical_rect(value: Variant) -> bool:
+	if typeof(value) != TYPE_DICTIONARY:
+		return false
+	var rect: Dictionary = value
+	return (
+		_exact_keys(rect, ["x", "y", "width", "height"])
+		and _integer(rect.get("x"), 0, 131071)
+		and _integer(rect.get("y"), 0, 131071)
+		and _integer(rect.get("width"), 1, 8192)
+		and _integer(rect.get("height"), 1, 8192)
+	)
 
 
 static func _validate_rights(

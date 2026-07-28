@@ -95,7 +95,14 @@ func _apply_declared_direction_transform(
 
 
 func _connect_hazards() -> void:
-	var hazards := get_node_or_null("../Hazards")
+	var world := _world_root()
+	var hazards := (
+		world.get_node_or_null("MapsooLayoutMaterialization/Hazards")
+		if world != null
+		else null
+	)
+	if hazards == null and world != null:
+		hazards = world.get_node_or_null("Hazards")
 	if hazards == null:
 		return
 	for child: Node in hazards.get_children():

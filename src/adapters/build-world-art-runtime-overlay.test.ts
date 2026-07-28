@@ -92,6 +92,7 @@ async function fixture(
       cell_sha256: '9'.repeat(64),
       poses: [],
     }],
+    hazards: [],
   });
   const snapshot = Uint8Array.from(png);
   const image: ProjectedReviewedWorldArtImage = Object.freeze({

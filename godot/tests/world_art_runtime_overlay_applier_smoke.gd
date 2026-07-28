@@ -6,6 +6,9 @@ const RuntimeOverlayApplier = preload(
 const RuntimeOverlay = preload(
 	"res://addons/mapsoo_importer/mapsoo_world_art_runtime_overlay.gd"
 )
+const RuntimeHazardApplier = preload(
+	"res://addons/mapsoo_importer/mapsoo_world_art_runtime_hazard_applier.gd"
+)
 
 
 func _run() -> void:
@@ -15,6 +18,7 @@ func _run() -> void:
 		return
 	var visible_terrain := 0
 	var visible_landmarks := 0
+	var active_hazards := 0
 	for profile: String in PROFILES:
 		var fixture := _write_fixture(profile, "runtime-overlay-applier")
 		if not fixture.ok:
@@ -55,22 +59,44 @@ func _run() -> void:
 			return
 		var before := _visual_snapshot(materialized.root)
 		var applied := RuntimeOverlayApplier.apply(materialized.root)
+		var hazards_applied := RuntimeHazardApplier.apply(materialized.root)
 		if (
 			not applied.ok
+			or not hazards_applied.ok
 			or int(applied.terrain_materials) < 1
 			or int(applied.landmarks) < 1
+			or int(hazards_applied.hazards) != 2
 		):
 			materialized.root.free()
-			_fail("%s overlay visual application failed: %s" % [profile, applied])
+			_fail(
+				"%s overlay visual application failed: %s / %s" % [
+					profile,
+					applied,
+					hazards_applied,
+				]
+			)
 			return
 		var checked := RuntimeOverlayApplier.validate_scene(materialized.root)
+		var hazards_checked := RuntimeHazardApplier.validate_scene(
+			materialized.root
+		)
 		var after := _visual_snapshot(materialized.root)
-		if not checked.ok or before == after:
+		if not checked.ok or not hazards_checked.ok or before == after:
 			materialized.root.free()
-			_fail("%s overlay visuals were not applied: %s" % [profile, checked])
+			_fail(
+				"%s overlay visuals were not applied: %s / %s" % [
+					profile,
+					checked,
+					hazards_checked,
+				]
+			)
+			return
+		if not await _assert_controller_uses_runtime_hazard(materialized.root):
+			materialized.root.free()
 			return
 		visible_terrain += int(applied.terrain_materials)
 		visible_landmarks += int(applied.landmarks)
+		active_hazards += int(hazards_applied.hazards)
 		var persisted := _persist_and_reload(
 			materialized.root,
 			fixture.root,
@@ -81,29 +107,40 @@ func _run() -> void:
 			_fail("%s overlay visual persistence failed: %s" % [profile, persisted])
 			return
 		var persisted_check := RuntimeOverlayApplier.validate_scene(persisted.root)
+		var persisted_hazards := RuntimeHazardApplier.validate_scene(
+			persisted.root
+		)
 		var persisted_snapshot := _visual_snapshot(persisted.root)
-		if not persisted_check.ok or persisted_snapshot != after:
+		if (
+			not persisted_check.ok
+			or not persisted_hazards.ok
+			or persisted_snapshot != after
+		):
 			persisted.root.free()
 			_fail(
-				"%s persisted overlay visuals changed: %s" % [
+				"%s persisted overlay visuals changed: %s / %s" % [
 					profile,
 					(
 						str(persisted_check)
 						if not persisted_check.ok
 						else _first_difference(after, persisted_snapshot)
 					),
+					persisted_hazards,
 				]
 			)
 			return
 		persisted.root.free()
 	if not _assert_visual_tamper_fails_closed():
 		return
+	if not _assert_hazard_tamper_fails_closed():
+		return
 	_remove_tree(ProjectSettings.globalize_path(TEST_ROOT))
 	print(
 		"MAPSOO_WORLD_ART_RUNTIME_OVERLAY_APPLIER_OK " +
-		"profiles=4 terrain=%d landmarks=%d persisted=4 tamper=3" % [
+		"profiles=4 terrain=%d landmarks=%d hazards=%d persisted=4 tamper=6" % [
 			visible_terrain,
 			visible_landmarks,
+			active_hazards,
 		]
 	)
 	quit(0)
@@ -185,6 +222,37 @@ func _bind_overlay_fixture(
 		binding["usage_kind"] = "landmark"
 		binding["usage_id"] = landmark_id
 		bindings.append(binding)
+	var hazard_roles: Array = (
+		["hazard.spikes", "hazard.pit"]
+		if profile == "side-platformer"
+		else ["hazard.contact"]
+	)
+	if profile == "isometric-action":
+		hazard_roles.append("hazard.telegraph")
+	for index: int in hazard_roles.size():
+		var role := str(hazard_roles[index])
+		var task_id := "hazard-%03d" % index
+		var slot_id := "hazard-slot-%03d" % index
+		var path := "fixture/%s.png" % task_id
+		var size := Vector2i(64, 64)
+		var seed := materials.size() + landmark_ids.size() + index + 1
+		textures[path] = _portable_texture(size, seed)
+		images.append(_image_record(task_id, path, size, [32, 56]))
+		var shared := _asset_fields(
+			task_id,
+			slot_id,
+			role,
+			path,
+			size,
+			seed
+		)
+		var asset: Dictionary = shared.duplicate(true)
+		asset["requirement_id"] = "requirement-%s" % slot_id
+		assets.append(asset)
+		var binding: Dictionary = shared.duplicate(true)
+		binding["usage_kind"] = "hazard"
+		binding["usage_id"] = "requirement-%s" % role.replace(".", "-")
+		bindings.append(binding)
 	images.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return str(a.task_id) < str(b.task_id)
 	)
@@ -192,7 +260,7 @@ func _bind_overlay_fixture(
 		return "%s/%s" % [a.task_id, a.slot_id] < "%s/%s" % [b.task_id, b.slot_id]
 	)
 	bindings.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var order := {"terrain-material": 0, "landmark": 1}
+		var order := {"terrain-material": 0, "landmark": 1, "hazard": 2}
 		return "%d/%s/%s" % [
 			order[a.usage_kind],
 			a.usage_id,
@@ -215,6 +283,27 @@ func _bind_overlay_fixture(
 		"review_record_sha256": "f".repeat(64),
 	}
 	var rights := {"distribution": "public", "license": "CC0-1.0"}
+	var hazards: Array = []
+	for index: int in 2:
+		var kind: String = (
+			["spikes", "pit"][index]
+			if profile == "side-platformer"
+			else "contact"
+		)
+		var hazard := {
+			"hazard_id": "hazard-%03d" % (index + 1),
+			"binding_usage_id": "requirement-hazard-%s" % kind,
+			"kind": kind,
+			"behavior": "respawn",
+			"logical_rect": (
+				{"x": 15, "y": 25, "width": 2, "height": 1}
+				if index == 0
+				else {"x": 35, "y": 23, "width": 3, "height": 1}
+			),
+		}
+		if profile == "isometric-action":
+			hazard["telegraph_usage_id"] = "requirement-hazard-telegraph"
+		hazards.append(hazard)
 	var projection := {
 		"schema_version": "1.0.0",
 		"document_type": "world-art-runtime-projection",
@@ -224,6 +313,7 @@ func _bind_overlay_fixture(
 		"images": images,
 		"assets": assets,
 		"bindings": bindings,
+		"hazards": hazards,
 	}
 	projection["projection_id"] = "world-art-runtime-projection-%s" % (
 		_canonical_json(projection).sha256_text().left(16)
@@ -388,10 +478,40 @@ func _visual_snapshot(root: Node) -> String:
 				if sprite != null
 				else {}
 			)
+	var hazards := {}
+	var hazards_root := root.get_node_or_null(
+		"MapsooLayoutMaterialization/Hazards"
+	)
+	if hazards_root != null:
+		for child: Node in hazards_root.get_children():
+			if child is Area2D:
+				var collision := child.get_node_or_null(
+					"CollisionPolygon2D"
+				) as CollisionPolygon2D
+				var visual := child.get_node_or_null("WorldArt") as Sprite2D
+				var telegraph := child.get_node_or_null("Telegraph") as Sprite2D
+				hazards[str(child.get_meta("mapsoo_hazard_id", ""))] = {
+					"kind": child.get_meta("mapsoo_kind", ""),
+					"behavior": child.get_meta("mapsoo_behavior", ""),
+					"logical_rect": child.get_meta("mapsoo_logical_rect", {}),
+					"collision_points": collision.polygon.size() if collision != null else 0,
+					"visual_usage": (
+						visual.get_meta("mapsoo_usage_id", "")
+						if visual != null
+						else ""
+					),
+					"telegraph_usage": (
+						telegraph.get_meta("mapsoo_usage_id", "")
+						if telegraph != null
+						else ""
+					),
+				}
 	return JSON.stringify({
 		"status": root.get_meta("mapsoo_world_art_visual_status", ""),
+		"hazard_status": root.get_meta("mapsoo_world_art_hazard_status", ""),
 		"sources": sources,
 		"landmarks": landmarks,
+		"hazards": hazards,
 	})
 
 
@@ -460,4 +580,122 @@ func _assert_visual_tamper_fails_closed() -> bool:
 			_fail("Runtime overlay visual tamper did not fail before mutation: %s." % mutation)
 			return false
 		materialized.root.free()
+	return true
+
+
+func _assert_hazard_tamper_fails_closed() -> bool:
+	var fixture := _write_fixture("topdown-farm", "runtime-hazard-applier-tamper")
+	if not fixture.ok:
+		_fail(str(fixture.error))
+		return false
+	var attachment := LayoutAttachment.validate_optional(
+		fixture.manifest,
+		fixture.root,
+		fixture.manifest_sha256
+	)
+	if not attachment.ok:
+		_fail("Runtime hazard applier tamper fixture validation failed.")
+		return false
+	var mutations := ["missing-binding", "out-of-bounds", "existing-root"]
+	for mutation: String in mutations:
+		var materialized := _materialize_world(
+			"topdown-farm",
+			attachment.layout
+		)
+		if not materialized.ok:
+			_fail("Runtime hazard applier tamper world setup failed.")
+			return false
+		var palette := _palette("topdown-farm", attachment.layout)
+		var palette_result := MaterialPalette.apply(
+			materialized.root,
+			attachment.layout.plan,
+			attachment.layout.sha256,
+			palette,
+			_catalog("topdown-farm", palette)
+		)
+		if not palette_result.ok:
+			materialized.root.free()
+			_fail("Runtime hazard applier tamper palette setup failed.")
+			return false
+		var bound := _bind_overlay_fixture(
+			materialized.root,
+			"topdown-farm",
+			attachment.layout.sha256
+		)
+		var container: Node = materialized.root.get_node("WorldArtRuntimeOverlay")
+		if mutation == "missing-binding":
+			var bindings: Array = container.get_meta("mapsoo_bindings")
+			for index: int in range(bindings.size() - 1, -1, -1):
+				if bindings[index].usage_id == "requirement-hazard-contact":
+					bindings.remove_at(index)
+					break
+			container.set_meta("mapsoo_bindings", bindings)
+		elif mutation == "out-of-bounds":
+			var hazards: Array = container.get_meta("mapsoo_hazards")
+			hazards[0].logical_rect.x = 64
+			container.set_meta("mapsoo_hazards", hazards)
+		else:
+			var existing := Node2D.new()
+			existing.name = "Hazards"
+			var materialization: Node = materialized.root.get_node(
+				"MapsooLayoutMaterialization"
+			)
+			materialization.add_child(existing)
+			existing.owner = materialized.root
+		var before := _visual_snapshot(materialized.root)
+		var result := RuntimeHazardApplier.apply(materialized.root)
+		var after := _visual_snapshot(materialized.root)
+		if not bound.ok or result.ok or before != after:
+			materialized.root.free()
+			_fail(
+				"Runtime hazard tamper did not fail before mutation: %s." % mutation
+			)
+			return false
+		materialized.root.free()
+	return true
+
+
+func _assert_controller_uses_runtime_hazard(root: Node) -> bool:
+	var player := _find_player(root)
+	var hazards_root := root.get_node_or_null(
+		"MapsooLayoutMaterialization/Hazards"
+	)
+	if player == null or hazards_root == null or hazards_root.get_child_count() < 1:
+		_fail("Runtime hazard controller fixture is incomplete.")
+		return false
+	var area := hazards_root.get_child(0) as Area2D
+	if area == null:
+		_fail("Runtime hazard controller fixture has no Area2D.")
+		return false
+	var scene_root := get_root()
+	scene_root.add_child(root)
+	await process_frame
+	player.call("_connect_hazards")
+	if area.body_entered.get_connections().is_empty():
+		scene_root.remove_child(root)
+		_fail("Controller did not connect to the materialized runtime hazard.")
+		return false
+	var expected_spawn: Vector2 = player.get("spawn_position")
+	player.position = Vector2(777.0, 555.0)
+	player.velocity = Vector2(100.0, 100.0)
+	area.body_entered.emit(player)
+	await process_frame
+	var expected_reason := str(area.get_meta("mapsoo_kind", "hazard"))
+	if (
+		player.position.distance_to(expected_spawn) > 2.0
+		or player.get_meta("mapsoo_last_respawn_reason", "") != expected_reason
+	):
+		scene_root.remove_child(root)
+		_fail(
+			"Materialized runtime hazard did not trigger controller respawn: " +
+			"position=%s spawn=%s velocity=%s reason=%s expected=%s." % [
+				player.position,
+				expected_spawn,
+				player.velocity,
+				player.get_meta("mapsoo_last_respawn_reason", ""),
+				expected_reason,
+			]
+		)
+		return false
+	scene_root.remove_child(root)
 	return true

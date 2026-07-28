@@ -70,6 +70,15 @@ export interface WorldArtRuntimeBinding {
   readonly poses: readonly WorldArtRuntimePose[];
 }
 
+export interface WorldArtRuntimeHazard {
+  readonly hazard_id: string;
+  readonly binding_usage_id: string;
+  readonly kind: 'spikes' | 'pit' | 'contact';
+  readonly behavior: 'respawn';
+  readonly logical_rect: WorldArtRuntimeRegion;
+  readonly telegraph_usage_id?: string;
+}
+
 export interface WorldArtRuntimeProjection {
   readonly schema_version: typeof WORLD_ART_RUNTIME_PROJECTION_VERSION;
   readonly document_type: 'world-art-runtime-projection';
@@ -90,6 +99,7 @@ export interface WorldArtRuntimeProjection {
   readonly images: readonly WorldArtRuntimeProjectionImage[];
   readonly assets: readonly WorldArtRuntimeAsset[];
   readonly bindings: readonly WorldArtRuntimeBinding[];
+  readonly hazards: readonly WorldArtRuntimeHazard[];
 }
 
 export type WorldArtRuntimeProjectionDraft = Omit<
@@ -143,7 +153,7 @@ function exactKeys(
   if (
     actual.length !== expected.length
     || actual.some((key, index) => key !== expected[index])
-  ) {
+    ) {
     fail(
       'world-art-runtime-projection.invalid-shape',
       `${label} must contain exactly: ${expected.join(', ')}.`,
@@ -472,6 +482,53 @@ function materializeAsset(
   });
 }
 
+function materializeHazard(
+  value: unknown,
+  index: number,
+): WorldArtRuntimeHazard {
+  if (!isRecord(value)) {
+    fail('world-art-runtime-projection.invalid-shape', `Hazard ${index} must be an object.`);
+  }
+  exactKeys(
+    value,
+    value.telegraph_usage_id === undefined
+      ? ['hazard_id', 'binding_usage_id', 'kind', 'behavior', 'logical_rect']
+      : [
+        'hazard_id',
+        'binding_usage_id',
+        'kind',
+        'behavior',
+        'logical_rect',
+        'telegraph_usage_id',
+      ],
+    `Hazard ${index}`,
+  );
+  if (
+    !['spikes', 'pit', 'contact'].includes(String(value.kind))
+    || value.behavior !== 'respawn'
+  ) {
+    fail('world-art-runtime-projection.invalid-binding', `Hazard ${index} is invalid.`);
+  }
+  return Object.freeze({
+    hazard_id: safeId(value.hazard_id, `Hazard ${index} id`),
+    binding_usage_id: safeId(
+      value.binding_usage_id,
+      `Hazard ${index} binding usage id`,
+    ),
+    kind: value.kind as WorldArtRuntimeHazard['kind'],
+    behavior: 'respawn' as const,
+    logical_rect: materializeRegion(value.logical_rect, `Hazard ${index} logical rect`),
+    ...(value.telegraph_usage_id === undefined
+      ? {}
+      : {
+        telegraph_usage_id: safeId(
+          value.telegraph_usage_id,
+          `Hazard ${index} telegraph usage id`,
+        ),
+      }),
+  });
+}
+
 function compareBindings(
   left: WorldArtRuntimeBinding,
   right: WorldArtRuntimeBinding,
@@ -508,6 +565,7 @@ export async function materializeWorldArtRuntimeProjection(
     'images',
     'assets',
     'bindings',
+    'hazards',
   ], 'Projection');
   if (
     value.schema_version !== WORLD_ART_RUNTIME_PROJECTION_VERSION
@@ -525,6 +583,8 @@ export async function materializeWorldArtRuntimeProjection(
     || !Array.isArray(value.bindings)
     || value.bindings.length < 1
     || value.bindings.length > 2048
+    || !Array.isArray(value.hazards)
+    || value.hazards.length > 256
   ) {
     fail('world-art-runtime-projection.invalid-value', 'Projection identity is invalid.');
   }
@@ -564,6 +624,7 @@ export async function materializeWorldArtRuntimeProjection(
   const images = Object.freeze(value.images.map(materializeImage));
   const assets = Object.freeze(value.assets.map(materializeAsset));
   const bindings = Object.freeze(value.bindings.map(materializeBinding));
+  const hazards = Object.freeze(value.hazards.map(materializeHazard));
   if (
     new Set(images.map(({ task_id: taskId }) => taskId)).size !== images.length
     || new Set(images.map(({ path }) => path)).size !== images.length
@@ -623,6 +684,17 @@ export async function materializeWorldArtRuntimeProjection(
   for (const asset of assets) {
     assertImageGeometry(asset, `Projection asset ${asset.slot_id}`);
   }
+  if (
+    new Set(hazards.map(({ hazard_id: hazardId }) => hazardId)).size !== hazards.length
+    || hazards.some((hazard, index) =>
+      index > 0
+      && hazards[index - 1]!.hazard_id.localeCompare(hazard.hazard_id, 'en') >= 0)
+  ) {
+    fail(
+      'world-art-runtime-projection.invalid-order',
+      'Projection hazards must have unique ids in canonical order.',
+    );
+  }
   const assetBySlot = new Map(assets.map((asset) => [asset.slot_id, asset]));
   for (const binding of bindings) {
     assertImageGeometry(
@@ -646,6 +718,29 @@ export async function materializeWorldArtRuntimeProjection(
       );
     }
   }
+  const bindingByUsage = new Map(bindings.map((binding) => [
+    `${binding.usage_kind}\0${binding.usage_id}`,
+    binding,
+  ]));
+  for (const hazard of hazards) {
+    const visual = bindingByUsage.get(`hazard\0${hazard.binding_usage_id}`);
+    const expectedRole = `hazard.${hazard.kind}`;
+    const telegraph = hazard.telegraph_usage_id === undefined
+      ? undefined
+      : bindingByUsage.get(`hazard\0${hazard.telegraph_usage_id}`);
+    if (
+      visual?.role !== expectedRole
+      || (
+        hazard.telegraph_usage_id !== undefined
+        && telegraph?.role !== 'hazard.telegraph'
+      )
+    ) {
+      fail(
+        'world-art-runtime-projection.invalid-binding',
+        `Projection hazard ${hazard.hazard_id} does not match its visual binding.`,
+      );
+    }
+  }
   if (images.some(({ task_id: taskId }) =>
     !assets.some(({ task_id: assetTaskId }) => assetTaskId === taskId))) {
     fail('world-art-runtime-projection.invalid-image', 'Projection contains an unused image.');
@@ -660,6 +755,7 @@ export async function materializeWorldArtRuntimeProjection(
     images,
     assets,
     bindings,
+    hazards,
   });
   const expectedId = `world-art-runtime-projection-${(
     await sha256({
@@ -671,6 +767,7 @@ export async function materializeWorldArtRuntimeProjection(
       images: projection.images,
       assets: projection.assets,
       bindings: projection.bindings,
+      hazards: projection.hazards,
     })
   ).slice(0, 16)}`;
   if (projection.projection_id !== expectedId) {
@@ -695,6 +792,7 @@ export async function buildWorldArtRuntimeProjection(
       images: value.images,
       assets: value.assets,
       bindings: value.bindings,
+      hazards: value.hazards,
     })
   ).slice(0, 16)}`;
   return materializeWorldArtRuntimeProjection({

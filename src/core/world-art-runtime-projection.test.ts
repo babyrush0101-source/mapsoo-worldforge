@@ -77,6 +77,7 @@ async function document() {
         region: { x: 0, y: 0, width: 64, height: 64 },
       }],
     }],
+    hazards: [],
   });
 }
 
@@ -177,6 +178,39 @@ describe('WorldArtRuntimeProjection 1.0', () => {
 
     await expect(materializeWorldArtRuntimeProjection(changed))
       .rejects.toMatchObject({ code: 'world-art-runtime-projection.invalid-binding' });
+  });
+
+  it('requires hazard placements to reference matching reviewed hazard bindings', async () => {
+    const missing = mutable(await document());
+    missing.hazards = [{
+      hazard_id: 'hazard-001',
+      binding_usage_id: 'requirement-hazard-contact',
+      kind: 'contact',
+      behavior: 'respawn',
+      logical_rect: { x: 12, y: 8, width: 2, height: 2 },
+    }];
+    await expect(materializeWorldArtRuntimeProjection(missing))
+      .rejects.toMatchObject({ code: 'world-art-runtime-projection.invalid-binding' });
+
+    const unordered = mutable(await document());
+    unordered.hazards = [
+      {
+        hazard_id: 'hazard-002',
+        binding_usage_id: 'requirement-hazard-contact',
+        kind: 'contact',
+        behavior: 'respawn',
+        logical_rect: { x: 16, y: 8, width: 2, height: 2 },
+      },
+      {
+        hazard_id: 'hazard-001',
+        binding_usage_id: 'requirement-hazard-contact',
+        kind: 'contact',
+        behavior: 'respawn',
+        logical_rect: { x: 12, y: 8, width: 2, height: 2 },
+      },
+    ];
+    await expect(materializeWorldArtRuntimeProjection(unordered))
+      .rejects.toMatchObject({ code: 'world-art-runtime-projection.invalid-order' });
   });
 
   it('rejects an identity copied from a different runtime payload', async () => {

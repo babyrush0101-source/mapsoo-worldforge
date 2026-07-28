@@ -165,7 +165,10 @@ function localReferences(task: ProductionArtTaskV1_1): readonly string[] {
   ];
 }
 
-async function fixture(profile: WorldAssetProfile) {
+async function fixture(
+  profile: WorldAssetProfile,
+  intent: WorldLayoutConstraintIntent = INTENT,
+) {
   const intake = await createConfirmedWorldCreationIntake({
     intake_id: `runtime-projection-${profile}`,
     session_revision: 13,
@@ -180,7 +183,7 @@ async function fixture(profile: WorldAssetProfile) {
     references: [reference('environment-style'), reference('character')],
     approved_intent_preview_sha256: 'd'.repeat(64),
   });
-  const constraints = await createWorldLayoutConstraintsFromConfirmedIntake(intake, INTENT);
+  const constraints = await createWorldLayoutConstraintsFromConfirmedIntake(intake, intent);
   const layout = await solveWorldLayoutPlanFromConstraints(constraints, intake);
   const requirements = await buildAssetRequirementsV1_1(constraints, layout);
   const plan = await buildProductionArtPlanV1_1(requirements, RIGHTS);
@@ -281,6 +284,23 @@ const PROJECTION_TEST_TIMEOUT_MS = 30_000;
 
 describe('projectReviewedWorldArtVariants', () => {
   it.each([
+    ['calm', 0],
+    ['guarded', 1],
+  ] as const)('projects %s hazard density from confirmed requirements', async (
+    hazardLevel,
+    expectedCount,
+  ) => {
+    const base = await fixture('topdown-farm', {
+      ...INTENT,
+      hazard_level: hazardLevel,
+    });
+    const projected = await projectReviewedWorldArtVariants(base.input);
+
+    expect(projected.projection.hazards).toHaveLength(expectedCount);
+    expect(projected.projection.hazards.every(({ kind }) => kind === 'contact')).toBe(true);
+  }, PROJECTION_TEST_TIMEOUT_MS);
+
+  it.each([
     'side-platformer',
     'topdown-farm',
     'isometric-action',
@@ -308,6 +328,31 @@ describe('projectReviewedWorldArtVariants', () => {
     expect(new Set(left.projection.assets.map(({ slot_id }) => slot_id)).size)
       .toBe(expectedSlots.length);
     expect(left.projection.bindings).toHaveLength(base.variantMap.bindings.length);
+    expect(left.projection.hazards.map(({ hazard_id }) => hazard_id))
+      .toEqual(['hazard-001', 'hazard-002']);
+    expect(left.projection.hazards.map(({ kind }) => kind)).toEqual(
+      profile === 'side-platformer' ? ['spikes', 'pit'] : ['contact', 'contact'],
+    );
+    for (const hazard of left.projection.hazards) {
+      expect(hazard.logical_rect.x).toBeGreaterThanOrEqual(0);
+      expect(hazard.logical_rect.y).toBeGreaterThanOrEqual(0);
+      expect(hazard.logical_rect.x + hazard.logical_rect.width)
+        .toBeLessThanOrEqual(base.layout.bounds.width);
+      expect(hazard.logical_rect.y + hazard.logical_rect.height)
+        .toBeLessThanOrEqual(base.layout.bounds.height);
+      const visual = left.projection.bindings.find((binding) =>
+        binding.usage_kind === 'hazard'
+        && binding.usage_id === hazard.binding_usage_id);
+      expect(visual?.role).toBe(`hazard.${hazard.kind}`);
+      if (profile === 'isometric-action') {
+        const telegraph = left.projection.bindings.find((binding) =>
+          binding.usage_kind === 'hazard'
+          && binding.usage_id === hazard.telegraph_usage_id);
+        expect(telegraph?.role).toBe('hazard.telegraph');
+      } else {
+        expect(hazard.telegraph_usage_id).toBeUndefined();
+      }
+    }
 
     for (const asset of left.projection.assets) {
       const task = base.plan.tasks.find(({ task_id }) => task_id === asset.task_id)!;

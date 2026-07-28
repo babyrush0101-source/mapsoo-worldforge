@@ -196,7 +196,7 @@ static func materialize(
 		var terrain: Dictionary = terrain_value
 		var polygon := Polygon2D.new()
 		polygon.name = _node_name("Terrain", str(terrain.id))
-		polygon.polygon = _rectangle_polygon(
+		polygon.polygon = logical_rectangle_to_world_polygon(
 			str(plan.profile),
 			terrain,
 			plan.bounds,
@@ -246,7 +246,7 @@ static func materialize(
 		navigation_region.name = _node_name("Region", str(region_id))
 		navigation_region.set_meta("mapsoo_region_id", str(region_id))
 		var navigation_polygon := NavigationPolygon.new()
-		var polygon := _rectangle_polygon(
+		var polygon := logical_rectangle_to_world_polygon(
 			str(plan.profile),
 			region,
 			plan.bounds,
@@ -457,7 +457,12 @@ static func _add_collision_body(
 	body.set_meta(meta_key, item_id)
 	body.set_meta("mapsoo_one_way", one_way)
 	parent.add_child(body)
-	var polygon := _rectangle_polygon(profile, item, logical_bounds, pixel_bounds)
+	var polygon := logical_rectangle_to_world_polygon(
+		profile,
+		item,
+		logical_bounds,
+		pixel_bounds
+	)
 	var shape_node := CollisionShape2D.new()
 	shape_node.name = "CollisionShape2D"
 	shape_node.one_way_collision = one_way
@@ -540,7 +545,7 @@ static func _logical_coordinate_to_world(
 	)
 
 
-static func _rectangle_polygon(
+static func logical_rectangle_to_world_polygon(
 	profile: String,
 	item: Dictionary,
 	logical_bounds: Dictionary,

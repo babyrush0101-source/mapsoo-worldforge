@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $godotRoot = Join-Path $repoRoot 'godot'
-$sentinel = '^MAPSOO_WORLD_ART_RUNTIME_OVERLAY_APPLIER_OK profiles=4 terrain=[1-9][0-9]* landmarks=[1-9][0-9]* persisted=4 tamper=3$'
+$sentinel = '^MAPSOO_WORLD_ART_RUNTIME_OVERLAY_APPLIER_OK profiles=4 terrain=[1-9][0-9]* landmarks=[1-9][0-9]* hazards=8 persisted=4 tamper=6$'
 
 if ($GodotConsoles.Count -eq 0) {
     $candidates = @(
@@ -71,23 +71,25 @@ foreach ($consolePath in $GodotConsoles) {
         godot = $version
         profiles = 4
         persisted_scenes = 4
-        status = 'reviewed-runtime-overlay-visuals-v1-pass'
+        status = 'reviewed-runtime-overlay-gameplay-v1-pass'
     }
 }
 
 [ordered]@{
     schema_version = 'mapsoo-world-art-runtime-overlay-applier-qa/1.0'
-    status = 'reviewed-runtime-overlay-visuals-v1-pass'
+    status = 'reviewed-runtime-overlay-gameplay-v1-pass'
     runs = $runs
     proves = @(
         'one shared applier reuses the authoritative logical TileMapLayer'
         'reviewed terrain textures preserve exact logical material source IDs'
         'reviewed landmark sprites attach to existing layout Marker2D nodes'
-        'terrain and landmark bindings survive PackedScene persistence'
+        'reviewed hazard art and collision derive from projection logical rectangles'
+        'all four trusted controllers respawn from materialized layout hazards'
+        'terrain, landmark, and hazard bindings survive PackedScene persistence'
         'incomplete or conflicting catalogs fail before scene mutation'
     )
     not_proven = @(
-        'hazard or character visual application'
+        'projected character visual application'
         'human approval of real provider-generated art'
         'physical Raspberry Pi 4B performance'
     )

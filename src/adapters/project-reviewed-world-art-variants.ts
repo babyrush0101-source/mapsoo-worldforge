@@ -3,6 +3,7 @@ import type { NormalizedProductionArtResultV1_1 } from './normalize-production-a
 import {
   fingerprintAssetRequirementsV1_1,
   materializeAssetRequirementsV1_1,
+  type AssetRequirementsV1_1,
 } from '../core/asset-requirements-v1-1';
 import {
   fingerprintProductionArtPlanV1_1,
@@ -21,10 +22,15 @@ import {
   buildWorldArtRuntimeProjection,
   type WorldArtRuntimeAsset,
   type WorldArtRuntimeBinding,
+  type WorldArtRuntimeHazard,
   type WorldArtRuntimePose,
   type WorldArtRuntimeProjection,
   type WorldArtRuntimeProjectionImage,
 } from '../core/world-art-runtime-projection';
+import {
+  materializeWorldLayoutPlan,
+  type WorldLayoutPlan,
+} from '../core/world-layout-plan';
 import {
   fingerprintWorldArtVariantMap,
   validateWorldArtVariantMap,
@@ -413,13 +419,88 @@ function posesFor(task: ProductionArtTaskV1_1, slotId: string): readonly WorldAr
       || left.frame_index - right.frame_index));
 }
 
+function runtimeHazards(
+  layout: WorldLayoutPlan,
+  requirements: AssetRequirementsV1_1,
+  bindings: readonly WorldArtRuntimeBinding[],
+): readonly WorldArtRuntimeHazard[] {
+  const level = requirements.layout.hazard_level;
+  if (level === 'calm') return Object.freeze([]);
+  const count = level === 'dangerous' ? 2 : 1;
+  const routes = layout.traversal.nodes.filter(({ kind }) => kind === 'route');
+  if (routes.length < count) {
+    fail(
+      'reviewed-world-art-projection.invalid-binding',
+      `Layout has ${routes.length} route nodes but ${count} hazard placements are required.`,
+    );
+  }
+  const hazardBindings = bindings.filter(({ usage_kind: usageKind }) =>
+    usageKind === 'hazard');
+  const byRole = new Map(hazardBindings.map((binding) => [binding.role, binding]));
+  const primaryRoles = layout.profile === 'side-platformer'
+    ? (count === 1 ? ['hazard.spikes'] : ['hazard.spikes', 'hazard.pit'])
+    : Array.from({ length: count }, () => 'hazard.contact');
+  const telegraph = layout.profile === 'isometric-action'
+    ? byRole.get('hazard.telegraph')
+    : undefined;
+  const hazards = primaryRoles.map((role, index) => {
+    const binding = byRole.get(role);
+    if (binding === undefined) {
+      fail(
+        'reviewed-world-art-projection.invalid-binding',
+        `Hazard placement requires reviewed binding ${role}.`,
+      );
+    }
+    const routeIndex = Math.floor(((index + 1) * routes.length) / (count + 1));
+    const route = routes[Math.min(routeIndex, routes.length - 1)]!;
+    const width = role === 'hazard.pit' ? 3 : 2;
+    const height = layout.profile === 'side-platformer' ? 1 : 2;
+    const x = Math.max(
+      0,
+      Math.min(layout.bounds.width - width, route.x - Math.floor(width / 2)),
+    );
+    const y = Math.max(
+      0,
+      Math.min(
+        layout.bounds.height - height,
+        route.y - (layout.profile === 'side-platformer' ? 0 : 1),
+      ),
+    );
+    return Object.freeze({
+      hazard_id: `hazard-${String(index + 1).padStart(3, '0')}`,
+      binding_usage_id: binding.usage_id,
+      kind: role.slice('hazard.'.length) as WorldArtRuntimeHazard['kind'],
+      behavior: 'respawn' as const,
+      logical_rect: Object.freeze({ x, y, width, height }),
+      ...(telegraph === undefined
+        ? {}
+        : { telegraph_usage_id: telegraph.usage_id }),
+    });
+  });
+  const overlaps = hazards.some(({ logical_rect: left }, leftIndex) =>
+    hazards.some(({ logical_rect: right }, rightIndex) =>
+      rightIndex > leftIndex
+      && left.x < right.x + right.width
+      && left.x + left.width > right.x
+      && left.y < right.y + right.height
+      && left.y + left.height > right.y));
+  if (overlaps) {
+    fail(
+      'reviewed-world-art-projection.invalid-binding',
+      'Hazard placement produced overlapping logical rectangles.',
+    );
+  }
+  return Object.freeze(hazards);
+}
+
 export async function projectReviewedWorldArtVariants(
   input: ProjectReviewedWorldArtVariantsInput,
 ): Promise<ProjectedReviewedWorldArtVariants> {
   const requirements = await materializeAssetRequirementsV1_1(input.requirements);
   const plan = await materializeProductionArtPlanV1_1(input.plan, requirements);
-  const [map, planSha, requirementsSha, runSet] = await Promise.all([
+  const [map, layout, planSha, requirementsSha, runSet] = await Promise.all([
     validateWorldArtVariantMap(input.variantMap, input.variantMapInput),
+    materializeWorldLayoutPlan(input.variantMapInput.layout_plan),
     fingerprintProductionArtPlanV1_1(plan, requirements),
     fingerprintAssetRequirementsV1_1(requirements),
     materializeProductionArtRunSetV1_1(input.runSet, plan, requirements),
@@ -596,6 +677,7 @@ export async function projectReviewedWorldArtVariants(
     images,
     assets,
     bindings,
+    hazards: runtimeHazards(layout, requirements, bindings),
   });
   return Object.freeze({
     projection,
