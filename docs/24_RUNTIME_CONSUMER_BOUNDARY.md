@@ -104,6 +104,12 @@ interface WorldEntitySlot {
 
 NPC personality, story, memory, relationships, goals, agent policy, permissions, and private runtime identifiers never belong in the public pack. A consumer resolves `runtimeBindingKey` inside its own trusted runtime.
 
+Generated players share one trusted, profile-independent NPC interaction
+controller. The reusable runtime shell exposes `interact_nearest_npc()` and
+returns only a neutral NPC ID plus distance. The consumer maps that public ID
+to its private NPC runtime and dialogue flow. See
+`docs/67_SHARED_NPC_INTERACTION.md`.
+
 ## Runtime bridge
 
 The open-source side defines and validates a neutral message contract, but it does not implement or expose a private daemon client:

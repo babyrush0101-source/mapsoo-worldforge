@@ -46,6 +46,7 @@ const RUNTIME_FILES = [
   'mapsoo_isometric_player_controller.gd',
   'mapsoo_layered_depth_player_controller.gd',
   'mapsoo_layered_depth_production_candidate.gd',
+  'mapsoo_npc_interaction_controller.gd',
   'mapsoo_player_controller.gd',
 ];
 const STATE_KEYS = [

@@ -6,6 +6,9 @@ const SCHEMA_VERSION := "0.9.0"
 const RUNTIME_VERSION := "0.4.0"
 const POLICY := "layered-depth-2d-complete-v1"
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd")
+const NpcInteractionController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_npc_interaction_controller.gd"
+)
 const LAYERS := ["sky", "far", "mid", "gameplay", "near", "lighting", "foreground"]
 const ATLASES := ["terrain", "props", "structures", "collectibles", "effects", "player", "npc"]
 const PLANES := ["sky", "far", "mid", "depth-fog", "near", "ambient-light", "foreground"]
@@ -694,6 +697,14 @@ static func _add_characters(root: Node2D, actors: Node2D, prepared: Dictionary) 
 			body.set("world_bounds", Rect2(prepared.bounds))
 			body.set("movement_bounds", _corridor_bounds(prepared))
 			body.set("spawn_position", spawn.position)
+			var interaction := Node.new()
+			interaction.name = "NpcInteraction"
+			interaction.set_script(NpcInteractionController)
+			body.add_child(interaction)
+			interaction.owner = root
+		else:
+			body.set_meta("mapsoo_interaction_kind", "npc")
+			body.set_meta("mapsoo_interaction_id", character.id)
 		var frames := _sprite_frames(character, prepared.textures[character.atlas])
 		var visual := AnimatedSprite2D.new()
 		visual.name = "Visual"
@@ -774,7 +785,7 @@ static func validate_staged_scene(world: Node, expected_placements: int) -> Dict
 	valid = valid and world.get_node_or_null("YSortedGameplay/Props") is Node2D and world.get_node_or_null("YSortedGameplay/Actors") is Node2D
 	var player := world.get_node_or_null("YSortedGameplay/Actors/Player") as CharacterBody2D
 	var npc := world.get_node_or_null("YSortedGameplay/Actors/Npc") as CharacterBody2D
-	valid = valid and player != null and player.get_script() == PlayerController and npc != null and world.get_node_or_null("PlayerSpawn") is Marker2D
+	valid = valid and player != null and player.get_script() == PlayerController and player.get_node_or_null("NpcInteraction") != null and player.get_node("NpcInteraction").get_script() == NpcInteractionController and npc != null and str(npc.get_meta("mapsoo_interaction_kind", "")) == "npc" and world.get_node_or_null("PlayerSpawn") is Marker2D
 	valid = valid and world.get_node_or_null("WorldCollision") is Node2D and world.get_node_or_null("Hazards") is Node2D and world.get_node_or_null("WorldNavigation") is NavigationRegion2D and world.get_node_or_null("WorldTraversal") is Node2D
 	for actor: CharacterBody2D in [player, npc]:
 		if actor == null:

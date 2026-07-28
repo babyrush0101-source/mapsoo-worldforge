@@ -4,6 +4,9 @@ extends RefCounted
 const PACK_VERSION := "0.1.0-alpha.10"
 const SCHEMA_VERSION := "0.7.0"
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd")
+const NpcInteractionController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_npc_interaction_controller.gd"
+)
 const RUNTIME_VERSION := "0.2.0"
 const POLICY := "side-platformer-complete-v1"
 const LAYERS := ["background-far", "background-mid", "background-near", "world", "foreground"]
@@ -402,6 +405,7 @@ static func _add_player(root: Node2D, prepared: Dictionary) -> void:
 	var spawn := Marker2D.new(); spawn.name = "PlayerSpawn"; spawn.position = Vector2(prepared.spawn); root.add_child(spawn); spawn.owner = root
 	var player := CharacterBody2D.new(); player.name = "Player"; player.position = spawn.position; player.collision_layer = 1; player.collision_mask = 1; root.add_child(player); player.owner = root
 	player.set_script(PlayerController); player.set("mapsoo_profile", "side-platformer"); player.set("world_bounds", Rect2(prepared.bounds)); player.set("spawn_position", spawn.position)
+	var interaction := Node.new(); interaction.name = "NpcInteraction"; interaction.set_script(NpcInteractionController); player.add_child(interaction); interaction.owner = root
 	var frames := SpriteFrames.new(); frames.remove_animation("default"); var texture: Texture2D = prepared.textures[prepared.character.atlas]
 	for clip: Dictionary in prepared.character.clips:
 		var animation_name := str(clip.id).replace(".", "_"); frames.add_animation(animation_name); frames.set_animation_speed(animation_name, float(clip.fps)); frames.set_animation_loop(animation_name, true)
@@ -430,7 +434,7 @@ static func validate_staged_scene(world: Node, expected_placements: int) -> Dict
 	var terrain_visuals := world.get_node_or_null("World/TerrainVisuals") as Node2D
 	valid = valid and terrain_visuals != null and terrain_visuals.get_child_count() == collision.get_child_count()
 	var spawn := world.get_node_or_null("PlayerSpawn") as Marker2D; var player := world.get_node_or_null("Player") as CharacterBody2D; var visual := world.get_node_or_null("Player/Visual") as AnimatedSprite2D; var shape := world.get_node_or_null("Player/CollisionShape2D") as CollisionShape2D; var camera := world.get_node_or_null("Player/Camera2D") as Camera2D
-	valid = valid and spawn != null and player != null and player.position == spawn.position and player.get_script() == PlayerController and player.get("mapsoo_profile") == "side-platformer" and visual != null and visual.sprite_frames != null and str(visual.get_meta("mapsoo_runtime_slot_id", "")) == "player" and shape != null and shape.shape is CapsuleShape2D and camera != null
+	valid = valid and spawn != null and player != null and player.position == spawn.position and player.get_script() == PlayerController and player.get("mapsoo_profile") == "side-platformer" and player.get_node_or_null("NpcInteraction") != null and player.get_node("NpcInteraction").get_script() == NpcInteractionController and visual != null and visual.sprite_frames != null and str(visual.get_meta("mapsoo_runtime_slot_id", "")) == "player" and shape != null and shape.shape is CapsuleShape2D and camera != null
 	valid = valid and _sprite_textures_have_persisted_pixels(world)
 	if visual != null and visual.sprite_frames != null:
 		for clip: String in CLIPS:

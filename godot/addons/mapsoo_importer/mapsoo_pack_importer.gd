@@ -15,6 +15,9 @@ const WorldTerrainAutotileAttachment = preload(
 	"res://addons/mapsoo_importer/mapsoo_world_terrain_autotile_attachment.gd"
 )
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd")
+const NpcInteractionController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_npc_interaction_controller.gd"
+)
 
 const LEGACY_SCHEMA_VERSION := "0.1.0"
 const PLAYABLE_TERRAIN_SCHEMA_VERSION := "0.2.0"
@@ -604,7 +607,7 @@ static func _validate_staged_resources(
 		alpha9_valid = alpha9_valid and navigation_region != null and navigation_region.navigation_polygon != null and navigation_region.navigation_polygon.get_polygon_count() > 0
 		var used_rect := ground_layer.get_used_rect() if ground_layer != null else Rect2i()
 		var expected_bounds := Rect2(used_rect.position * 32, used_rect.size * 32)
-		alpha9_valid = alpha9_valid and spawn != null and player != null and player.position == spawn.position and player.get_script() == PlayerController and player.get("mapsoo_profile") == "topdown-farm" and player.get("world_bounds") == expected_bounds and world.get_node_or_null("Player/CollisionShape2D") is CollisionShape2D and world.get_node_or_null("Player/Camera2D") is Camera2D
+		alpha9_valid = alpha9_valid and spawn != null and player != null and player.position == spawn.position and player.get_script() == PlayerController and player.get("mapsoo_profile") == "topdown-farm" and player.get("world_bounds") == expected_bounds and world.get_node_or_null("Player/CollisionShape2D") is CollisionShape2D and world.get_node_or_null("Player/Camera2D") is Camera2D and world.get_node_or_null("Player/NpcInteraction") != null and world.get_node("Player/NpcInteraction").get_script() == NpcInteractionController
 		var visual := world.get_node_or_null("Player/Visual") as AnimatedSprite2D
 		if visual == null or visual.sprite_frames == null:
 			alpha9_valid = false
@@ -2306,6 +2309,7 @@ static func _build_complete_farm_scene(prepared: Dictionary, tile_set: TileSet) 
 	var spawn := Marker2D.new(); spawn.name = "PlayerSpawn"; spawn.position = Vector2((prepared.spawn.x + 0.5) * 32, (prepared.spawn.y + 0.5) * 32); root.add_child(spawn); spawn.owner = root
 	var player := CharacterBody2D.new(); player.name = "Player"; player.position = spawn.position; player.collision_layer = 1; player.collision_mask = 1; root.add_child(player); player.owner = root
 	player.set_script(PlayerController); player.set("mapsoo_profile", "topdown-farm"); player.set("world_bounds", Rect2(0, 0, prepared.width * 32, prepared.height * 32)); player.set("spawn_position", spawn.position)
+	var interaction := Node.new(); interaction.name = "NpcInteraction"; interaction.set_script(NpcInteractionController); player.add_child(interaction); interaction.owner = root
 	var frames := SpriteFrames.new(); frames.remove_animation("default")
 	var atlas: Texture2D = prepared.textures[prepared.atlas_paths.character]
 	for clip_value: Variant in prepared.character.clips:

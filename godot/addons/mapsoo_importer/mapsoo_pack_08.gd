@@ -6,6 +6,9 @@ const SCHEMA_VERSION := "0.8.0"
 const RUNTIME_VERSION := "0.3.0"
 const POLICY := "isometric-action-complete-v1"
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_isometric_player_controller.gd")
+const NpcInteractionController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_npc_interaction_controller.gd"
+)
 const LAYERS := ["void", "floor", "elevation", "walls", "props", "actors", "effects"]
 const ATLASES := ["terrain", "hazards", "props", "structures", "collectibles", "effects", "shadows", "player", "enemy-melee", "enemy-ranged"]
 const DIRECTIONS := ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
@@ -626,6 +629,11 @@ static func _add_characters(root: Node2D, actors: Node2D, prepared: Dictionary) 
 			body.set_script(PlayerController)
 			body.set("world_bounds", Rect2(prepared.bounds))
 			body.set("spawn_position", spawn.position)
+			var interaction := Node.new()
+			interaction.name = "NpcInteraction"
+			interaction.set_script(NpcInteractionController)
+			body.add_child(interaction)
+			interaction.owner = root
 		var frames := _sprite_frames(character, prepared.textures[character.atlas])
 		var visual := AnimatedSprite2D.new()
 		visual.name = "Visual"
@@ -684,7 +692,7 @@ static func validate_staged_scene(world: Node, expected_placements: int) -> Dict
 	valid = valid and world.get_node_or_null("Floor") is Node2D and world.get_node_or_null("Elevation") is Node2D
 	valid = valid and ysorted != null and ysorted.y_sort_enabled and world.get_node_or_null("YSortedGameplay/Props") is Node2D and world.get_node_or_null("YSortedGameplay/Actors") is Node2D
 	var player := world.get_node_or_null("YSortedGameplay/Actors/Player") as CharacterBody2D
-	valid = valid and player != null and player.get_script() == PlayerController and world.get_node_or_null("PlayerSpawn") is Marker2D
+	valid = valid and player != null and player.get_script() == PlayerController and player.get_node_or_null("NpcInteraction") != null and player.get_node("NpcInteraction").get_script() == NpcInteractionController and world.get_node_or_null("PlayerSpawn") is Marker2D
 	valid = valid and world.get_node_or_null("YSortedGameplay/Actors/EnemyMelee") is CharacterBody2D and world.get_node_or_null("YSortedGameplay/Actors/EnemyRanged") is CharacterBody2D
 	valid = valid and world.get_node_or_null("WorldCollision") is Node2D and world.get_node_or_null("Hazards") is Node2D and world.get_node_or_null("WorldNavigation") is NavigationRegion2D and world.get_node_or_null("WorldTraversal") is Node2D
 	var actor_root := world.get_node_or_null("YSortedGameplay/Actors")

@@ -68,7 +68,9 @@ Pack `0.6.0` and `0.7.0` jobs instantiate the imported world inside a real `Scen
 
 These run on Linux and Windows with Godot 4.3 and 4.7. They complement structural importer checks; a node hierarchy by itself is not accepted as playability evidence.
 
-`runtime_shell_smoke.gd` then proves that the reusable main scene rejects unsafe paths, loads a generated farm world, replaces it with a generated side world, and exposes the active scene/profile identity.
+`runtime_shell_smoke.gd` then proves that the reusable main scene rejects unsafe paths, loads and replaces all four generated world profiles, binds portable character revisions, exposes the active scene/profile identity, and invokes the same neutral NPC interaction API in every profile.
+
+`npc_interaction_controller_smoke.gd` proves deterministic nearest-NPC selection, stable tie breaking, one event per held input edge, direct host invocation, and fail-closed range validation across all four world profiles.
 
 `character_profile_runtime_smoke.gd` binds canonical synthetic
 `CharacterProfileRevision` bytes and exact PNG atlas bytes to the neutral

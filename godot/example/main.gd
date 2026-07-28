@@ -4,6 +4,8 @@ signal world_loaded(scene_path: String, profile: String)
 signal world_load_failed(scene_path: String, error: Error)
 signal character_profile_bound(result: Dictionary)
 signal character_profile_bind_failed(result: Dictionary)
+signal npc_interacted(result: Dictionary)
+signal npc_interaction_failed(result: Dictionary)
 
 const FALLBACK_SCENE := "res://mapsoo_imports/smoke-pack/smoke-pack.world.tscn"
 const CHARACTER_ARTIFACT_ROOT := "res://mapsoo_characters/"
@@ -139,6 +141,31 @@ func bind_player_character_files(
 	)
 
 
+func interact_nearest_npc() -> Dictionary:
+	if active_world == null:
+		return _interaction_failure(
+			"shell.interaction-no-world",
+			"Load a generated world before requesting NPC interaction."
+		)
+	var controllers: Array[Node] = active_world.find_children(
+		"NpcInteraction",
+		"Node",
+		true,
+		false
+	)
+	if controllers.size() != 1 or not controllers[0].has_method("try_interact"):
+		return _interaction_failure(
+			"shell.interaction-controller",
+			"The active world must expose exactly one trusted NPC interaction controller."
+		)
+	var result := controllers[0].call("try_interact") as Dictionary
+	if result.get("ok", false) != true:
+		npc_interaction_failed.emit(result)
+		return result
+	npc_interacted.emit(result)
+	return result
+
+
 func _safe_generated_scene_path(scene_path: String) -> bool:
 	const PREFIX := "res://mapsoo_imports/"
 	if not scene_path.begins_with(PREFIX) or not scene_path.ends_with(".world.tscn") or scene_path.contains("..") or scene_path.contains("\\"):
@@ -217,6 +244,12 @@ func _bind_requested_character() -> Dictionary:
 func _character_failure(code: String, message: String) -> Dictionary:
 	var result := {"ok": false, "code": code, "error": message}
 	character_profile_bind_failed.emit(result)
+	return result
+
+
+func _interaction_failure(code: String, message: String) -> Dictionary:
+	var result := {"ok": false, "code": code, "error": message}
+	npc_interaction_failed.emit(result)
 	return result
 
 

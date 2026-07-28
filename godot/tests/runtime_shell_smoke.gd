@@ -54,6 +54,11 @@ func _run() -> void:
 	if no_world.get("ok", false) == true or no_world.get("code", "") != "shell.character-no-world":
 		_fail("Runtime shell accepted a character before loading a world.")
 		return
+	var no_world_interaction := shell.call("interact_nearest_npc") as Dictionary
+	if no_world_interaction.get("ok", false) == true \
+			or no_world_interaction.get("code", "") != "shell.interaction-no-world":
+		_fail("Runtime shell accepted NPC interaction before loading a world.")
+		return
 	if shell.call("load_world", "res://mapsoo_imports/../unsafe.world.tscn") != ERR_INVALID_PARAMETER:
 		_fail("Runtime shell accepted an unsafe scene path.")
 		return
@@ -66,6 +71,8 @@ func _run() -> void:
 		_fail("Runtime shell farm world is incomplete.")
 		return
 	if not _bind_character(shell, "topdown-farm", true):
+		return
+	if not _interact_npc(shell, "topdown-farm"):
 		return
 	var unsafe_character: Dictionary = shell.call(
 		"bind_player_character_files",
@@ -87,6 +94,8 @@ func _run() -> void:
 		return
 	if not _bind_character(shell, "side-platformer"):
 		return
+	if not _interact_npc(shell, "side-platformer"):
+		return
 	if shell.get_meta("mapsoo_active_scene_path", "") != side_scene or shell.get_meta("mapsoo_active_profile", "") != "side-platformer":
 		_fail("Runtime shell did not expose the active frozen-world identity.")
 		return
@@ -99,6 +108,8 @@ func _run() -> void:
 		_fail("Runtime shell did not replace the side world with the isometric world.")
 		return
 	if not _bind_character(shell, "isometric-action"):
+		return
+	if not _interact_npc(shell, "isometric-action"):
 		return
 	if shell.get_meta("mapsoo_active_scene_path", "") != isometric_scene or shell.get_meta("mapsoo_active_profile", "") != "isometric-action":
 		_fail("Runtime shell did not expose the active isometric frozen-world identity.")
@@ -116,6 +127,8 @@ func _run() -> void:
 		return
 	if not _bind_character(shell, "layered-depth-2d"):
 		return
+	if not _interact_npc(shell, "layered-depth-2d"):
+		return
 	if shell.get_meta("mapsoo_active_scene_path", "") != layered_scene \
 			or shell.get_meta("mapsoo_active_profile", "") != "layered-depth-2d":
 		_fail("Runtime shell did not expose the active layered-depth frozen-world identity.")
@@ -123,7 +136,7 @@ func _run() -> void:
 	print(
 		"MAPSOO_RUNTIME_SHELL_OK"
 		+ " safe_path=true farm=true side=true isometric=true layered=true"
-		+ " replacement=true character_profiles=4"
+		+ " replacement=true character_profiles=4 npc_interactions=4"
 	)
 	shell.queue_free()
 	quit(0)
@@ -175,6 +188,55 @@ func _bind_character(shell: Node, profile: String, from_files := false) -> bool:
 	)
 	if replay.get("ok", false) != true or replay.get("status", "") != "unchanged":
 		_fail("%s runtime-shell character replay is not idempotent." % profile)
+		return false
+	return true
+
+
+func _interact_npc(shell: Node, profile: String) -> bool:
+	var world := shell.get("active_world") as Node
+	if world == null:
+		_fail("%s interaction world is missing." % profile)
+		return false
+	var controllers: Array[Node] = world.find_children(
+		"NpcInteraction",
+		"Node",
+		true,
+		false
+	)
+	if controllers.size() != 1:
+		_fail("%s world does not expose one NPC interaction controller." % profile)
+		return false
+	var player := controllers[0].get_parent() as Node2D
+	if player == null:
+		_fail("%s world does not expose a neutral player." % profile)
+		return false
+	var npc: Node2D
+	for candidate: Node in player.get_parent().get_children():
+		if candidate == player:
+			continue
+		var interaction_kind := str(
+			candidate.get_meta("mapsoo_interaction_kind", "")
+		)
+		var role := str(candidate.get_meta("mapsoo_role", ""))
+		var character_id := str(candidate.get_meta("mapsoo_character_id", ""))
+		if interaction_kind == "npc" \
+				or role == "character.npc.atlas" \
+				or role.begins_with("character.npc.") \
+				or character_id == "npc":
+			npc = candidate as Node2D
+			break
+	if npc == null:
+		npc = CharacterBody2D.new()
+		npc.name = "RuntimeShellNpc"
+		npc.set_meta("mapsoo_character_id", "runtime-shell-npc")
+		npc.set_meta("mapsoo_interaction_kind", "npc")
+		npc.set_meta("mapsoo_interaction_id", "runtime-shell-npc")
+		player.get_parent().add_child(npc)
+	player.global_position = npc.global_position
+	var result := shell.call("interact_nearest_npc") as Dictionary
+	if result.get("ok", false) != true \
+			or str(result.get("npc_id", "")).is_empty():
+		_fail("%s NPC interaction failed through the runtime shell: %s" % [profile, result])
 		return false
 	return true
 

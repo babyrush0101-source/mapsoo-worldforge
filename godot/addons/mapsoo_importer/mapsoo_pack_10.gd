@@ -2,6 +2,9 @@
 extends RefCounted
 
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd")
+const NpcInteractionController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_npc_interaction_controller.gd"
+)
 const SCHEMA_VERSION := "1.0.0-draft.1"
 const IMPORTER_VERSION := "1.0.0"
 const DIRECTIONS := ["left", "right", "near", "far"]
@@ -276,7 +279,12 @@ static func validate_staged_scene(world: Node, expected_placements: int) -> Dict
 	var player := world.get_node_or_null("YSortedGameplay/Actors/Player") as CharacterBody2D
 	var npc := world.get_node_or_null("YSortedGameplay/Actors/Npc") as CharacterBody2D
 	if valid:
-		valid = _actor_has_clips(player, PLAYER_ACTIONS) and _actor_has_clips(npc, NPC_ACTIONS)
+		valid = _actor_has_clips(player, PLAYER_ACTIONS) \
+			and _actor_has_clips(npc, NPC_ACTIONS) \
+			and player.get_node_or_null("NpcInteraction") != null \
+			and player.get_node("NpcInteraction").get_script() == NpcInteractionController \
+			and str(npc.get_meta("mapsoo_interaction_kind", "")) == "npc" \
+			and not str(npc.get_meta("mapsoo_interaction_id", "")).is_empty()
 	var placement_count := 2
 	if world.get_node_or_null("YSortedGameplay/Props") is Node2D:
 		placement_count += world.get_node("YSortedGameplay/Props").get_child_count()
@@ -758,6 +766,13 @@ static func _add_characters(
 			actor.set("world_bounds", prepared.pack10_bounds)
 			actor.set("movement_bounds", prepared.pack10_bounds)
 			actor.set("spawn_position", prepared.pack10_spawn)
+			var interaction := Node.new()
+			interaction.name = "NpcInteraction"
+			interaction.set_script(NpcInteractionController)
+			actor.add_child(interaction)
+		else:
+			actor.set_meta("mapsoo_interaction_kind", "npc")
+			actor.set_meta("mapsoo_interaction_id", character.id)
 		var visual := AnimatedSprite2D.new()
 		visual.name = "Visual"
 		visual.sprite_frames = _sprite_frames(character, prepared.textures[character.atlas])
