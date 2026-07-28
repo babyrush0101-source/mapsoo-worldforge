@@ -141,6 +141,7 @@
     "production-art:technical-review:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-four-profile-production-world-reviews-godot.ps1",
     "production-art:human-review": "vite-node scripts/run-human-art-review.ts",
     "world-delivery:workspace": "vite-node scripts/run-world-delivery-workspace.ts",
+    "world-delivery:batch": "vite-node scripts/run-world-delivery-batch.ts",
     "world-family:continuity": "vite-node scripts/verify-world-family-continuity.ts",
     "world-runner:pck:build": "node scripts/build-world-runner-pck.mjs",
     "world-runner:pck:verify": "node scripts/verify-world-runner-pck.mjs",

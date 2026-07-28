@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-delivery-batch-request-1.0.schema.json",
+  "title": "Mapsoo world delivery batch request 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "batch_id",
+    "completed_at",
+    "worlds"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "world-delivery-batch-request" },
+    "batch_id": { "$ref": "#/$defs/id64" },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "worlds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/world" }
+    }
+  },
+  "$defs": {
+    "id48": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 48,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "id64": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
+    },
+    "world": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace_id",
+        "intake_path",
+        "reference_root",
+        "character_id"
+      ],
+      "properties": {
+        "workspace_id": { "$ref": "#/$defs/id64" },
+        "intake_path": { "$ref": "#/$defs/safePath" },
+        "reference_root": { "$ref": "#/$defs/safePath" },
+        "character_id": { "$ref": "#/$defs/id48" },
+        "character_identity_semantics_path": { "$ref": "#/$defs/safePath" }
+      }
+    }
+  }
+}

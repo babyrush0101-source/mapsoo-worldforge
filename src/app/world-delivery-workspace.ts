@@ -154,6 +154,11 @@ export interface GodotHeadlessSmokeReport {
 interface PrepareWorldDeliveryWorkspaceCommonInput {
   readonly intake: unknown;
   readonly workspace: string;
+  /**
+   * Internal transactional-write seam. Files are written to `workspace`, but
+   * absolute paths embedded in local operator jobs point at this final path.
+   */
+  readonly finalWorkspacePath?: string;
   readonly characterId: string;
   readonly completedAt: string;
   readonly provider?: 'openai' | 'spritecook';
@@ -632,27 +637,34 @@ export async function prepareWorldDeliveryWorkspace(
     environment_reference_id: environment.descriptor.id,
     character_reference_id: character.descriptor.id,
   };
+  const jobWorkspace = resolve(input.finalWorkspacePath ?? workspace);
   const privateOutputRoot = resolve(
-    dirname(workspace),
-    `${basename(workspace)}-production-art-output`,
+    dirname(jobWorkspace),
+    `${basename(jobWorkspace)}-production-art-output`,
   );
   const sharedJobFields = {
     document_type: 'production-art-workflow-job',
     profile: intake.profile,
     ...providerJobFields,
     quality,
-    world_brief_file: resolve(workspace, 'world-brief.txt'),
-    style_bible_file: resolve(workspace, 'style-bible.txt'),
+    world_brief_file: resolve(jobWorkspace, 'world-brief.txt'),
+    style_bible_file: resolve(jobWorkspace, 'style-bible.txt'),
     ...(characterIdentitySemantics
       ? {
         character_identity_semantics_file: resolve(
-          workspace,
+          jobWorkspace,
           'character-identity-semantics.json',
         ),
       }
       : {}),
-    environment_reference: resolve(workspace, ...environment.name.split('/')),
-    character_reference: resolve(workspace, ...character.name.split('/')),
+    environment_reference: resolve(
+      jobWorkspace,
+      ...environment.name.split('/'),
+    ),
+    character_reference: resolve(
+      jobWorkspace,
+      ...character.name.split('/'),
+    ),
     character_id: characterId,
     private_input_binding: privateInputBinding,
     private_output_root: privateOutputRoot,
@@ -662,10 +674,10 @@ export async function prepareWorldDeliveryWorkspace(
     workflow_id: intake.intake_id,
     request_budget: requestBudget,
     ...sharedJobFields,
-    world_layout_plan_file: resolve(workspace, 'world-layout-plan.json'),
-    asset_requirements_file: resolve(workspace, 'asset-requirements.json'),
+    world_layout_plan_file: resolve(jobWorkspace, 'world-layout-plan.json'),
+    asset_requirements_file: resolve(jobWorkspace, 'asset-requirements.json'),
     production_art_requirements_binding_file: resolve(
-      workspace,
+      jobWorkspace,
       'production-art-requirements-binding.json',
     ),
   };
@@ -677,13 +689,13 @@ export async function prepareWorldDeliveryWorkspace(
     ),
     request_budget: completeProductionArtPlan.tasks.length,
     ...sharedJobFields,
-    world_layout_plan_file: resolve(workspace, 'world-layout-plan.json'),
+    world_layout_plan_file: resolve(jobWorkspace, 'world-layout-plan.json'),
     asset_requirements_file: resolve(
-      workspace,
+      jobWorkspace,
       'complete-art/asset-requirements-1.1.json',
     ),
     production_art_plan_file: resolve(
-      workspace,
+      jobWorkspace,
       'complete-art/production-art-plan-1.1.json',
     ),
   };
