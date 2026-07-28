@@ -8,6 +8,7 @@ const ROLE_CATALOG := {
 		"terrain.solid",
 		"terrain.one-way",
 		"terrain.wall",
+		"terrain.water",
 	],
 	"topdown-farm": [
 		"terrain.ground",
@@ -20,6 +21,7 @@ const ROLE_CATALOG := {
 		"terrain.floor.variant",
 		"terrain.floor.edge",
 		"terrain.wall",
+		"terrain.water",
 	],
 	"layered-depth-2d": [
 		"terrain.ground",

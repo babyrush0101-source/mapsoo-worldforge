@@ -154,6 +154,28 @@ describe('WorldLayoutPlan 1.0', () => {
     },
   );
 
+  it.each(['side-platformer', 'isometric-action'] as const)(
+    'materializes %s water as visible, blocked terrain with solid collision',
+    async (profile) => {
+      const plan = await buildWorldLayoutPlanFromConfirmedIntake(await intake(profile));
+      const terrain = plan.terrain_layout.kind === 'bands'
+        ? plan.terrain_layout.bands
+        : plan.terrain_layout.zones;
+      const water = terrain.filter(({ material }) => material === 'water');
+
+      expect(water.length).toBeGreaterThan(0);
+      expect(water.every(({ navigation }) => navigation === 'blocked')).toBe(true);
+      expect(water.every(({ id }) => plan.collision_intent.solid_terrain_ids.includes(id))).toBe(true);
+      expect(water.every(({ id }) => !plan.collision_intent.one_way_terrain_ids.includes(id))).toBe(true);
+      expect(plan.traversal.nodes.every((node) => water.every((item) => (
+        node.x < item.x
+        || node.x >= item.x + item.width
+        || node.y < item.y
+        || node.y >= item.y + item.height
+      )))).toBe(true);
+    },
+  );
+
   it('changes the bound plan and canonical fingerprint when the confirmed seed changes', async () => {
     const first = await buildWorldLayoutPlanFromConfirmedIntake(
       await intake('topdown-farm', 'seed-one'),

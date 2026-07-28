@@ -224,7 +224,12 @@ func _plan(profile: String) -> Dictionary:
 	]
 	if profile == "side-platformer":
 		terrain.append(_terrain("one-way-a", 20, 18, 12, 2, "wood", "one-way"))
+	if profile in ["side-platformer", "isometric-action"]:
+		terrain.append(_terrain("water-a", 42, 28, 6, 8, "water", "blocked"))
 	var edge_ids := ["edge-a", "edge-b", "edge-c", "edge-d", "edge-e"]
+	var solid_terrain_ids := ["blocked-a"]
+	if profile in ["side-platformer", "isometric-action"]:
+		solid_terrain_ids.append("water-a")
 	return {
 		"schema_version": "1.0.0",
 		"document_type": "world-layout-plan",
@@ -276,7 +281,7 @@ func _plan(profile: String) -> Dictionary:
 		],
 		"collision_intent": {
 			"mode": modes[1],
-			"solid_terrain_ids": ["blocked-a"],
+			"solid_terrain_ids": solid_terrain_ids,
 			"one_way_terrain_ids": ["one-way-a"] if profile == "side-platformer" else [],
 			"blocked_region_ids": [],
 		},

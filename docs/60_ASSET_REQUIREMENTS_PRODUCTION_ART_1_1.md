@@ -292,11 +292,20 @@ controller respawn. It also proves the reviewed player atlas drives complete
 profile animations through the existing runtime. It does not yet prove final
 human art quality or physical-device performance.
 
+Side-platformer and isometric-action layouts now materialize confirmed water as
+later-wins `water` terrain, include every water terrain ID in solid collision,
+and keep traversal nodes outside those blocked rectangles. Their canonical
+palette mapping selects `terrain.water` from a complete 1.1 catalog. The frozen
+Alpha10 and Alpha11 catalogs predate that optional role, so only those legacy
+paths use an explicit ground/floor visual fallback while retaining the same
+blocked water geometry. Godot 4.3 and 4.7 smoke tests verify visible material
+selection, collision, reviewed-overlay application, and PackedScene
+persistence.
+
 ## Next vertical slices
 
-1. Complete side-platformer and isometric non-enterable `terrain.water`.
-2. Run one opt-in remote task only after explicit user authorization.
-3. Complete human art review and assemble the reviewed 1.1 runtime overlay.
-4. Run a physical Raspberry Pi 4B smoke test.
+1. Run one opt-in remote task only after explicit user authorization.
+2. Complete human art review and assemble the reviewed 1.1 runtime overlay.
+3. Run a physical Raspberry Pi 4B smoke test.
 
 No live provider request is authorized or claimed by this core revision.

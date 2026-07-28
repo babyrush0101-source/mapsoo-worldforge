@@ -22,7 +22,7 @@ import {
 const PROFILE_ROLES = Object.freeze({
   'side-platformer': [
     'terrain.solid', 'terrain.one-way', 'terrain.slope-up', 'terrain.slope-down',
-    'terrain.wall', 'terrain.breakable',
+    'terrain.wall', 'terrain.breakable', 'terrain.water',
   ],
   'topdown-farm': [
     'terrain.ground', 'terrain.water', 'terrain.path', 'terrain.soil',
@@ -30,7 +30,7 @@ const PROFILE_ROLES = Object.freeze({
   'isometric-action': [
     'terrain.void', 'terrain.floor.base', 'terrain.floor.variant',
     'terrain.floor.edge', 'terrain.elevation.top', 'terrain.elevation.riser-left',
-    'terrain.elevation.riser-right', 'terrain.ramp', 'terrain.wall',
+    'terrain.elevation.riser-right', 'terrain.ramp', 'terrain.wall', 'terrain.water',
   ],
   'layered-depth-2d': [
     'terrain.ground', 'terrain.path', 'terrain.edge', 'terrain.bridge',
@@ -161,6 +161,23 @@ describe('WorldMaterialPalette 1.0', () => {
     expect(packEntry.binding.path).toBe('world-material-palette.json');
     expect(packEntry.binding.sha256).toMatch(/^[a-f0-9]{64}$/);
   });
+
+  it.each([
+    ['side-platformer', 'terrain.solid'],
+    ['isometric-action', 'terrain.floor.variant'],
+  ] as const)(
+    'keeps the frozen %s pack usable with an explicit legacy water fallback',
+    async (profile, fallbackRole) => {
+      const layout = await prepared(profile);
+      const legacyRoles = PROFILE_ROLES[profile].filter((role) => role !== 'terrain.water');
+      const palette = await buildDefaultWorldMaterialPalette(layout, legacyRoles);
+
+      expect(palette.entries.find(({ material }) => material === 'water')).toMatchObject({
+        material: 'water',
+        role: fallbackRole,
+      });
+    },
+  );
 
   it('rejects missing, duplicate, unsorted, unknown-role, and wrong-layout mappings', async () => {
     const layout = await prepared('topdown-farm');

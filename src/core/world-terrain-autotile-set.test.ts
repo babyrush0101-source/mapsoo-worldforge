@@ -22,7 +22,7 @@ import {
 const PROFILE_ROLES = Object.freeze({
   'side-platformer': [
     'terrain.solid', 'terrain.one-way', 'terrain.slope-up', 'terrain.slope-down',
-    'terrain.wall', 'terrain.breakable',
+    'terrain.wall', 'terrain.breakable', 'terrain.water',
   ],
   'topdown-farm': [
     'terrain.ground', 'terrain.water', 'terrain.path', 'terrain.soil',
@@ -30,7 +30,7 @@ const PROFILE_ROLES = Object.freeze({
   'isometric-action': [
     'terrain.void', 'terrain.floor.base', 'terrain.floor.variant',
     'terrain.floor.edge', 'terrain.elevation.top', 'terrain.elevation.riser-left',
-    'terrain.elevation.riser-right', 'terrain.ramp', 'terrain.wall',
+    'terrain.elevation.riser-right', 'terrain.ramp', 'terrain.wall', 'terrain.water',
   ],
   'layered-depth-2d': [
     'terrain.ground', 'terrain.path', 'terrain.edge', 'terrain.bridge',

@@ -246,6 +246,34 @@ func _assert_materialized(world: Node, plan: Dictionary) -> Dictionary:
 			return _check_failure("Terrain %s is not a Polygon2D." % terrain.id)
 		if (terrain_node as Polygon2D).polygon.size() < 4:
 			return _check_failure("Terrain %s has no usable map polygon." % terrain.id)
+	if plan.profile in ["side-platformer", "isometric-action"]:
+		var water_terrain: Dictionary = {}
+		for terrain_value: Variant in terrain_items:
+			var terrain: Dictionary = terrain_value
+			if str(terrain.material) == "water":
+				water_terrain = terrain
+				break
+		if (
+			water_terrain.is_empty()
+			or str(water_terrain.navigation) != "blocked"
+			or str(water_terrain.id) not in plan.collision_intent.solid_terrain_ids
+		):
+			return _check_failure(
+				"%s water is not bound as blocked solid terrain." % plan.profile
+			)
+		var material_sources: Dictionary = logical_cells.get_meta(
+			"mapsoo_material_sources",
+			{}
+		)
+		if (
+			not material_sources.has("water")
+			or logical_cells.get_cell_source_id(
+				Vector2i(int(water_terrain.x), int(water_terrain.y))
+			) != int(material_sources.water)
+		):
+			return _check_failure(
+				"%s water did not win the visible material overlap." % plan.profile
+			)
 
 	var collision_root := materialization.get_node("Collision")
 	var collision_ids: Array = (

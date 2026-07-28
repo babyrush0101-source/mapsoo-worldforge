@@ -75,6 +75,7 @@ const DEFAULT_ROLE_BY_MATERIAL = Object.freeze({
     ground: 'terrain.solid',
     wood: 'terrain.one-way',
     stone: 'terrain.solid',
+    water: 'terrain.water',
   }),
   'topdown-farm': Object.freeze({
     meadow: 'terrain.ground',
@@ -87,6 +88,7 @@ const DEFAULT_ROLE_BY_MATERIAL = Object.freeze({
     stone: 'terrain.floor.base',
     arena: 'terrain.floor.variant',
     pillar: 'terrain.wall',
+    water: 'terrain.water',
   }),
   'layered-depth-2d': Object.freeze({
     'front-lane': 'terrain.ground',
@@ -95,6 +97,11 @@ const DEFAULT_ROLE_BY_MATERIAL = Object.freeze({
     occluder: 'terrain.water',
   }),
 } satisfies Readonly<Record<WorldAssetProfile, Readonly<Record<string, string>>>>);
+
+const LEGACY_WATER_ROLE_BY_PROFILE: Readonly<Partial<Record<WorldAssetProfile, string>>> = Object.freeze({
+  'side-platformer': 'terrain.solid',
+  'isometric-action': 'terrain.floor.variant',
+});
 
 /**
  * Returns the canonical runtime terrain role for a layout material.
@@ -108,6 +115,22 @@ export function worldMaterialRoleForProfile(
 ): string | undefined {
   const roles: Readonly<Record<string, string>> = DEFAULT_ROLE_BY_MATERIAL[profile];
   return roles[material];
+}
+
+function availableWorldMaterialRole(
+  profile: WorldAssetProfile,
+  material: string,
+  availableRoles: readonly string[],
+): string | undefined {
+  const canonical = worldMaterialRoleForProfile(profile, material);
+  if (!canonical || availableRoles.includes(canonical)) return canonical;
+  if (material !== 'water') return canonical;
+
+  // Alpha10/11 predate the optional terrain.water role. Preserve those frozen
+  // pack contracts with an explicit visual fallback, while Plan 1.1 catalogs
+  // select the canonical water asset whenever it is available.
+  const legacy = LEGACY_WATER_ROLE_BY_PROFILE[profile];
+  return legacy && availableRoles.includes(legacy) ? legacy : canonical;
 }
 
 type DataRecord = Record<string, unknown>;
@@ -303,7 +326,11 @@ export async function buildDefaultWorldMaterialPalette(
 ): Promise<WorldMaterialPalette> {
   const materials = distinctLayoutMaterials(layout.plan);
   const entries = materials.map((material) => {
-    const role = worldMaterialRoleForProfile(layout.plan.profile, material);
+    const role = availableWorldMaterialRole(
+      layout.plan.profile,
+      material,
+      availableRoles,
+    );
     if (!role) {
       fail(
         'material-palette.unsupported-material',

@@ -6,7 +6,7 @@ import type {
   WorldLayoutTraversalKind,
 } from './world-layout-plan';
 
-export const WORLD_LAYOUT_SOLVER_VERSION = '1.0.0' as const;
+export const WORLD_LAYOUT_SOLVER_VERSION = '1.1.0' as const;
 
 export interface WorldLayoutSolution {
   readonly bounds: WorldLayoutPlan['bounds'];
@@ -126,7 +126,18 @@ function sidePlatformerGeometry(input: GeometryInput): ProfileGeometry {
     },
     ...platforms,
   ];
-  if (constraints.water !== 'none' || constraints.hazard_level === 'dangerous') {
+  if (constraints.water !== 'none') {
+    const waterWidth = constraints.water === 'crossing' ? 6 : 8;
+    terrain.push({
+      id: constraints.water === 'crossing' ? 'water-crossing' : 'water-basin',
+      x: clamp(routeCenterX + 4, 0, bounds.width - waterWidth),
+      y: centerY,
+      width: waterWidth,
+      height: bounds.height - centerY,
+      material: 'water',
+      navigation: 'blocked',
+    });
+  } else if (constraints.hazard_level === 'dangerous') {
     terrain.push({
       id: 'ground-hazard',
       x: clamp(routeCenterX - 2, 0, bounds.width - 4),
@@ -336,6 +347,39 @@ function isometricActionGeometry(input: GeometryInput): ProfileGeometry {
       width: 3,
       height: 4,
       material: 'pillar',
+      navigation: 'blocked',
+    });
+  }
+  if (constraints.water === 'crossing') {
+    const waterX = clamp(routeCenterX - 2, 0, bounds.width - 4);
+    terrain.push(
+      {
+        id: 'zone-water-north',
+        x: waterX,
+        y: 0,
+        width: 4,
+        height: 10,
+        material: 'water',
+        navigation: 'blocked',
+      },
+      {
+        id: 'zone-water-south',
+        x: waterX,
+        y: 30,
+        width: 4,
+        height: bounds.height - 30,
+        material: 'water',
+        navigation: 'blocked',
+      },
+    );
+  } else if (constraints.water === 'basin') {
+    terrain.push({
+      id: 'zone-water-basin',
+      x: clamp(routeCenterX - 4, 0, bounds.width - 8),
+      y: 4,
+      width: 8,
+      height: 6,
+      material: 'water',
       navigation: 'blocked',
     });
   }
