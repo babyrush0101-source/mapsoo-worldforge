@@ -64,6 +64,10 @@ schemas/         # 对外 JSON Schema
 re-export 兼容层，但不再放实现。只有职责真的增长时才拆模块，避免为了
 理想目录提前搭框架。
 
+这条依赖方向由 `pnpm architecture:verify` 自动检查；新增反向依赖或
+供应商名称进入生产 `core` 会直接导致 CI 失败。功能自研/复用的完整
+判断表见 [`64_BUILD_VS_REUSE_POLICY.md`](64_BUILD_VS_REUSE_POLICY.md)。
+
 ## 4. World Spec
 
 World Spec 是系统的主要输入，也是 External Host 与 Mapsoo 的共享协议。示意：

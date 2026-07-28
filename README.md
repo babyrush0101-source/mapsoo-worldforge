@@ -235,6 +235,15 @@ names, or raw digests. Concurrent imports use per-reference locks and atomic
 publication; invalid or stale cache data fails without a silent paid retry.
 No live SpriteCook request or account connection is claimed.
 
+The repository now treats this as a permanent
+[build-versus-reuse rule](docs/64_BUILD_VS_REUSE_POLICY.md): WorldForge owns
+confirmed world intent, deterministic layout, complete asset requirements,
+character identity, review, reproducible Packs, and runtime delivery. Image
+generation, animation, background removal, tileset authoring, hosted asset
+libraries, and editor UI stay in replaceable tools such as SpriteCook. An
+automated architecture check prevents new vendor dependencies or reversed
+layer imports from entering the core.
+
 Reviewed 1.1 outputs can now be compiled into a complete, provider-free
 `WorldArtRuntimeProjection`, packaged as a deterministic
 `WorldArtRuntimeOverlay`, and loaded by one shared trusted Godot module. The
