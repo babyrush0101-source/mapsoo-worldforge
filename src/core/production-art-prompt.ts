@@ -1,9 +1,11 @@
 import type {
   ProductionArtProviderJob,
+  ProductionArtProviderJobV1_1,
 } from './production-art-provider';
 import type {
   ProductionArtTask,
 } from './production-art-contract';
+import type { ProductionArtTaskV1_1 } from './production-art-contract-v1-1';
 import {
   compileCharacterIdentitySemanticsPrompt,
 } from './character-identity-semantics';
@@ -33,10 +35,21 @@ function boundedPromptText(
   return value;
 }
 
-function gridDescription(task: ProductionArtTask): string {
+function gridDescription(task: ProductionArtTask | ProductionArtTaskV1_1): string {
   const columns = task.target.width / task.target.cell_width;
   const rows = task.target.height / task.target.cell_height;
   return `${columns} columns by ${rows} rows`;
+}
+
+function declaredMappingPrompt(
+  task: ProductionArtTask | ProductionArtTaskV1_1,
+): string {
+  if ('slot_mappings' in task) {
+    return `Declared slots: ${task.slot_mappings.map((slot) =>
+      `slot_id=${slot.slot_id}, requirement_id=${slot.requirement_id}, `
+      + `variant_id=${slot.variant_id}, role=${slot.role}`).join('; ')}.`;
+  }
+  return `Declared roles: ${task.role_mappings.map(({ role }) => role).join(', ')}.`;
 }
 
 /**
@@ -44,7 +57,7 @@ function gridDescription(task: ProductionArtTask): string {
  * settings, but may not weaken the identity, grid, alpha, or originality rules.
  */
 export function compileProductionArtPrompt(
-  job: ProductionArtProviderJob,
+  job: ProductionArtProviderJob | ProductionArtProviderJobV1_1,
 ): string {
   const worldBrief = boundedPromptText(
     job.worldBrief,
@@ -88,7 +101,7 @@ export function compileProductionArtPrompt(
       ({ descriptor }, index) =>
         `image-${index + 1}=${descriptor.id} (${descriptor.role})`,
     ).join('; ')}.`,
-    `Declared roles: ${job.task.role_mappings.map(({ role }) => role).join(', ')}.`,
+    declaredMappingPrompt(job.task),
     ...(job.task.pose_mappings
       ? [
         `Semantic pose cells: ${job.task.pose_mappings.map((pose) =>

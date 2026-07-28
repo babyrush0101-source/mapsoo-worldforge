@@ -1,11 +1,11 @@
 # AssetRequirements and ProductionArtPlan 1.1
 
-Status: **implemented requirements, plan, output, and runtime-binding core
-contracts; review-only**
+Status: **implemented requirements, plan, provider, normalization, run-set,
+output, and runtime-binding contracts; review-only**
 
 This revision adds the smallest core abstraction needed for a confirmed world
 to request multiple genuinely distinct visual assets. It does not alter the
-published 1.0 contracts, provider workflow, reviewed packs, or Godot runtime.
+published 1.0 contracts, reviewed packs, or Godot runtime.
 
 ## Why a parallel version
 
@@ -36,8 +36,10 @@ confirmed dialogue
   -> WorldLayoutPlan 1.0
   -> AssetRequirements 1.1
   -> ProductionArtPlan 1.1
-  -> replaceable GeneratorAdapter       (next integration slice)
-  -> ProductionArtOutput 1.1            (implemented contract)
+  -> replaceable GeneratorAdapter       (implemented versioned port)
+  -> PNG normalize + slot evidence      (implemented local boundary)
+  -> ProductionArtOutput 1.1
+  -> ProductionArtRunSet 1.1
   -> normalized reviewed slot inventory (next integration slice)
   -> WorldArtVariantMap 1.0             (implemented contract)
   -> reviewed pack + Godot importer     (next runtime slice)
@@ -122,8 +124,19 @@ Implemented by:
 
 - `src/core/production-art-output-v1-1.ts`;
 - `schemas/mapsoo-production-art-output-1.1.schema.json`;
+- `src/core/production-art-run-set-v1-1.ts`;
+- `schemas/mapsoo-production-art-run-set-1.1.schema.json`;
+- `src/adapters/normalize-production-art-png-v1-1.ts`;
 - `src/core/world-art-variant-map.ts`;
 - `schemas/mapsoo-world-art-variant-map-1.0.schema.json`.
+
+The 1.1 provider overload requires the exact source requirements before it
+calls an adapter. Its prompt lists every slot, requirement, variant, and role.
+The local PNG boundary checks mapped cells, rejects visible undeclared cells,
+and hashes each normalized slot. `ProductionArtRunSet 1.1` then requires every
+dynamic plan task exactly once and binds its output and evidence to the same
+Plan and requirements digests. The old 1.0 provider and normalizer remain
+unchanged at their public boundaries.
 
 ## Reusing existing tools
 
@@ -145,12 +158,10 @@ The implemented SpriteCook boundary is documented in
 
 ## Fail-closed delivery boundary
 
-The 1.1 contracts intentionally stop before paid generation. They are not yet
-accepted by:
+The 1.1 contracts intentionally stop before paid generation. Provider
+execution, local PNG normalization, and run-set assembly now have explicit
+1.1 branches. The result is not yet accepted by:
 
-- `ProductionArtProvider` execution;
-- PNG slot normalization and evidence;
-- `ProductionArtRunSet`;
 - reviewed-pack projectors;
 - the Godot importers.
 
@@ -162,13 +173,11 @@ Godot pack.
 
 ## Next vertical slices
 
-1. Add provider, normalizer, and RunSet 1.1 branches while preserving all 1.0
-   guards.
-2. Normalize by slot ID and reject empty, undeclared, or duplicate variants.
-3. Project reviewed variant-map bindings into Pack and Godot importers.
-4. Complete side-platformer non-enterable `terrain.water` end to end.
-5. Complete top-down hazard visuals and `Area2D` behavior.
-6. Add visible multi-landmark bindings for all four profiles.
-7. Run human art review and a physical Raspberry Pi 4B smoke test.
+1. Project reviewed variant-map bindings into Pack and Godot importers.
+2. Complete side-platformer non-enterable `terrain.water` end to end.
+3. Complete top-down hazard visuals and `Area2D` behavior.
+4. Add visible multi-landmark bindings for all four profiles.
+5. Add opt-in remote execution only after explicit user authorization.
+6. Run human art review and a physical Raspberry Pi 4B smoke test.
 
 No live provider request is authorized or claimed by this core revision.

@@ -6,6 +6,12 @@ import {
   type ProductionArtTaskKind,
 } from './production-art-contract';
 import {
+  materializeProductionArtPlanV1_1,
+  type ProductionArtPlanV1_1,
+  type ProductionArtTaskV1_1,
+} from './production-art-contract-v1-1';
+import type { AssetRequirementsV1_1 } from './asset-requirements-v1-1';
+import {
   bindReferenceImage,
   type RuntimeReferenceImage,
 } from './reference-image';
@@ -60,6 +66,16 @@ export interface ProductionArtProviderJob {
   readonly remoteAuthorization?: RemoteProcessingAuthorization;
 }
 
+export interface ProductionArtProviderJobV1_1 {
+  readonly plan: ProductionArtPlanV1_1;
+  readonly task: ProductionArtTaskV1_1;
+  readonly worldBrief: string;
+  readonly styleBible: string;
+  readonly characterIdentitySemantics?: CharacterIdentitySemantics;
+  readonly references: readonly RuntimeReferenceImage[];
+  readonly remoteAuthorization?: RemoteProcessingAuthorization;
+}
+
 export interface ProductionArtProviderCandidate {
   readonly sourcePngBytes: Uint8Array;
   readonly model: string;
@@ -74,6 +90,25 @@ export interface ProductionArtProvider {
   readonly capabilities: ProductionArtProviderCapabilities;
   generate(
     job: ProductionArtProviderJob,
+    options?: {
+      readonly signal?: AbortSignal;
+      /** Runtime-only secret. The trusted runner never stores or returns it. */
+      readonly credential?: string;
+    },
+  ): Promise<ProductionArtProviderCandidate>;
+}
+
+/**
+ * Explicit 1.1 provider surface. Keeping it separate prevents widening the
+ * established 1.0 provider method contract for existing adapters.
+ */
+export interface ProductionArtProviderV1_1 {
+  readonly id: string;
+  readonly version: string;
+  readonly displayName: string;
+  readonly capabilities: ProductionArtProviderCapabilities;
+  generate(
+    job: ProductionArtProviderJobV1_1,
     options?: {
       readonly signal?: AbortSignal;
       /** Runtime-only secret. The trusted runner never stores or returns it. */
@@ -106,6 +141,36 @@ export interface TrustedProductionArtSource {
     readonly height: number;
     readBytes(): Uint8Array;
   };
+}
+
+export interface TrustedProductionArtSourceV1_1 {
+  readonly provider: ProductionArtProviderSnapshot;
+  readonly plan: ProductionArtPlanV1_1;
+  readonly task: ProductionArtTaskV1_1;
+  readonly sourceReferenceIds: readonly string[];
+  readonly generation: {
+    readonly model: string;
+    readonly workflow: ProductionArtProviderCandidate['workflow'];
+    readonly providerRequestId?: string;
+  };
+  readonly source: {
+    readonly mediaType: 'image/png';
+    readonly byteLength: number;
+    readonly width: number;
+    readonly height: number;
+    readBytes(): Uint8Array;
+  };
+}
+
+export interface ProductionArtProviderInputV1_1 {
+  readonly plan: ProductionArtPlanV1_1;
+  readonly requirements: AssetRequirementsV1_1;
+  readonly taskId: string;
+  readonly worldBrief: string;
+  readonly styleBible: string;
+  readonly characterIdentitySemantics?: unknown;
+  readonly references: readonly RuntimeReferenceImage[];
+  readonly remoteAuthorization?: RemoteProcessingAuthorization;
 }
 
 export type ProductionArtProviderErrorCode =
@@ -183,7 +248,17 @@ function clonePlan(plan: ProductionArtPlan): ProductionArtPlan {
   }
 }
 
-function snapshotProvider(provider: ProductionArtProvider): ProductionArtProviderSnapshot {
+function clonePlanV1_1(plan: ProductionArtPlanV1_1): ProductionArtPlanV1_1 {
+  try {
+    return deepFreezeData(JSON.parse(JSON.stringify(plan)) as ProductionArtPlanV1_1);
+  } catch {
+    fail('production-provider.invalid-metadata', 'Production art plan must be finite JSON data.');
+  }
+}
+
+function snapshotProvider(
+  provider: ProductionArtProvider | ProductionArtProviderV1_1,
+): ProductionArtProviderSnapshot {
   requireExactDataObject(provider, ['id', 'version', 'displayName', 'capabilities', 'generate'], 'Production art provider');
   const capabilities = provider.capabilities;
   requireExactDataObject(capabilities, [
@@ -274,7 +349,7 @@ function abortIfNeeded(signal: AbortSignal | undefined): void {
 function validateRemoteAuthorization(
   authorization: RemoteProcessingAuthorization | undefined,
   provider: ProductionArtProviderSnapshot,
-  task: ProductionArtTask,
+  task: Pick<ProductionArtTask, 'task_id'> | Pick<ProductionArtTaskV1_1, 'task_id'>,
   referenceIds: readonly string[],
 ): void {
   if (provider.capabilities.execution !== 'remote') return;
@@ -349,31 +424,71 @@ function pngHeader(
   return { width, height };
 }
 
-export async function runProductionArtProvider(
+interface ProductionArtProviderInputV1_0 {
+  readonly plan: ProductionArtPlan;
+  readonly taskId: string;
+  readonly worldBrief: string;
+  readonly styleBible: string;
+  readonly characterIdentitySemantics?: unknown;
+  readonly references: readonly RuntimeReferenceImage[];
+  readonly remoteAuthorization?: RemoteProcessingAuthorization;
+}
+
+interface ProductionArtProviderRunOptions {
+  readonly signal?: AbortSignal;
+  readonly credential?: string;
+}
+
+export function runProductionArtProvider(
   provider: ProductionArtProvider,
-  supplied: {
-    readonly plan: ProductionArtPlan;
-    readonly taskId: string;
-    readonly worldBrief: string;
-    readonly styleBible: string;
-    readonly characterIdentitySemantics?: unknown;
-    readonly references: readonly RuntimeReferenceImage[];
-    readonly remoteAuthorization?: RemoteProcessingAuthorization;
-  },
-  options: {
-    readonly signal?: AbortSignal;
-    readonly credential?: string;
-  } = {},
-): Promise<TrustedProductionArtSource> {
+  supplied: ProductionArtProviderInputV1_0,
+  options?: ProductionArtProviderRunOptions,
+): Promise<TrustedProductionArtSource>;
+export function runProductionArtProvider(
+  provider: ProductionArtProviderV1_1,
+  supplied: ProductionArtProviderInputV1_1,
+  options?: ProductionArtProviderRunOptions,
+): Promise<TrustedProductionArtSourceV1_1>;
+export async function runProductionArtProvider(
+  provider: ProductionArtProvider | ProductionArtProviderV1_1,
+  supplied: ProductionArtProviderInputV1_0 | ProductionArtProviderInputV1_1,
+  options: ProductionArtProviderRunOptions = {},
+): Promise<TrustedProductionArtSource | TrustedProductionArtSourceV1_1> {
   const contract = snapshotProvider(provider);
   abortIfNeeded(options.signal);
-  const plan = clonePlan(supplied.plan);
-  const planIssues = validateProductionArtPlan(plan);
-  if (planIssues.length > 0) {
-    fail(
-      'production-provider.invalid-metadata',
-      `Production art plan is invalid: ${planIssues.map(({ code }) => code).join(', ')}.`,
-    );
+  const isV1_1 = supplied.plan.schema_version === '1.1.0';
+  let plan: ProductionArtPlan | ProductionArtPlanV1_1;
+  if (isV1_1) {
+    if (!Object.prototype.hasOwnProperty.call(supplied, 'requirements')) {
+      fail(
+        'production-provider.invalid-metadata',
+        'ProductionArtPlan 1.1 requires its AssetRequirements 1.1 source.',
+      );
+    }
+    try {
+      const confirmed = await materializeProductionArtPlanV1_1(
+        supplied.plan,
+        (supplied as ProductionArtProviderInputV1_1).requirements,
+      );
+      plan = clonePlanV1_1(confirmed);
+    } catch (error) {
+      if (error instanceof ProductionArtProviderError) throw error;
+      fail(
+        'production-provider.invalid-metadata',
+        `ProductionArtPlan 1.1 source binding is invalid: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }.`,
+      );
+    }
+  } else {
+    plan = clonePlan(supplied.plan as ProductionArtPlan);
+    const planIssues = validateProductionArtPlan(plan);
+    if (planIssues.length > 0) {
+      fail(
+        'production-provider.invalid-metadata',
+        `Production art plan is invalid: ${planIssues.map(({ code }) => code).join(', ')}.`,
+      );
+    }
   }
   const task = plan.tasks.find(({ task_id: taskId }) => taskId === supplied.taskId);
   if (!task) fail('production-provider.unsupported-task', 'Production art task does not exist in the approved plan.');
@@ -436,7 +551,7 @@ export async function runProductionArtProvider(
     && (typeof options.credential !== 'string' || options.credential.length < 1)) {
     fail('production-provider.credentials-required', `${contract.id} requires a runtime credential.`);
   }
-  const job: ProductionArtProviderJob = Object.freeze({
+  const job = Object.freeze({
     plan,
     task,
     worldBrief,
@@ -446,13 +561,22 @@ export async function runProductionArtProvider(
     ...(supplied.remoteAuthorization
       ? { remoteAuthorization: deepFreezeData(JSON.parse(JSON.stringify(supplied.remoteAuthorization))) }
       : {}),
-  });
+  }) as ProductionArtProviderJob | ProductionArtProviderJobV1_1;
   let candidate: ProductionArtProviderCandidate;
   try {
-    candidate = await provider.generate(job, {
+    const generateOptions = {
       signal: options.signal,
       ...(options.credential === undefined ? {} : { credential: options.credential }),
-    });
+    };
+    candidate = isV1_1
+      ? await (provider as ProductionArtProviderV1_1).generate(
+        job as ProductionArtProviderJobV1_1,
+        generateOptions,
+      )
+      : await (provider as ProductionArtProvider).generate(
+        job as ProductionArtProviderJob,
+        generateOptions,
+      );
   } catch (error) {
     abortIfNeeded(options.signal);
     if (error instanceof ProductionArtProviderError) throw error;
@@ -486,7 +610,7 @@ export async function runProductionArtProvider(
     contract.capabilities.maxRasterDimension,
   );
   const sourceSnapshot = Uint8Array.from(candidate.sourcePngBytes);
-  const result: TrustedProductionArtSource = deepFreezeData({
+  const result = deepFreezeData({
     provider: contract,
     plan,
     task,
@@ -503,7 +627,7 @@ export async function runProductionArtProvider(
       height: dimensions.height,
       readBytes: () => Uint8Array.from(sourceSnapshot),
     },
-  });
+  }) as TrustedProductionArtSource | TrustedProductionArtSourceV1_1;
   trustedProductionArtSources.add(result);
   return result;
 }
