@@ -1,9 +1,9 @@
 # AssetRequirements and ProductionArtPlan 1.1
 
 Status: **implemented requirements, plan, provider, normalization, run-set,
-output, reviewed selection, runtime projection, and reproducible runtime
-overlay; shared Godot load and persistence implemented; visual application
-pending**
+output, reviewed selection, runtime projection, reproducible runtime overlay,
+and shared Godot application; complete private-workspace blueprint integrated;
+resumable 1.1 remote batch execution pending explicit authorization**
 
 This revision adds the smallest core abstraction needed for a confirmed world
 to request multiple genuinely distinct visual assets. It does not alter the
@@ -29,6 +29,12 @@ Version 1.1 separates the two meanings:
 
 The old 1.0 serializer, fingerprints, schemas, plan IDs, projectors, and runtime
 remain frozen.
+
+The private world-delivery workspace now writes the complete 1.1 requirements
+and Plan under `complete-art/` and binds their full SHA-256 values and counts in
+`workspace-manifest.json.complete_art_plan`. The executable 1.0 compatibility
+workflow remains alongside them; it is not silently presented as the complete
+1.1 batch runner.
 
 ## Minimal architecture
 
@@ -283,8 +289,10 @@ human art quality or physical-device performance.
 
 ## Next vertical slices
 
-1. Complete side-platformer and isometric non-enterable `terrain.water`.
-2. Add opt-in remote execution only after explicit user authorization.
-3. Run human art review and a physical Raspberry Pi 4B smoke test.
+1. Upgrade the resumable private workflow runner to consume the bound 1.1
+   requirements and Plan without creating a second provider path.
+2. Complete side-platformer and isometric non-enterable `terrain.water`.
+3. Add opt-in remote execution only after explicit user authorization.
+4. Run human art review and a physical Raspberry Pi 4B smoke test.
 
 No live provider request is authorized or claimed by this core revision.

@@ -41,6 +41,16 @@ import {
   serializeCanonicalAssetRequirements,
 } from '../core/asset-requirements';
 import {
+  buildAssetRequirementsV1_1,
+  fingerprintAssetRequirementsV1_1,
+  serializeCanonicalAssetRequirementsV1_1,
+} from '../core/asset-requirements-v1-1';
+import {
+  buildProductionArtPlanV1_1,
+  fingerprintProductionArtPlanV1_1,
+  serializeCanonicalProductionArtPlanV1_1,
+} from '../core/production-art-contract-v1-1';
+import {
   deriveWorldLayoutConstraintsFromConfirmedIntake,
 } from '../core/world-layout-constraints';
 import {
@@ -84,6 +94,17 @@ export interface PreparedWorldDeliveryWorkspace {
   readonly character_id: string;
   readonly task_count: number;
   readonly request_budget: number;
+  readonly complete_art_plan: Readonly<{
+    status: 'planned';
+    requirements_path:
+      'complete-art/asset-requirements-1.1.json';
+    requirements_sha256: string;
+    requirement_count: number;
+    plan_path: 'complete-art/production-art-plan-1.1.json';
+    plan_sha256: string;
+    task_count: number;
+    execution: 'explicit-authorization-required';
+  }>;
   readonly baseline: Readonly<{
     status: 'godot-import-ready';
     art_quality: 'procedural-placeholder';
@@ -416,6 +437,31 @@ export async function prepareWorldDeliveryWorkspace(
   );
   const assetRequirementsBytes =
     await serializeCanonicalAssetRequirements(assetRequirements);
+  const completeAssetRequirements = await buildAssetRequirementsV1_1(
+    layoutConstraints,
+    layoutPlan,
+  );
+  const completeAssetRequirementsBytes =
+    await serializeCanonicalAssetRequirementsV1_1(completeAssetRequirements);
+  const completeAssetRequirementsSha256 =
+    await fingerprintAssetRequirementsV1_1(completeAssetRequirements);
+  const completeProductionArtPlan = await buildProductionArtPlanV1_1(
+    completeAssetRequirements,
+    {
+      distribution: 'internal-review',
+      license: 'LicenseRef-Proprietary',
+    },
+  );
+  const completeProductionArtPlanBytes =
+    await serializeCanonicalProductionArtPlanV1_1(
+      completeProductionArtPlan,
+      completeAssetRequirements,
+    );
+  const completeProductionArtPlanSha256 =
+    await fingerprintProductionArtPlanV1_1(
+      completeProductionArtPlan,
+      completeAssetRequirements,
+    );
   const characterId = assertSafeId(input.characterId, 'Character id', 48);
   const characterIdentitySemantics =
     input.characterIdentitySemantics === undefined
@@ -611,6 +657,14 @@ export async function prepareWorldDeliveryWorkspace(
     ['world-layout-plan.json', layoutPlanBytes],
     ['asset-requirements.json', assetRequirementsBytes],
     [
+      'complete-art/asset-requirements-1.1.json',
+      completeAssetRequirementsBytes,
+    ],
+    [
+      'complete-art/production-art-plan-1.1.json',
+      completeProductionArtPlanBytes,
+    ],
+    [
       'production-art-requirements-binding.json',
       productionArtRequirementsBindingBytes,
     ],
@@ -652,6 +706,17 @@ export async function prepareWorldDeliveryWorkspace(
     character_id: characterId,
     task_count: plan.tasks.length,
     request_budget: requestBudget,
+    complete_art_plan: Object.freeze({
+      status: 'planned' as const,
+      requirements_path:
+        'complete-art/asset-requirements-1.1.json' as const,
+      requirements_sha256: completeAssetRequirementsSha256,
+      requirement_count: completeAssetRequirements.requirements.length,
+      plan_path: 'complete-art/production-art-plan-1.1.json' as const,
+      plan_sha256: completeProductionArtPlanSha256,
+      task_count: completeProductionArtPlan.tasks.length,
+      execution: 'explicit-authorization-required' as const,
+    }),
     baseline: Object.freeze({
       status: 'godot-import-ready' as const,
       art_quality: 'procedural-placeholder' as const,

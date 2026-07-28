@@ -259,8 +259,11 @@ contracts now provide independently addressable atlas cells for one canonical
 role without changing Plan 1.0. Structural enum values no longer masquerade as
 output counts, while each confirmed landmark becomes one label-free
 `layout-landmark` variant with an exact requirement, slot, and atlas cell.
-These contracts are review-only until the provider, normalizer, variant map,
-pack projectors, and Godot importer all accept the 1.1 chain. See
+The provider port, normalizer, run set, reviewed variant map, runtime overlay,
+and shared Godot appliers now accept the 1.1 chain. The private workspace also
+writes the complete 1.1 requirements and Plan, while the resumable batch runner
+remains on the frozen 1.0 compatibility inventory until its versioned upgrade.
+See
 [`60_ASSET_REQUIREMENTS_PRODUCTION_ART_1_1.md`](60_ASSET_REQUIREMENTS_PRODUCTION_ART_1_1.md).
 
 The browser now presents and hashes the structured constraint choices at the

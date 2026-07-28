@@ -40,6 +40,14 @@ import {
 import type {
   CharacterIdentitySemantics,
 } from '../core/character-identity-semantics';
+import {
+  fingerprintAssetRequirementsV1_1,
+  materializeAssetRequirementsV1_1,
+} from '../core/asset-requirements-v1-1';
+import {
+  fingerprintProductionArtPlanV1_1,
+  materializeProductionArtPlanV1_1,
+} from '../core/production-art-contract-v1-1';
 
 const roots: string[] = [];
 const execFileAsync = promisify(execFile);
@@ -181,6 +189,15 @@ describe('world delivery workspace preparation', () => {
     expect(manifest.remote_request_count).toBe(0);
     expect(manifest.task_count).toBeGreaterThan(1);
     expect(manifest.request_budget).toBe(manifest.task_count);
+    expect(manifest.complete_art_plan).toMatchObject({
+      status: 'planned',
+      requirements_path:
+        'complete-art/asset-requirements-1.1.json',
+      plan_path: 'complete-art/production-art-plan-1.1.json',
+      execution: 'explicit-authorization-required',
+    });
+    expect(manifest.complete_art_plan.requirement_count).toBeGreaterThan(1);
+    expect(manifest.complete_art_plan.task_count).toBeGreaterThan(1);
     expect(manifest.baseline).toMatchObject({
       status: 'godot-import-ready',
       art_quality: 'procedural-placeholder',
@@ -206,6 +223,8 @@ describe('world delivery workspace preparation', () => {
       'confirmed-intake.json',
       'confirmed-intake-projection.json',
       'asset-requirements.json',
+      manifest.complete_art_plan.requirements_path,
+      manifest.complete_art_plan.plan_path,
       'production-art-workflow-job.json',
       'production-art-requirements-binding.json',
       'references/environment.png',
@@ -289,6 +308,37 @@ describe('world delivery workspace preparation', () => {
     });
     expect(requirementsBinding.source.asset_requirements_sha256)
       .toMatch(/^[a-f0-9]{64}$/u);
+    const completeAssetRequirements =
+      await materializeAssetRequirementsV1_1(JSON.parse(await readFile(
+        resolve(workspace, manifest.complete_art_plan.requirements_path),
+        'utf8',
+      )));
+    const completeProductionArtPlan =
+      await materializeProductionArtPlanV1_1(JSON.parse(await readFile(
+        resolve(workspace, manifest.complete_art_plan.plan_path),
+        'utf8',
+      )), completeAssetRequirements);
+    expect(completeAssetRequirements.profile).toBe(profile);
+    expect(completeProductionArtPlan.profile).toBe(profile);
+    expect(completeAssetRequirements.requirements)
+      .toHaveLength(manifest.complete_art_plan.requirement_count);
+    expect(completeProductionArtPlan.tasks)
+      .toHaveLength(manifest.complete_art_plan.task_count);
+    expect(await fingerprintAssetRequirementsV1_1(
+      completeAssetRequirements,
+    )).toBe(manifest.complete_art_plan.requirements_sha256);
+    expect(await fingerprintProductionArtPlanV1_1(
+      completeProductionArtPlan,
+      completeAssetRequirements,
+    )).toBe(manifest.complete_art_plan.plan_sha256);
+    const requiredSlots = completeAssetRequirements.requirements
+      .flatMap(({ variants }) => variants)
+      .length;
+    const plannedSlots = completeProductionArtPlan.tasks
+      .flatMap(({ slot_mappings: slots }) => slots);
+    expect(plannedSlots).toHaveLength(requiredSlots);
+    expect(new Set(plannedSlots.map(({ slot_id: slotId }) => slotId)).size)
+      .toBe(requiredSlots);
     expect(job.private_output_root).toBe(
       resolve(root, 'private-workspace-production-art-output'),
     );

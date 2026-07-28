@@ -62,16 +62,18 @@ layout-critical requirements remain inspectable, but paid execution fails
 before credentials or provider calls. This is traceability and scheduling
 evidence, not a claim that final artwork has already been generated.
 
-The parallel, review-only `AssetRequirements 1.1` and `ProductionArtPlan 1.1`
-contracts now express real per-world visual variants without changing any 1.0
-bytes or runtime behavior. Structural choices such as `loop`, `extended`, or
-`dense` remain typed values; they are not misread as image counts. Two to four
-confirmed landmarks become two to four label-free variant slots, each bound to
-one deterministic atlas cell. The plan carries the complete requirements
-SHA-256, requirement assignments, slot IDs, row-major placement, composite
-preview sheets, and character pose-grid bindings. The 1.1 path is not yet
-accepted by the production provider, pack projectors, or Godot importer, so it
-cannot silently replace the stable 1.0 delivery path. See
+The parallel `AssetRequirements 1.1` and `ProductionArtPlan 1.1` contracts
+express real per-world visual variants without changing any 1.0 bytes.
+Structural choices such as `loop`, `extended`, or `dense` remain typed values;
+they are not misread as image counts. Two to four confirmed landmarks become
+two to four label-free variant slots, each bound to one deterministic atlas
+cell. The plan carries the complete requirements SHA-256, requirement
+assignments, slot IDs, row-major placement, composite preview sheets, and
+character pose-grid bindings. The provider port, normalizer, run set, reviewed
+variant map, runtime overlay, and shared Godot appliers accept the 1.1 chain.
+The private resumable batch runner still uses the stable 1.0 compatibility
+inventory until it is upgraded; it cannot silently claim full 1.1 execution.
+See
 [AssetRequirements and ProductionArtPlan 1.1](docs/60_ASSET_REQUIREMENTS_PRODUCTION_ART_1_1.md).
 
 The fourth-round image is explicitly an **intent preview**, not final artwork.
@@ -122,13 +124,16 @@ The consumer-neutral `world-delivery:workspace` CLI now turns a confirmed
 ten-fact intake into an atomic private production workspace for all four
 profiles. The same zero-request preparation now also creates a complete
 Godot-import-ready procedural baseline pack from the confirmed layout, so a
-playable placeholder world exists before paid final-art tasks begin. Its
-references, briefs, workflow state, baseline and generated candidates are
-forced outside the public repository. After review and a trusted Godot build,
-the same CLI finalizes an exact-byte delivery by binding the world pack,
-runtime artifact, portable contract, created-character revision, and
-headless-smoke report. No private product record or launch protocol enters
-this repository; see the
+playable placeholder world exists before paid final-art tasks begin. It also
+writes the complete 1.1 requirements and Plan under `complete-art/`, with
+their hashes and counts bound in the workspace manifest. This is an executable
+provider-neutral blueprint, not a claim that its complete task inventory has
+already run. References, briefs, workflow state, baseline and generated
+candidates are forced outside the public repository. After review and a trusted
+Godot build, the same CLI finalizes an exact-byte delivery by binding the world
+pack, runtime artifact, portable contract, created-character revision, and
+headless-smoke report. No private product record or launch protocol enters this
+repository; see the
 [private-consumer bridge](docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md).
 The confirmed browser flow now removes the former manual file-copy gap: after
 preview approval it can download one deterministic

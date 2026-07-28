@@ -93,9 +93,27 @@ This command:
 - reads and verifies the archive in memory;
 - feeds its exact intake and reference bytes into the existing workspace
   preparation function;
-- creates the deterministic layout, complete asset requirements, provider job
-  and playable procedural baseline;
+- creates the deterministic layout, the compatibility provider job, the
+  complete `AssetRequirements 1.1` and `ProductionArtPlan 1.1` blueprint, and
+  the playable procedural baseline;
 - makes zero remote requests.
+
+The complete blueprint is written beside, not over, the existing compatibility
+workflow:
+
+```text
+complete-art/
+  asset-requirements-1.1.json
+  production-art-plan-1.1.json
+```
+
+`workspace-manifest.json.complete_art_plan` binds both files, their SHA-256
+values, requirement count, task count, and the
+`explicit-authorization-required` execution policy. This proves that every
+confirmed visual variant has an exact task and atlas slot before any provider
+is contacted. The existing 1.0 workflow remains the executable compatibility
+path until its resumable runner accepts the 1.1 task inventory; a blueprint is
+not a claim of paid generation or finished art.
 
 The previous `--intake` plus `--reference-root` form remains supported. The two
 forms are mutually exclusive so there is one unambiguous reference source.
