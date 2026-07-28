@@ -4,6 +4,7 @@ class_name MapsooCharacterProfileRuntime
 const CONTRACT_VERSION := "1.0.0"
 const DOCUMENT_TYPE := "character-profile-revision"
 const SHA256_LENGTH := 64
+const PROJECTED_STATUS := "reviewed-runtime-overlay-character-v1"
 
 
 static func bind_player(
@@ -94,6 +95,448 @@ static func bind_player(
 	world.set_meta("mapsoo_character_profile_revision_id", str(validated.profile_revision_id))
 	world.set_meta("mapsoo_profile_revision_sha256", revision_sha256)
 	return _success("bound", validated, revision_sha256, actual_sha256, visual)
+
+
+static func bind_projected_player(
+	world: Node,
+	binding: Dictionary,
+	image: Dictionary,
+	texture: Texture2D,
+	overlay_id: String,
+	projection_id: String
+) -> Dictionary:
+	var prepared := _projected_context(
+		world,
+		binding,
+		image,
+		texture,
+		overlay_id,
+		projection_id
+	)
+	if not prepared.ok:
+		return prepared
+	var visual: AnimatedSprite2D = prepared.visual
+	if world.get_meta("mapsoo_world_art_character_status", "") == PROJECTED_STATUS:
+		var validated := validate_projected_player(
+			world,
+			binding,
+			image,
+			texture,
+			overlay_id,
+			projection_id
+		)
+		if not validated.ok:
+			return validated
+		validated["status"] = "unchanged"
+		return validated
+	if (
+		world.has_meta("mapsoo_world_art_character_status")
+		or world.has_meta("mapsoo_character_profile_revision_id")
+		or visual.has_meta("mapsoo_world_art_character_status")
+	):
+		return _failure(
+			"binding.projected-conflict",
+			"Player already has a different reviewed character binding."
+		)
+	var frames_result := _build_projected_sprite_frames(
+		prepared.clips,
+		texture
+	)
+	if not frames_result.ok:
+		return frames_result
+	var frame_size: Vector2i = prepared.frame_size
+	var pivot: Vector2i = prepared.pivot
+	var nominal_size := _nominal_frame_size(str(prepared.profile))
+	if nominal_size == Vector2i.ZERO:
+		return _failure(
+			"binding.projected-profile",
+			"Projected character profile has no runtime geometry policy."
+		)
+	visual.sprite_frames = frames_result.frames
+	visual.animation = str(prepared.default_animation).replace(".", "_")
+	visual.offset = Vector2(
+		float(frame_size.x) * 0.5 - float(pivot.x),
+		float(frame_size.y) * 0.5 - float(pivot.y)
+	)
+	visual.scale = Vector2(
+		float(nominal_size.x) / float(frame_size.x),
+		float(nominal_size.y) / float(frame_size.y)
+	)
+	visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	visual.flip_h = false
+	visual.set_meta("mapsoo_horizontal_flip_directions", [])
+	visual.set_meta("mapsoo_world_art_character_status", PROJECTED_STATUS)
+	visual.set_meta("mapsoo_world_art_overlay_id", overlay_id)
+	visual.set_meta("mapsoo_world_art_projection_id", projection_id)
+	visual.set_meta("mapsoo_world_art_usage_id", str(binding.usage_id))
+	visual.set_meta("mapsoo_world_art_slot_id", str(binding.slot_id))
+	visual.set_meta("mapsoo_world_art_cell_sha256", str(binding.cell_sha256))
+	var actor := visual.get_parent()
+	if actor != null:
+		actor.set_meta("mapsoo_world_art_character_status", PROJECTED_STATUS)
+		actor.set_meta("mapsoo_world_art_usage_id", str(binding.usage_id))
+	world.set_meta("mapsoo_world_art_character_status", PROJECTED_STATUS)
+	world.set_meta("mapsoo_world_art_character_overlay_id", overlay_id)
+	world.set_meta("mapsoo_world_art_character_projection_id", projection_id)
+	world.set_meta("mapsoo_world_art_character_usage_id", str(binding.usage_id))
+	return _projected_success("bound", prepared)
+
+
+static func validate_projected_player(
+	world: Node,
+	binding: Dictionary,
+	image: Dictionary,
+	texture: Texture2D,
+	overlay_id: String,
+	projection_id: String
+) -> Dictionary:
+	var context := _projected_context(
+		world,
+		binding,
+		image,
+		texture,
+		overlay_id,
+		projection_id
+	)
+	if not context.ok:
+		return context
+	var visual: AnimatedSprite2D = context.visual
+	if (
+		world.get_meta("mapsoo_world_art_character_status", "") != PROJECTED_STATUS
+		or world.get_meta("mapsoo_world_art_character_overlay_id", "")
+			!= overlay_id
+		or world.get_meta("mapsoo_world_art_character_projection_id", "")
+			!= projection_id
+		or world.get_meta("mapsoo_world_art_character_usage_id", "")
+			!= binding.get("usage_id")
+		or visual.get_meta("mapsoo_world_art_character_status", "")
+			!= PROJECTED_STATUS
+		or visual.get_meta("mapsoo_world_art_overlay_id", "") != overlay_id
+		or visual.get_meta("mapsoo_world_art_projection_id", "")
+			!= projection_id
+		or visual.get_meta("mapsoo_world_art_usage_id", "")
+			!= binding.get("usage_id")
+		or visual.get_meta("mapsoo_world_art_slot_id", "")
+			!= binding.get("slot_id")
+		or visual.get_meta("mapsoo_world_art_cell_sha256", "")
+			!= binding.get("cell_sha256")
+		or not _projected_visual_matches(visual, context, texture)
+	):
+		return _failure(
+			"binding.projected-changed",
+			"Projected player character changed after reviewed binding."
+		)
+	return _projected_success("validated", context)
+
+
+static func _projected_context(
+	world: Node,
+	binding: Dictionary,
+	image: Dictionary,
+	texture: Texture2D,
+	overlay_id: String,
+	projection_id: String
+) -> Dictionary:
+	if world == null or texture == null:
+		return _failure(
+			"binding.projected-input",
+			"Projected character requires a world and texture."
+		)
+	var profile := str(world.get_meta("mapsoo_profile", ""))
+	if (
+		profile not in _profiles()
+		or not _is_safe_id(overlay_id, 100)
+		or not _is_safe_id(projection_id, 100)
+		or binding.get("usage_kind") != "character"
+		or binding.get("role") != "character.player.atlas"
+		or not _is_safe_id(str(binding.get("usage_id", "")), 160)
+		or not _is_safe_id(str(binding.get("slot_id", "")), 160)
+		or not _is_sha256(str(binding.get("cell_sha256", "")))
+		or binding.get("task_id") != image.get("task_id")
+		or binding.get("image_path") != image.get("path")
+	):
+		return _failure(
+			"binding.projected-input",
+			"Projected character binding identity is invalid."
+		)
+	var cell_value: Variant = image.get("cell_size")
+	var pivot_value: Variant = image.get("pivot")
+	if (
+		not cell_value is Array
+		or (cell_value as Array).size() != 2
+		or not pivot_value is Array
+		or (pivot_value as Array).size() != 2
+		or not _is_bounded_integer(image.get("width"), 1, 8192)
+		or not _is_bounded_integer(image.get("height"), 1, 8192)
+		or texture.get_width() != int(image.width)
+		or texture.get_height() != int(image.height)
+	):
+		return _failure(
+			"binding.projected-image",
+			"Projected character image geometry is invalid."
+		)
+	var frame_size := Vector2i(int(cell_value[0]), int(cell_value[1]))
+	var pivot := Vector2i(int(pivot_value[0]), int(pivot_value[1]))
+	var binding_region_value: Variant = binding.get("region")
+	if (
+		frame_size.x < 1
+		or frame_size.y < 1
+		or int(image.width) % frame_size.x != 0
+		or int(image.height) % frame_size.y != 0
+		or pivot.x < 0
+		or pivot.y < 0
+		or pivot.x >= frame_size.x
+		or pivot.y >= frame_size.y
+		or not binding_region_value is Dictionary
+		or not _exact_keys(
+			binding_region_value,
+			["x", "y", "width", "height"]
+		)
+		or not _is_bounded_integer(binding_region_value.get("x"), 0, 8192)
+		or not _is_bounded_integer(binding_region_value.get("y"), 0, 8192)
+		or not _is_bounded_integer(binding_region_value.get("width"), 1, 8192)
+		or not _is_bounded_integer(binding_region_value.get("height"), 1, 8192)
+		or int(binding_region_value.get("x", -1)) != 0
+		or int(binding_region_value.get("y", -1)) != 0
+		or int(binding_region_value.get("width", -1)) != int(image.width)
+		or int(binding_region_value.get("height", -1)) != int(image.height)
+	):
+		return _failure(
+			"binding.projected-image",
+			"Projected character cell geometry is invalid."
+		)
+	var clips_result := _validate_projected_clips(
+		profile,
+		binding.get("poses"),
+		frame_size,
+		Vector2i(int(image.width), int(image.height))
+	)
+	if not clips_result.ok:
+		return clips_result
+	var slot_result := _player_visual(world, profile)
+	if not slot_result.ok:
+		return slot_result
+	return {
+		"ok": true,
+		"profile": profile,
+		"binding": binding,
+		"visual": slot_result.visual,
+		"frame_size": frame_size,
+		"pivot": pivot,
+		"clips": clips_result.clips,
+		"clip_ids": clips_result.clip_ids,
+		"default_animation": _default_animation(profile),
+		"overlay_id": overlay_id,
+		"projection_id": projection_id,
+	}
+
+
+static func _validate_projected_clips(
+	profile: String,
+	poses_value: Variant,
+	frame_size: Vector2i,
+	image_size: Vector2i
+) -> Dictionary:
+	if not poses_value is Array:
+		return _failure(
+			"binding.projected-poses",
+			"Projected character poses must be an array."
+		)
+	var expected_ids := _required_clip_ids(profile)
+	var grouped := {}
+	for clip_id: String in expected_ids:
+		grouped[clip_id] = []
+	for pose_value: Variant in poses_value:
+		if not pose_value is Dictionary:
+			return _failure(
+				"binding.projected-poses",
+				"Projected character pose is invalid."
+			)
+		var pose: Dictionary = pose_value
+		var clip_id := "%s.%s" % [
+			str(pose.get("action", "")),
+			str(pose.get("direction", "")),
+		]
+		var region_value: Variant = pose.get("region")
+		if (
+			not _exact_keys(
+				pose,
+				[
+					"action", "direction", "frame_index", "duration_ms",
+					"region",
+				]
+			)
+			or not grouped.has(clip_id)
+			or not region_value is Dictionary
+			or not _exact_keys(
+				region_value,
+				["x", "y", "width", "height"]
+			)
+			or not _is_bounded_integer(pose.get("frame_index"), 0, 255)
+			or not _is_bounded_integer(pose.get("duration_ms"), 16, 10000)
+		):
+			return _failure(
+				"binding.projected-poses",
+				"Projected character pose identity is invalid."
+			)
+		var region: Dictionary = region_value
+		for key: String in ["x", "y", "width", "height"]:
+			if not _is_bounded_integer(region.get(key), 0, 8192):
+				return _failure(
+					"binding.projected-poses",
+					"Projected character pose region is invalid."
+				)
+		if (
+			int(region.width) != frame_size.x
+			or int(region.height) != frame_size.y
+			or int(region.x) % frame_size.x != 0
+			or int(region.y) % frame_size.y != 0
+			or int(region.x) + frame_size.x > image_size.x
+			or int(region.y) + frame_size.y > image_size.y
+		):
+			return _failure(
+				"binding.projected-poses",
+				"Projected character pose is outside its atlas."
+			)
+		(grouped[clip_id] as Array).append({
+			"frame_index": int(pose.frame_index),
+			"duration_ms": int(pose.duration_ms),
+			"region": Rect2(
+				int(region.x),
+				int(region.y),
+				int(region.width),
+				int(region.height)
+			),
+		})
+	var clips: Array[Dictionary] = []
+	for clip_id: String in expected_ids:
+		var poses: Array = grouped[clip_id]
+		poses.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+			return int(left.frame_index) < int(right.frame_index)
+		)
+		if poses.is_empty():
+			return _failure(
+				"binding.projected-poses",
+				"Projected character clip inventory is incomplete."
+			)
+		var duration := int(poses[0].duration_ms)
+		for index: int in poses.size():
+			if (
+				int(poses[index].frame_index) != index
+				or int(poses[index].duration_ms) != duration
+			):
+				return _failure(
+					"binding.projected-poses",
+					"Projected character clip sequence is invalid."
+				)
+		var separator := clip_id.find(".")
+		var action := clip_id.substr(0, separator)
+		if poses.size() != _projected_frame_count(profile, action):
+			return _failure(
+				"binding.projected-poses",
+				"Projected character clip frame count is incomplete."
+			)
+		var regions: Array[Rect2] = []
+		for pose: Dictionary in poses:
+			regions.append(pose.region)
+		clips.append({
+			"clip_id": clip_id,
+			"fps": 1000.0 / float(duration),
+			"loop": _loop_action(action),
+			"regions": regions,
+		})
+	return {"ok": true, "clips": clips, "clip_ids": expected_ids}
+
+
+static func _build_projected_sprite_frames(
+	clips: Array,
+	texture: Texture2D
+) -> Dictionary:
+	var result := SpriteFrames.new()
+	result.remove_animation("default")
+	for clip: Dictionary in clips:
+		var animation_name := str(clip.clip_id).replace(".", "_")
+		result.add_animation(animation_name)
+		result.set_animation_speed(animation_name, float(clip.fps))
+		result.set_animation_loop(animation_name, bool(clip.loop))
+		for region: Rect2 in clip.regions:
+			var atlas := AtlasTexture.new()
+			atlas.atlas = texture
+			atlas.region = region
+			atlas.filter_clip = true
+			result.add_frame(animation_name, atlas)
+	return {"ok": true, "frames": result}
+
+
+static func _projected_visual_matches(
+	visual: AnimatedSprite2D,
+	context: Dictionary,
+	texture: Texture2D
+) -> bool:
+	if visual.sprite_frames == null:
+		return false
+	var frames: SpriteFrames = visual.sprite_frames
+	if frames.get_animation_names().size() != context.clip_ids.size():
+		return false
+	for clip: Dictionary in context.clips:
+		var animation_name := str(clip.clip_id).replace(".", "_")
+		if (
+			not frames.has_animation(animation_name)
+			or frames.get_frame_count(animation_name) != clip.regions.size()
+			or not is_equal_approx(
+				frames.get_animation_speed(animation_name),
+				float(clip.fps)
+			)
+			or frames.get_animation_loop(animation_name) != bool(clip.loop)
+		):
+			return false
+		for index: int in clip.regions.size():
+			var atlas := frames.get_frame_texture(
+				animation_name,
+				index
+			) as AtlasTexture
+			if (
+				atlas == null
+				or atlas.atlas != texture
+				or atlas.region != clip.regions[index]
+			):
+				return false
+	var frame_size: Vector2i = context.frame_size
+	var pivot: Vector2i = context.pivot
+	var nominal_size := _nominal_frame_size(str(context.profile))
+	return (
+		frames.has_animation(str(visual.animation))
+		and visual.offset.is_equal_approx(Vector2(
+			float(frame_size.x) * 0.5 - float(pivot.x),
+			float(frame_size.y) * 0.5 - float(pivot.y)
+		))
+		and visual.scale.is_equal_approx(Vector2(
+			float(nominal_size.x) / float(frame_size.x),
+			float(nominal_size.y) / float(frame_size.y)
+		))
+		and visual.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST
+		and not visual.flip_h
+		and (visual.get_meta(
+			"mapsoo_horizontal_flip_directions",
+			[]
+		) as Array).is_empty()
+	)
+
+
+static func _projected_success(
+	status: String,
+	context: Dictionary
+) -> Dictionary:
+	return {
+		"ok": true,
+		"status": status,
+		"profile": str(context.profile),
+		"usage_id": str(context.binding.usage_id),
+		"slot_id": str(context.binding.slot_id),
+		"animation_count": context.clip_ids.size(),
+		"default_animation": str(context.default_animation),
+		"human_review": "required",
+	}
 
 
 static func _validate_revision(value: Variant) -> Dictionary:
@@ -626,3 +1069,15 @@ static func _default_animation(profile: String) -> String:
 		"layered-depth-2d":
 			return "idle.near"
 	return ""
+
+
+static func _loop_action(action: String) -> bool:
+	return action in ["idle", "walk", "run", "move", "fall"]
+
+
+static func _projected_frame_count(profile: String, action: String) -> int:
+	if profile == "side-platformer" and action == "run":
+		return 4
+	if profile == "topdown-farm" and action == "walk":
+		return 4
+	return 2

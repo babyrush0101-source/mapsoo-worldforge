@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $godotRoot = Join-Path $repoRoot 'godot'
-$sentinel = '^MAPSOO_WORLD_ART_RUNTIME_OVERLAY_APPLIER_OK profiles=4 terrain=[1-9][0-9]* landmarks=[1-9][0-9]* hazards=8 persisted=4 tamper=6$'
+$sentinel = '^MAPSOO_WORLD_ART_RUNTIME_OVERLAY_APPLIER_OK profiles=4 terrain=[1-9][0-9]* landmarks=[1-9][0-9]* hazards=8 characters=4 persisted=4 tamper=9$'
 
 if ($GodotConsoles.Count -eq 0) {
     $candidates = @(
@@ -85,11 +85,11 @@ foreach ($consolePath in $GodotConsoles) {
         'reviewed landmark sprites attach to existing layout Marker2D nodes'
         'reviewed hazard art and collision derive from projection logical rectangles'
         'all four trusted controllers respawn from materialized layout hazards'
-        'terrain, landmark, and hazard bindings survive PackedScene persistence'
+        'projected player poses reuse the existing character profile runtime'
+        'terrain, landmark, hazard, and character bindings survive PackedScene persistence'
         'incomplete or conflicting catalogs fail before scene mutation'
     )
     not_proven = @(
-        'projected character visual application'
         'human approval of real provider-generated art'
         'physical Raspberry Pi 4B performance'
     )

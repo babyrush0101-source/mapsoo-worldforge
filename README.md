@@ -227,8 +227,10 @@ existing layout markers. Godot 4.3 and 4.7 save/reload tests cover this visible
 terrain and landmark path for all four profiles. A second shared gameplay
 applier derives reviewed hazard art and `Area2D` collision from deterministic
 logical rectangles in the projection; all four trusted controllers prefer
-these confirmed-layout hazards and retain legacy fallback. Character visual
-application is still pending.
+these confirmed-layout hazards and retain legacy fallback. A thin character
+applier then delegates the selected reviewed pose regions to the existing
+character-profile runtime, preserving one animation system for all four
+profiles.
 
 A separately labelled **synthetic technical fixture** now exercises that full
 path without a model call. Its deterministic candidate passed real headless

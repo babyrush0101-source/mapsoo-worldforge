@@ -49,7 +49,7 @@ confirmed dialogue
   -> shared Godot overlay loader        (implemented persistent catalog)
   -> terrain + landmark apply           (implemented shared scene applier)
   -> hazard apply                       (implemented shared gameplay applier)
-  -> character apply                    (next runtime slice)
+  -> character apply                    (implemented existing-runtime adapter)
 ```
 
 Only the first four stages are core domain logic. Image generation, animation,
@@ -205,6 +205,7 @@ The trusted Godot addon now has one shared loader for all four profiles:
 - `godot/addons/mapsoo_importer/mapsoo_world_art_runtime_overlay.gd`;
 - `godot/addons/mapsoo_importer/mapsoo_world_art_runtime_overlay_applier.gd`;
 - `godot/addons/mapsoo_importer/mapsoo_world_art_runtime_hazard_applier.gd`;
+- `godot/addons/mapsoo_importer/mapsoo_world_art_runtime_character_applier.gd`;
 - `godot/tests/world_art_runtime_overlay_smoke.gd`;
 - `godot/tests/world_art_runtime_overlay_applier_smoke.gd`;
 - `scripts/verify-world-art-runtime-overlay-godot.ps1`;
@@ -235,6 +236,15 @@ prove controller respawn, exact binding persistence, and failure before
 mutation for missing bindings, out-of-bounds rectangles, and conflicting
 hazard roots.
 
+The character applier does not introduce another animation runtime. It selects
+exactly one reviewed `character.player.atlas` binding and delegates its
+complete action/direction/frame regions to
+`MapsooCharacterProfileRuntime`. That existing runtime still owns the neutral
+player slot, animation names, loop policy, default animation, pivot, profile
+scale, controller compatibility, and persistence checks. Missing frames,
+ambiguous players, or an already bound different character fail before visual
+replacement.
+
 ## Reusing existing tools
 
 WorldForge should not rebuild mature image-generation products. SpriteCook and
@@ -260,21 +270,21 @@ execution, local PNG normalization, run-set assembly, reviewed selection, and
 Pack-facing runtime projection, overlay assembly, and shared Godot
 load/persistence now have explicit versioned branches. The loaded catalog is
 applied to logical terrain TileSets, landmark scene nodes, and deterministic
-hazard `Area2D` nodes. The portable character-profile runtime is the remaining
-visual application boundary.
+hazard `Area2D` nodes. Reviewed player pose regions reuse the portable
+character-profile runtime rather than introducing a parallel animation path.
 
 A 1.1 plan alone is planning and review evidence only. A
 `WorldArtVariantMap` is a validated runtime binding contract. A persisted
 runtime overlay plus a passing applier receipt proves that its selected terrain
 and landmark pixels are visible and that its reviewed hazards trigger trusted
-controller respawn. It does not yet prove character animation, final human art
-quality, or physical-device performance.
+controller respawn. It also proves the reviewed player atlas drives complete
+profile animations through the existing runtime. It does not yet prove final
+human art quality or physical-device performance.
 
 ## Next vertical slices
 
 1. Complete side-platformer and isometric non-enterable `terrain.water`.
-2. Reuse the character profile runtime to apply projected pose regions.
-3. Add opt-in remote execution only after explicit user authorization.
-4. Run human art review and a physical Raspberry Pi 4B smoke test.
+2. Add opt-in remote execution only after explicit user authorization.
+3. Run human art review and a physical Raspberry Pi 4B smoke test.
 
 No live provider request is authorized or claimed by this core revision.
