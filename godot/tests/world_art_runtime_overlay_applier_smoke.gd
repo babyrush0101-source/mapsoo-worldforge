@@ -909,19 +909,36 @@ func _assert_controller_uses_runtime_hazard(root: Node) -> bool:
 		_fail("Controller did not connect to the materialized runtime hazard.")
 		return false
 	var expected_spawn: Vector2 = player.get("spawn_position")
+	var respawn_events: Array = []
+	player.connect(
+		"player_respawned",
+		func(reason: String) -> void:
+			respawn_events.append({
+				"reason": reason,
+				"position": player.position,
+				"velocity": player.velocity,
+			}),
+		CONNECT_ONE_SHOT
+	)
 	player.position = Vector2(777.0, 555.0)
 	player.velocity = Vector2(100.0, 100.0)
 	area.body_entered.emit(player)
 	await process_frame
 	var expected_reason := str(area.get_meta("mapsoo_kind", "hazard"))
 	if (
-		player.position.distance_to(expected_spawn) > 2.0
+		respawn_events.size() != 1
+		or not (respawn_events[0].position as Vector2).is_equal_approx(
+			expected_spawn
+		)
+		or respawn_events[0].velocity != Vector2.ZERO
+		or respawn_events[0].reason != expected_reason
 		or player.get_meta("mapsoo_last_respawn_reason", "") != expected_reason
 	):
 		scene_root.remove_child(root)
 		_fail(
 			"Materialized runtime hazard did not trigger controller respawn: " +
-			"position=%s spawn=%s velocity=%s reason=%s expected=%s." % [
+			"events=%s position=%s spawn=%s velocity=%s reason=%s expected=%s." % [
+				respawn_events,
 				player.position,
 				expected_spawn,
 				player.velocity,
