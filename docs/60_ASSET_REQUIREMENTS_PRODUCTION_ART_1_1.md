@@ -1,6 +1,7 @@
 # AssetRequirements and ProductionArtPlan 1.1
 
-Status: **implemented core contracts; review-only**
+Status: **implemented requirements, plan, output, and runtime-binding core
+contracts; review-only**
 
 This revision adds the smallest core abstraction needed for a confirmed world
 to request multiple genuinely distinct visual assets. It does not alter the
@@ -36,8 +37,9 @@ confirmed dialogue
   -> AssetRequirements 1.1
   -> ProductionArtPlan 1.1
   -> replaceable GeneratorAdapter       (next integration slice)
-  -> normalized slot inventory          (next integration slice)
-  -> WorldArtVariantMap                 (next runtime slice)
+  -> ProductionArtOutput 1.1            (implemented contract)
+  -> normalized reviewed slot inventory (next integration slice)
+  -> WorldArtVariantMap 1.0             (implemented contract)
   -> reviewed pack + Godot importer     (next runtime slice)
 ```
 
@@ -94,6 +96,35 @@ Validators rebuild the expected plan from canonical requirements and reject
 changed digests, rights, assignments, slots, cells, task paths, prompts, or
 pose mappings.
 
+## Output and runtime binding
+
+`ProductionArtOutput 1.1` records the complete Plan and requirements digests,
+then carries the task's slot IDs, repeated roles, and variant IDs in exact
+mapping order. It accepts only canonical local reference IDs. Provider request
+IDs, remote asset IDs, account data, prompts, and credentials cannot enter the
+document.
+
+`WorldArtVariantMap 1.0` is a separate provider-neutral runtime artifact. It
+requires:
+
+- the exact confirmed `WorldLayoutPlan`;
+- the source-bound `AssetRequirements 1.1` and `ProductionArtPlan 1.1`;
+- a `pass` reviewed-slot inventory with exact plan slots, cells, and portable
+  PNG paths;
+- explicit terrain, hazard, and character selections.
+
+Each confirmed layout landmark is deterministically bound to its matching
+label-free landmark variant. The map binds complete SHA-256 values for layout,
+production plan, reviewed inventory, and review record. It does not choose an
+unreviewed candidate or infer a provider path.
+
+Implemented by:
+
+- `src/core/production-art-output-v1-1.ts`;
+- `schemas/mapsoo-production-art-output-1.1.schema.json`;
+- `src/core/world-art-variant-map.ts`;
+- `schemas/mapsoo-world-art-variant-map-1.0.schema.json`.
+
 ## Reusing existing tools
 
 WorldForge should not rebuild mature image-generation products. SpriteCook and
@@ -121,19 +152,20 @@ accepted by:
 - PNG slot normalization and evidence;
 - `ProductionArtRunSet`;
 - reviewed-pack projectors;
-- `WorldArtVariantMap`;
 - the Godot importers.
 
 Until those stages are implemented and tested for all four profiles, the
 workspace continues to execute the stable 1.0 path. A 1.1 plan is planning and
-review evidence only, not proof that art exists or that a world is playable.
+review evidence only. A `WorldArtVariantMap` is a validated runtime binding
+contract, but not proof that its atlas has been projected into a playable
+Godot pack.
 
 ## Next vertical slices
 
-1. Add provider/output/run-set 1.1 branches while preserving all 1.0 guards.
+1. Add provider, normalizer, and RunSet 1.1 branches while preserving all 1.0
+   guards.
 2. Normalize by slot ID and reject empty, undeclared, or duplicate variants.
-3. Materialize `WorldArtVariantMap` bindings for terrain, landmarks, hazards,
-   and characters.
+3. Project reviewed variant-map bindings into Pack and Godot importers.
 4. Complete side-platformer non-enterable `terrain.water` end to end.
 5. Complete top-down hazard visuals and `Area2D` behavior.
 6. Add visible multi-landmark bindings for all four profiles.
