@@ -1,4 +1,4 @@
-# Mapsoo Worldsmith
+# Mapsoo WorldForge
 
 > Open-source world asset generator for Godot creators.
 
@@ -7,14 +7,14 @@
 
 [Live demo](https://babyrush0101-source.github.io/mapsoo-worldforge/) · [v0.1.0-alpha.9 public release](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/tag/v0.1.0-alpha.9) · [Alpha.9 release notes](docs/releases/v0.1.0-alpha.9.md) · [First-import feedback](https://github.com/babyrush0101-source/mapsoo-worldforge/issues/12)
 
-Mapsoo Worldsmith is evolving from the original `mapsoo-kids` website into a local-first tool that turns a compact world specification into previewable, versioned game-art asset packs for Godot. itch.io distribution is intentionally postponed; GitHub Releases is the audited public channel for this alpha.
+Mapsoo WorldForge is evolving from the original `mapsoo-kids` website into a local-first tool that turns a compact world specification into previewable, versioned game-art asset packs for Godot. itch.io distribution is intentionally postponed; GitHub Releases is the audited public channel for this alpha.
 
-The public repository slug is **`mapsoo-worldforge`**. `Mapsoo Worldsmith`
-remains the alpha generator/protocol identifier because it is embedded in
+The current product name and public repository slug are **Mapsoo WorldForge**
+and **`mapsoo-worldforge`**. `Mapsoo Worldsmith` remains the legacy Pack generator/protocol identity because it is embedded in
 immutable release manifests, schemas, receipts, and verified archive hashes.
-Renaming that identifier in place would break existing pack verification; any
-future product-name migration must use a new schema version with an explicit
-compatibility path.
+Renaming that identity in place would break existing pack verification. New
+product-facing surfaces use WorldForge; the legacy identity changes only
+through a future schema version with an explicit compatibility path.
 
 The **published v0.1.0-alpha.9 prerelease** is the immutable compatibility baseline. It accepts one environment image, one character image, and a short description, then builds a complete `topdown-farm` Pack Schema 0.6.0 ZIP. The exact published pack passed Linux/Windows with Godot 4.3/4.7 and remains pinned at SHA-256 `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`.
 
@@ -456,7 +456,7 @@ Candidate GitHub files are written to `release/v<version>/`; the separate itch.i
 
 No environment variables are required for the portable alpha. See [`.env.example`](.env.example) for the key-handling policy before adding a future provider.
 
-The old marketing website is not part of the new product. Its history remains available in Git, while the active source tree is being rebuilt as the Worldsmith workbench.
+The old marketing website is not part of the new product. Its history remains available in Git, while the active source tree is being rebuilt as the WorldForge workbench.
 
 ## License
 

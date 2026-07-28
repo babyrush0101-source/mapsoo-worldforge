@@ -2,7 +2,7 @@
 
 Status: application-ready draft; do not submit from this file without a final public-state check
 
-Last verified against the official application page: 2026-07-26.
+Last verified against the official application page: 2026-07-28.
 
 Official source: [Codex for Open Source application and selection criteria](https://openai.com/form/codex-for-oss/).
 
@@ -14,9 +14,9 @@ Official source: [Codex for Open Source application and selection criteria](http
 - Role: primary maintainer and creator
 - License: MIT for repository code and documentation; generated/example asset licenses are recorded separately
 - Public releases: nine immutable prereleases through `v0.1.0-alpha.9`
-- Public maintenance trail: more than sixty merged pull requests, public CI, release management, issue templates, security policy, governance, and an open first-import feedback issue
-- Public adoption evidence as of 2026-07-26: 0 stars, 0 forks, no verified independent user import report
-- Current development candidate: four guided world profiles and Raspberry Pi 4B ARM64 packaging exist locally but are not public evidence until reviewed, committed, pushed, and released
+- Public maintenance trail: 46 merged pull requests, public CI, release management, issue templates, security policy, governance, and an open first-import feedback issue
+- Public awareness/adoption evidence as of 2026-07-28: 2 stars total (1 maintainer, 1 independent account), 0 forks, and no verified independent user import report
+- Current development candidate: four guided world profiles and Raspberry Pi 4B ARM64 packaging are visible in public Draft PR #63, but they are not release evidence until reviewed and published
 - itch.io distribution: postponed; it is not a field required by the current official form
 
 Do not count maintainer downloads, CI downloads, automated audits, self-authored issues, or private External Host plans as external usage.
@@ -34,6 +34,8 @@ Never store the ChatGPT account email or OpenAI Organization ID in this reposito
 - GitHub username: `babyrush0101-source`
 - Repository URL: `https://github.com/babyrush0101-source/mapsoo-worldforge`
 - Role: `Primary maintainer`
+- First name: `Josh`
+- Last name: `Zhao`
 - Interest in Codex Security: optional; select only if the maintainer wants it
 - Interest in API credits: optional; requires an OpenAI Organization ID and a truthful use description
 
@@ -41,7 +43,7 @@ Never store the ChatGPT account email or OpenAI Organization ID in this reposito
 
 Maximum allowed by the current form: 500 characters.
 
-> I am the primary maintainer of Mapsoo Worldsmith, an active MIT-licensed, local-first pipeline for portable 2D world asset packs. Nine public prereleases provide versioned PNG/JSON contracts, provenance receipts, reproducible releases, a separate trusted Godot importer, and Linux/Windows tests on Godot 4.3/4.7. It gives indie Godot developers an open way to generate, audit, and reuse world assets. Adoption is early; I do not claim external users yet.
+> I am the primary maintainer of Mapsoo WorldForge, an active MIT-licensed, local-first pipeline for portable 2D world asset packs. Nine public prereleases provide versioned PNG/JSON contracts, provenance receipts, reproducible releases, a separate trusted Godot importer, and Linux/Windows tests on Godot 4.3/4.7. It gives indie Godot developers an open way to generate, audit, and reuse world assets. Adoption is early; I do not claim external users yet.
 
 ## Draft: How will API credits be used?
 
@@ -53,7 +55,7 @@ Maximum allowed by the current form: 500 characters.
 
 Maximum allowed by the current form: 500 characters.
 
-> The repository has public CI, nine immutable prereleases, over sixty merged maintenance PRs, reproducible release ledgers, a live browser demo, a Godot addon, security and contribution policies, and structured feedback. The Alpha12 candidate adds a four-round brief-to-playable-world workflow and ARM64 runtime packaging, but it is not yet claimed as public. itch.io is postponed, and the public evidence ledger explicitly excludes maintainer/CI activity from adoption.
+> The repository has public CI, nine immutable prereleases, 46 merged maintenance PRs, reproducible release ledgers, a live browser demo, a Godot addon, security and contribution policies, and structured feedback. Public Draft PR #63 adds a four-round brief-to-playable-world workflow and ARM64 packaging; it is not release evidence yet. itch.io is postponed, and maintainer/CI activity is excluded from adoption.
 
 ## Final submission gate
 

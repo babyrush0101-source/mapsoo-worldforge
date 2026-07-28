@@ -1,6 +1,6 @@
 # Security Policy
 
-Mapsoo Worldsmith processes local project data and may later connect to optional image-generation providers. Please do not report credentials, private prompts, or vulnerable deployments in a public issue.
+Mapsoo WorldForge processes local project data and may connect to optional image-generation providers. Please do not report credentials, private prompts, or vulnerable deployments in a public issue.
 
 ## Supported versions
 

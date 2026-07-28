@@ -1,6 +1,6 @@
 # Generation Provider SDK
 
-This document describes the first provider boundary in Mapsoo Worldsmith. It is an experimental contributor API for adding generation backends without weakening the deterministic v0.1 export contract.
+This document describes the first provider boundary in Mapsoo WorldForge. It is an experimental contributor API for adding generation backends without weakening the deterministic v0.1 export contract.
 
 ## Current status
 

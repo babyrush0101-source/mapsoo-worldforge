@@ -1,6 +1,6 @@
 # Governance
 
-Mapsoo Worldsmith is currently maintained by its creator, GitHub user **[babyrush0101-source](https://github.com/babyrush0101-source)**, who acts as the **Primary Maintainer**. This document describes the decisions and response expectations that apply while the project has a single maintainer. It does not imply a larger team, an established user community, or external adoption.
+Mapsoo WorldForge is currently maintained by its creator, GitHub user **[babyrush0101-source](https://github.com/babyrush0101-source)**, who acts as the **Primary Maintainer**. This document describes the decisions and response expectations that apply while the project has a single maintainer. It does not imply a larger team, an established user community, or external adoption.
 
 ## Responsibilities
 

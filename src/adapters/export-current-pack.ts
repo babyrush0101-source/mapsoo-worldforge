@@ -4,8 +4,9 @@ import {
   downloadAlpha7PortablePack,
 } from './export-browser-pack-alpha7';
 
-// Keep the workbench exporter and the immutable public-release ledger on the
-// same version after publication; the ledger separately pins remote digests.
+// The Workbench keeps exporting the immutable Alpha.7 compatibility Pack.
+// Later repository releases may bundle it alongside newer importer or profile
+// artifacts; product-facing release labels come from current-public-release.
 export const CURRENT_PACK_VERSION = ALPHA7_PACK_VERSION;
 export const buildCurrentPortablePack = buildAlpha7PortablePack;
 export const downloadCurrentPortablePack = downloadAlpha7PortablePack;

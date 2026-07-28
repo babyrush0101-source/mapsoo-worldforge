@@ -329,13 +329,13 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="Mapsoo Worldsmith home">
+        <a className="brand" href="#top" aria-label="Mapsoo WorldForge home">
           <span className="brand-mark" aria-hidden="true">
             M
           </span>
           <span>
             <strong>Mapsoo</strong>
-            <small>Worldsmith · v{CURRENT_PACK_VERSION}</small>
+            <small>WorldForge · v{CURRENT_PUBLIC_RELEASE.version}</small>
           </span>
         </a>
         <div className="topbar-meta">
@@ -816,7 +816,7 @@ export function App() {
       </main>
 
       <footer>
-        <span>Mapsoo Worldsmith · MIT source</span>
+        <span>Mapsoo WorldForge · MIT source</span>
         <span>Don’t prompt for pictures. Build playable worlds.</span>
       </footer>
     </div>

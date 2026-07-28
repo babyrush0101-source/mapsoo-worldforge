@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Mapsoo Worldsmith will be documented here. The project follows semantic versioning once the first public release is published.
+All notable changes to Mapsoo WorldForge will be documented here. The project follows semantic versioning once the first public release is published.
 
 ## [Unreleased]
 

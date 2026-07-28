@@ -11,7 +11,7 @@ External Host World Engine
   └─ 内容安全与家庭边界
              │ World Spec
              ▼
-Mapsoo Worldsmith
+Mapsoo WorldForge
   ├─ 视觉风格与 palette
   ├─ terrain / props / buildings
   ├─ 地图与预览

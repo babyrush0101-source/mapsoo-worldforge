@@ -95,12 +95,14 @@ itch.io 是未来可选的额外分发面，当前已延期。当前查阅的官
 - GitHub username：`babyrush0101-source`
 - Repository URL：`https://github.com/babyrush0101-source/mapsoo-worldforge`
 - Role：`Primary maintainer`
+- First name：`Josh`
+- Last name：`Zhao`
 - ChatGPT email：由维护者在提交时填写，不写入仓库
 - OpenAI Organization ID：仅在确实申请 API credits 且维护者确认 ID 后填写
 
 ### Why does this project qualify?（500 字符内候选稿）
 
-> I am the primary maintainer of Mapsoo Worldsmith, an active MIT-licensed, local-first pipeline for auditable 2D world asset packs. Nine public prereleases provide audited worlds, a reference-to-farm Pack 0.6 workflow, versioned PNG/JSON, provenance receipts, reproducible builds, a separate Godot importer, and Linux/Windows tests on Godot 4.3/4.7. The project gives indie developers an open, engine-neutral way to create and audit reusable world assets. External adoption is still early.
+> I am the primary maintainer of Mapsoo WorldForge, an active MIT-licensed, local-first pipeline for auditable 2D world asset packs. Nine public prereleases provide audited worlds, a reference-to-farm Pack 0.6 workflow, versioned PNG/JSON, provenance receipts, reproducible builds, a separate Godot importer, and Linux/Windows tests on Godot 4.3/4.7. The project gives indie developers an open, engine-neutral way to create and audit reusable world assets. External adoption is still early.
 
 ### API credits usage（仅在申请时使用，500 字符内候选稿）
 
@@ -114,11 +116,11 @@ Alpha.9 is counted among the nine public prereleases above. Its offline procedur
 
 ### Role
 
-Primary maintainer and creator of Mapsoo Worldsmith.
+Primary maintainer and creator of Mapsoo WorldForge.
 
 ### Project summary
 
-Mapsoo Worldsmith is an open-source, local-first pipeline that turns a versioned world specification into portable, validated 2D asset packs. Its current alpha combines deterministic procedural generation, engine-neutral PNG/JSON manifests, license provenance, executable-free asset packs, and a separately installed trusted Godot importer that derives engine-native resources inside Godot instead of making the browser emit fragile editor files.
+Mapsoo WorldForge is an open-source, local-first pipeline that turns a versioned world specification into portable, validated 2D asset packs. Its current alpha combines deterministic procedural generation, engine-neutral PNG/JSON manifests, license provenance, executable-free asset packs, and a separately installed trusted Godot importer that derives engine-native resources inside Godot instead of making the browser emit fragile editor files.
 
 ### Ecosystem value
 
