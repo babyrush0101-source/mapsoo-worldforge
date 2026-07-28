@@ -103,7 +103,7 @@ function approvedPrivate(): HumanArtReviewReceipt {
     })),
     rights: {
       distribution: 'private',
-      output_license_id: 'LicenseRef-User-Owned',
+      output_license_id: 'LicenseRef-Proprietary',
       permits_redistribution: false,
       source_authority_confirmed: true,
     },
@@ -214,7 +214,7 @@ describe('human art review receipt and production release gate', () => {
       ...base,
       rights: {
         distribution: 'public',
-        output_license_id: 'LicenseRef-User-Owned',
+        output_license_id: 'LicenseRef-Proprietary',
         permits_redistribution: false,
         source_authority_confirmed: true,
       },

@@ -65,7 +65,7 @@ The same visual inspection can authorize two intentionally different outputs:
 | Decision | Distribution | Allowed output license | Redistribution |
 | --- | --- | --- | --- |
 | `blocked` | `internal-review` | `LicenseRef-UNRELEASED` | no |
-| `approved-private` | `private` | `LicenseRef-Proprietary` or `LicenseRef-User-Owned` | no |
+| `approved-private` | `private` | `LicenseRef-Proprietary` | no |
 | `approved-public` | `public` | `CC0-1.0`, `CC-BY-4.0`, or `CC-BY-SA-4.0` | yes |
 
 Attribution is mandatory for the two attribution licenses. A private approval
@@ -91,3 +91,8 @@ redistributable.
 An AI pre-review may suggest revisions, but it cannot set
 `review_method: human-visual-inspection`, sign the attestation or promote the
 world.
+
+The returned authorization is now consumed by the deterministic
+[`Approved world-art delivery kit`](62_APPROVED_WORLD_ART_DELIVERY_KIT.md)
+builder. That adapter preserves the exact RuntimeOverlay ZIP and fails closed
+if the approval, evidence, license or overlay bytes have changed.

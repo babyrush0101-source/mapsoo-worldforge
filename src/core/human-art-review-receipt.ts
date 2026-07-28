@@ -67,7 +67,6 @@ export interface HumanArtReviewReceipt {
     output_license_id:
       | 'LicenseRef-UNRELEASED'
       | 'LicenseRef-Proprietary'
-      | 'LicenseRef-User-Owned'
       | 'CC0-1.0'
       | 'CC-BY-4.0'
       | 'CC-BY-SA-4.0';
@@ -122,7 +121,6 @@ const SHA256 = /^[a-f0-9]{64}$/;
 const CANONICAL_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const PRIVATE_LICENSES = Object.freeze([
   'LicenseRef-Proprietary',
-  'LicenseRef-User-Owned',
 ] as const);
 const PUBLIC_LICENSES = Object.freeze([
   'CC0-1.0',

@@ -188,6 +188,12 @@ art direction, terrain, sprite edges, character continuity, animation,
 collision, originality and rights independently. Private approval cannot grant
 redistribution, public approval requires an allowlisted license, and a generic
 or AI-authored JSON record cannot promote an internal-review candidate.
+An approved result can now enter one thin
+[itch.io-style world-art delivery adapter](docs/62_APPROVED_WORLD_ART_DELIVERY_KIT.md).
+It preserves the exact RuntimeOverlay ZIP and adds only a single-root envelope
+with Quick Start, license, changelog, preview, review evidence and explicit AI
+disclosure. It never logs in or uploads to itch.io, and private approval cannot
+be repackaged as a public download.
 The optional terrain-transition layer now also has a zero-network local
 SpriteCook 17-piece importer. It strips the optional guide grid and reorders
 the documented N/E/S/W cells into the same neutral 4 by 4 mask contract used
