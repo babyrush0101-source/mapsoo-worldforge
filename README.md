@@ -180,6 +180,14 @@ proportions, hair, face, clothing, equipment, distinguishing features and
 palette anchors. Character-bearing remote tasks must compile those exact cues
 into profile-specific prompts. The raw cue sheet stays in the private
 workspace; public Packs and receipts retain no character description.
+The separate
+[human art and delivery release gate](docs/61_HUMAN_ART_RELEASE_GATE.md)
+now binds a person's review to the exact world preview, Godot capture, runtime
+projection, runtime overlay and one-way character identity digest. It checks
+art direction, terrain, sprite edges, character continuity, animation,
+collision, originality and rights independently. Private approval cannot grant
+redistribution, public approval requires an allowlisted license, and a generic
+or AI-authored JSON record cannot promote an internal-review candidate.
 The optional terrain-transition layer now also has a zero-network local
 SpriteCook 17-piece importer. It strips the optional guide grid and reorders
 the documented N/E/S/W cells into the same neutral 4 by 4 mask contract used

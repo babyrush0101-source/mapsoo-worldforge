@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-human-art-review-receipt-1.0.0.json",
+  "title": "Mapsoo human art review receipt 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "review_id",
+    "profile",
+    "reviewer_id",
+    "reviewed_at",
+    "review_method",
+    "bindings",
+    "criteria",
+    "requested_revisions",
+    "rights",
+    "decision",
+    "attestation"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "human-art-review-receipt" },
+    "review_id": { "$ref": "#/$defs/id" },
+    "profile": {
+      "enum": [
+        "topdown-farm",
+        "side-platformer",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "reviewer_id": { "$ref": "#/$defs/id" },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "review_method": { "const": "human-visual-inspection" },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "production_world_review_id",
+        "world_preview_sha256",
+        "godot_capture_sha256",
+        "runtime_projection_sha256",
+        "runtime_overlay_sha256",
+        "character_identity_binding_sha256"
+      ],
+      "properties": {
+        "production_world_review_id": { "$ref": "#/$defs/id" },
+        "world_preview_sha256": { "$ref": "#/$defs/sha256" },
+        "godot_capture_sha256": { "$ref": "#/$defs/sha256" },
+        "runtime_projection_sha256": { "$ref": "#/$defs/sha256" },
+        "runtime_overlay_sha256": { "$ref": "#/$defs/sha256" },
+        "character_identity_binding_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "items": { "$ref": "#/$defs/criterionDecision" },
+      "allOf": [
+        { "$ref": "#/$defs/containsArtDirection" },
+        { "$ref": "#/$defs/containsWorldScale" },
+        { "$ref": "#/$defs/containsWorldRoute" },
+        { "$ref": "#/$defs/containsTerrainTransition" },
+        { "$ref": "#/$defs/containsRoleReadability" },
+        { "$ref": "#/$defs/containsEdgeCleanliness" },
+        { "$ref": "#/$defs/containsCharacterIdentity" },
+        { "$ref": "#/$defs/containsCharacterScale" },
+        { "$ref": "#/$defs/containsCharacterAction" },
+        { "$ref": "#/$defs/containsCharacterDirection" },
+        { "$ref": "#/$defs/containsAnimationLoop" },
+        { "$ref": "#/$defs/containsCollision" },
+        { "$ref": "#/$defs/containsOriginality" },
+        { "$ref": "#/$defs/containsSourceAuthority" },
+        { "$ref": "#/$defs/containsOutputPermission" }
+      ]
+    },
+    "requested_revisions": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/text" }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "distribution",
+        "output_license_id",
+        "permits_redistribution",
+        "source_authority_confirmed"
+      ],
+      "properties": {
+        "distribution": { "enum": ["internal-review", "private", "public"] },
+        "output_license_id": {
+          "enum": [
+            "LicenseRef-UNRELEASED",
+            "LicenseRef-Proprietary",
+            "LicenseRef-User-Owned",
+            "CC0-1.0",
+            "CC-BY-4.0",
+            "CC-BY-SA-4.0"
+          ]
+        },
+        "permits_redistribution": { "type": "boolean" },
+        "source_authority_confirmed": { "type": "boolean" },
+        "attribution": { "$ref": "#/$defs/text" }
+      }
+    },
+    "decision": {
+      "enum": ["blocked", "approved-private", "approved-public"]
+    },
+    "attestation": {
+      "const": "I personally inspected the bound exported assets and Godot capture."
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    },
+    "criterion": {
+      "enum": [
+        "art-direction.coherence",
+        "world.scale-coherence",
+        "world.route-readability",
+        "terrain.transition-quality",
+        "asset.role-readability",
+        "asset.edge-cleanliness",
+        "character.identity-continuity",
+        "character.scale-and-pivot",
+        "character.action-readability",
+        "character.direction-readability",
+        "animation.loop-and-contact",
+        "collision.visual-alignment",
+        "originality.no-recognizable-copy",
+        "rights.source-authority",
+        "rights.output-permission"
+      ]
+    },
+    "criterionDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["criterion", "status"],
+      "properties": {
+        "criterion": { "$ref": "#/$defs/criterion" },
+        "status": { "enum": ["pass", "revise", "not-reviewed"] },
+        "note": { "$ref": "#/$defs/text" }
+      }
+    },
+    "containsArtDirection": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "art-direction.coherence" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsWorldScale": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "world.scale-coherence" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsWorldRoute": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "world.route-readability" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsTerrainTransition": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "terrain.transition-quality" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsRoleReadability": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "asset.role-readability" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsEdgeCleanliness": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "asset.edge-cleanliness" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsCharacterIdentity": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "character.identity-continuity" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsCharacterScale": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "character.scale-and-pivot" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsCharacterAction": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "character.action-readability" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsCharacterDirection": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "character.direction-readability" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsAnimationLoop": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "animation.loop-and-contact" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsCollision": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "collision.visual-alignment" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsOriginality": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "originality.no-recognizable-copy" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsSourceAuthority": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "rights.source-authority" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "containsOutputPermission": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "properties": { "criterion": { "const": "rights.output-permission" } },
+        "required": ["criterion"]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    }
+  }
+}

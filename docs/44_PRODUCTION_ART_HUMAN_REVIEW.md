@@ -119,3 +119,9 @@ A valid approval record must bind:
 
 Until every canonical gate has evidence and the human gate is `human-pass`, the
 production-world review contract requires `release_decision: blocked`.
+
+The concrete JSON receipt, all canonical world/character/rights criteria,
+private-versus-public authorization rules, and the fail-closed promotion
+function are defined in
+[`61_HUMAN_ART_RELEASE_GATE.md`](61_HUMAN_ART_RELEASE_GATE.md). A generic JSON
+file or AI-generated assessment is not sufficient.
