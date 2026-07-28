@@ -112,6 +112,12 @@ jobs:
           MAPSOO_ALPHA12_FIXTURE_ROOT: release/godot-pack-set/alpha12
         run: pnpm exec vitest run --config godot/tests/vitest.alpha12-fixture.config.ts
 
+      - name: Generate the four-profile character family Godot fixture
+        run: >-
+          pnpm exec vite-node
+          scripts/build-character-profile-family-godot-fixture.ts
+          --out release/godot-pack-set/character-family
+
       - name: Bind the public example packs and External Host bridge pack for Godot jobs
         id: candidate-pack
         shell: bash
@@ -292,6 +298,7 @@ jobs:
             res://tests/character_profile_test_fixture.gd
             res://tests/runtime_shell_smoke.gd
             res://tests/character_profile_runtime_smoke.gd
+            res://tests/character_profile_family_runtime_smoke.gd
             res://tests/npc_interaction_controller_smoke.gd
             res://tests/texture_persistence_probe.gd
           )
@@ -356,6 +363,14 @@ jobs:
           set -euo pipefail
           mkdir -p godot/tests/.generated/pack-alpha12
           cp -R "$RUNNER_TEMP/mapsoo-candidate-packs/alpha12/." godot/tests/.generated/pack-alpha12/
+
+      - name: Stage the generated four-profile character family
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p godot/tests/.generated/character-family
+          cp -R "$RUNNER_TEMP/mapsoo-candidate-packs/character-family/." \
+            godot/tests/.generated/character-family/
 
       - name: Import generated resources in the editor
         shell: bash
@@ -599,6 +614,22 @@ jobs:
             exit 1
           fi
 
+      - name: Bind the generated four-profile character family
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-character-family-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/character_profile_family_runtime_smoke.gd 2>&1 \
+            | tee "$log_file"
+          grep -Fq \
+            'MAPSOO_CHARACTER_FAMILY_GODOT_OK profiles=4 clips=84 source_images=false' \
+            "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during character-family binding." >&2
+            exit 1
+          fi
+
       - name: Share deterministic NPC interaction across all world types
         shell: bash
         run: |
@@ -761,6 +792,7 @@ jobs:
             'res://tests/character_profile_test_fixture.gd',
             'res://tests/runtime_shell_smoke.gd',
             'res://tests/character_profile_runtime_smoke.gd',
+            'res://tests/character_profile_family_runtime_smoke.gd',
             'res://tests/npc_interaction_controller_smoke.gd',
             'res://tests/texture_persistence_probe.gd'
           )
@@ -905,6 +937,18 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or ($output | ForEach-Object { $_.ToString() }) -match '^(?:SCRIPT )?ERROR:') {
             throw 'Godot failed to import Pack 0.9 fixture resources.'
           }
+
+      - name: Stage the generated four-profile character family on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $fixtureRoot = Join-Path (Resolve-Path godot/tests).Path '.generated/character-family'
+          New-Item -ItemType Directory -Path $fixtureRoot -Force | Out-Null
+          Copy-Item `
+            -Path (Join-Path $env:RUNNER_TEMP 'mapsoo-candidate-packs/character-family/*') `
+            -Destination $fixtureRoot `
+            -Recurse `
+            -Force
 
       - name: Run Pack 0.9 layered-depth importer contract on Windows
         shell: pwsh
@@ -1055,6 +1099,29 @@ jobs:
             -not ($lines -contains 'MAPSOO_CHARACTER_PROFILE_RUNTIME_OK profiles=4 transforms=2 negative=9')
           ) {
             throw 'Portable character-profile runtime binding failed.'
+          }
+
+      - name: Bind the generated four-profile character family on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(
+            & $env:GODOT_BIN `
+              --headless `
+              --path godot `
+              --script res://tests/character_profile_family_runtime_smoke.gd 2>&1
+          )
+          $lines = @($output | ForEach-Object { $_.ToString() })
+          $lines | ForEach-Object { Write-Host $_ }
+          if (
+            $LASTEXITCODE -ne 0 -or
+            $lines -match '^(?:SCRIPT )?ERROR:' -or
+            -not (
+              $lines -contains
+                'MAPSOO_CHARACTER_FAMILY_GODOT_OK profiles=4 clips=84 source_images=false'
+            )
+          ) {
+            throw 'Generated character-family runtime binding failed.'
           }
 
       - name: Share deterministic NPC interaction across all world types on Windows

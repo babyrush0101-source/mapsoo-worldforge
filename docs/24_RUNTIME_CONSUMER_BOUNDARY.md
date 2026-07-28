@@ -14,7 +14,10 @@ The executable boundary now lives in:
 - `src/core/portable-world-runtime-contract.test.ts`;
 - `src/core/character-profile-revision.ts`;
 - `schemas/mapsoo-character-profile-revision-1.0.schema.json`;
-- `src/core/character-profile-revision.test.ts`.
+- `src/core/character-profile-revision.test.ts`;
+- `src/core/character-profile-family.ts`;
+- `schemas/mapsoo-character-profile-family-1.0.schema.json`;
+- `src/core/character-profile-family.test.ts`;
 - `src/core/confirmed-world-creation-intake.ts`;
 - `schemas/mapsoo-confirmed-world-creation-intake-1.0.schema.json`;
 - `src/core/world-runner-delivery.ts`;
@@ -81,6 +84,12 @@ Changing a character revision must not require rebuilding or overwriting the wor
 Mapsoo does not own a character's private identity record. It may expose an opaque consumer-supplied reference and a public-safe visual identity signature only when the user explicitly permits cross-pack correlation.
 
 `CharacterProfileRevision 1.0` now makes this separation executable. It validates the PNG atlas, frame grid, pivot, complete profile-specific clips, minimized source identity summary, independent output rights, and canonical revision digest. Its `character-profile.bind` message verifies the chosen revision against the world profile and a character-capable neutral entity slot, then projects to the existing `runtime.bind` payload. See `docs/33_CHARACTER_PROFILE_REVISION.md`.
+
+`CharacterProfileFamily 1.0` binds four such revisions to one minimized
+character identity without including the source image, path, raw source-file
+digest or free-text world description. A consumer selects the member matching
+the confirmed world profile and keeps its private character record outside this
+repository. See `docs/68_CHARACTER_PROFILE_FAMILY_CLI.md`.
 
 ## Neutral entity slots
 
