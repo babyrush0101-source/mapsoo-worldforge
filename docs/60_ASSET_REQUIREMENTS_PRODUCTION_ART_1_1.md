@@ -47,7 +47,8 @@ confirmed dialogue
   -> WorldArtRuntimeProjection 1.0      (implemented byte-bound adapter)
   -> WorldArtRuntimeOverlay 1.0         (implemented reproducible ZIP)
   -> shared Godot overlay loader        (implemented persistent catalog)
-  -> terrain/landmark/character apply   (next runtime slice)
+  -> terrain + landmark apply           (implemented shared scene applier)
+  -> hazard + character apply           (next runtime slice)
 ```
 
 Only the first four stages are core domain logic. Image generation, animation,
@@ -197,8 +198,11 @@ distribution.
 The trusted Godot addon now has one shared loader for all four profiles:
 
 - `godot/addons/mapsoo_importer/mapsoo_world_art_runtime_overlay.gd`;
+- `godot/addons/mapsoo_importer/mapsoo_world_art_runtime_overlay_applier.gd`;
 - `godot/tests/world_art_runtime_overlay_smoke.gd`;
-- `scripts/verify-world-art-runtime-overlay-godot.ps1`.
+- `godot/tests/world_art_runtime_overlay_applier_smoke.gd`;
+- `scripts/verify-world-art-runtime-overlay-godot.ps1`;
+- `scripts/verify-world-art-runtime-overlay-applier-godot.ps1`.
 
 It accepts only an extracted `world-art-runtime-overlay.json`, revalidates the
 manifest and projection identities, rights and optional local grant, exact file
@@ -208,6 +212,14 @@ textures and binds the complete catalog to an existing scene only when the
 profile and layout SHA-256 match. Godot 4.3 and 4.7 tests save and reload the
 bound catalog for all four profiles. The data overlay contains and loads no
 scripts, shaders, URLs, or executable resources.
+
+The separate shared applier consumes only that trusted bound catalog. It
+reuses `MapsooLayoutMaterialization/Terrain/LogicalCells`, preserves every
+existing logical-material source ID while replacing its texture with the
+selected reviewed cell, and attaches each selected landmark to the matching
+layout `Marker2D`. It preflights complete material and landmark coverage before
+mutation. Four-profile Godot 4.3 and 4.7 tests prove visible application,
+save/reload persistence, and fail-closed missing/conflicting input handling.
 
 ## Reusing existing tools
 
@@ -233,25 +245,22 @@ The 1.1 contracts intentionally stop before paid generation. Provider
 execution, local PNG normalization, run-set assembly, reviewed selection, and
 Pack-facing runtime projection, overlay assembly, and shared Godot
 load/persistence now have explicit versioned branches. The loaded catalog is
-not yet applied to:
+applied to logical terrain TileSets and landmark scene nodes. Hazard scene
+nodes and the portable character-profile runtime are the remaining visual
+application boundaries.
 
-- logical terrain TileSets;
-- landmark and hazard scene nodes;
-- the portable character-profile runtime.
-
-Until those stages are implemented and tested for all four profiles, the
-workspace continues to execute the stable 1.0 path. A 1.1 plan is planning and
-review evidence only. A `WorldArtVariantMap` is a validated runtime binding
-contract. A persisted runtime overlay is a verified art catalog attached to a
-world scene, not proof that its selected pixels are visible or playable.
+A 1.1 plan alone is planning and review evidence only. A
+`WorldArtVariantMap` is a validated runtime binding contract. A persisted
+runtime overlay plus a passing applier receipt proves that its selected terrain
+and landmark pixels are visible; it does not yet prove hazards, character
+animation, final human art quality, or physical-device performance.
 
 ## Next vertical slices
 
-1. Apply selected terrain materials and per-landmark sprites for all profiles.
-2. Complete side-platformer and isometric non-enterable `terrain.water`.
-3. Complete top-down and layered hazard visuals and `Area2D` behavior.
-4. Reuse the character profile runtime to apply projected pose regions.
-5. Add opt-in remote execution only after explicit user authorization.
-6. Run human art review and a physical Raspberry Pi 4B smoke test.
+1. Complete side-platformer and isometric non-enterable `terrain.water`.
+2. Complete top-down and layered hazard visuals and `Area2D` behavior.
+3. Reuse the character profile runtime to apply projected pose regions.
+4. Add opt-in remote execution only after explicit user authorization.
+5. Run human art review and a physical Raspberry Pi 4B smoke test.
 
 No live provider request is authorized or claimed by this core revision.

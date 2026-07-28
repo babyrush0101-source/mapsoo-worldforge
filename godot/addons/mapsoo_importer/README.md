@@ -105,10 +105,23 @@ overlay ID and distribution, following the Pack 1.0 authorization boundary.
 Portable lossless textures and the complete catalog survive `PackedScene`
 save/reload on Godot 4.3 and 4.7.
 
-This stage persists reviewed pixels but does not yet make them visible.
-Terrain, landmarks, hazards, and character animations are applied by the next
-runtime layer. The overlay remains data-only and cannot supply scripts,
-shaders, URLs, or executable Godot resources.
+After binding, the separate trusted applier makes the selected terrain and
+landmark pixels visible without introducing a second map representation:
+
+```gdscript
+const RuntimeOverlayApplier = preload(
+  "res://addons/mapsoo_importer/mapsoo_world_art_runtime_overlay_applier.gd"
+)
+
+if bound.ok:
+  var applied := RuntimeOverlayApplier.apply(world)
+```
+
+It preserves the logical TileMap's material source IDs and attaches one
+`WorldArt` sprite to each existing landmark marker. Both bindings survive
+`PackedScene` save/reload on Godot 4.3 and 4.7. Hazard and character animation
+application remains pending. The overlay remains data-only and cannot supply
+scripts, shaders, URLs, or executable Godot resources.
 
 ## Safe re-import contract (`alpha.7`)
 

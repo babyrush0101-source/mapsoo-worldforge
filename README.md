@@ -220,8 +220,12 @@ Reviewed 1.1 outputs can now be compiled into a complete, provider-free
 loader rechecks the exact JSON/PNG inventory, bytes, hashes, decoded geometry,
 reviewed cell pixels, rights, profile and layout binding before attaching
 lossless textures to a scene. Godot 4.3 and 4.7 save/reload tests cover all
-four profiles. This is the persistent runtime catalog boundary; terrain,
-landmark, hazard and character visual application is still pending.
+four profiles. A separate shared applier now replaces the existing logical
+TileMap sources with the selected reviewed terrain cells while preserving
+their exact material source IDs, and attaches reviewed landmark sprites to the
+existing layout markers. Godot 4.3 and 4.7 save/reload tests cover this visible
+terrain and landmark path for all four profiles. Hazard and character visual
+application is still pending.
 
 A separately labelled **synthetic technical fixture** now exercises that full
 path without a model call. Its deterministic candidate passed real headless
