@@ -11,11 +11,13 @@ import {
   type ProductionWorldEvidence,
 } from '../core/production-world-review-contract';
 import {
-  WORLD_ART_RUNTIME_OVERLAY_MANIFEST_PATH,
   materializeWorldArtRuntimeOverlay,
   serializeCanonicalWorldArtRuntimeOverlay,
   type WorldArtRuntimeOverlayManifest,
 } from '../core/world-art-runtime-overlay';
+import {
+  readWorldArtRuntimeOverlayArchive,
+} from './read-world-art-runtime-overlay';
 import {
   WORLD_ART_DELIVERY_MANIFEST_PATH,
   buildWorldArtDeliveryKitManifest,
@@ -119,6 +121,11 @@ async function sha256(bytes: Uint8Array): Promise<string> {
     .join('');
 }
 
+function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.byteLength === right.byteLength
+    && left.every((byte, index) => byte === right[index]);
+}
+
 async function payload(
   path: string,
   mediaType: Payload['media_type'],
@@ -155,15 +162,8 @@ async function verifyOverlay(
   sha256: string;
   manifest: WorldArtRuntimeOverlayManifest;
 }>> {
-  let manifest: WorldArtRuntimeOverlayManifest;
-  try {
-    manifest = await materializeWorldArtRuntimeOverlay(artifact.manifest);
-  } catch {
-    return fail('world-art-delivery-build.overlay', 'Runtime overlay manifest is invalid.');
-  }
   if (
-    artifact.filename !== `${manifest.overlay_id}.zip`
-    || !Number.isSafeInteger(artifact.bytes)
+    !Number.isSafeInteger(artifact.bytes)
     || artifact.bytes < 1
     || artifact.bytes > 256 * 1024 * 1024
   ) {
@@ -178,60 +178,29 @@ async function verifyOverlay(
   if (!(read instanceof Uint8Array) || read.byteLength !== artifact.bytes) {
     fail('world-art-delivery-build.overlay', 'Runtime overlay bytes are invalid.');
   }
-  const bytes = Uint8Array.from(read);
-  let archive: JSZip;
+  let verified;
+  let claimedManifestBytes: Uint8Array;
   try {
-    archive = await JSZip.loadAsync(bytes, { checkCRC32: true });
+    verified = await readWorldArtRuntimeOverlayArchive(read);
+    claimedManifestBytes = await serializeCanonicalWorldArtRuntimeOverlay(
+      await materializeWorldArtRuntimeOverlay(artifact.manifest),
+    );
   } catch {
     return fail('world-art-delivery-build.overlay', 'Runtime overlay ZIP is invalid.');
   }
-  const files = Object.values(archive.files);
-  const root = manifest.overlay_id;
-  const expected = new Set([
-    `${root}/${WORLD_ART_RUNTIME_OVERLAY_MANIFEST_PATH}`,
-    ...manifest.files.map(({ path }) => `${root}/${path}`),
-  ]);
+  const verifiedManifestBytes = await serializeCanonicalWorldArtRuntimeOverlay(
+    verified.manifest,
+  );
   if (
-    files.length !== expected.size
-    || files.some((file) => file.dir || !expected.has(file.name))
+    artifact.filename !== `${verified.manifest.overlay_id}.zip`
+    || !equalBytes(claimedManifestBytes, verifiedManifestBytes)
   ) {
     fail(
       'world-art-delivery-build.overlay',
-      'Runtime overlay ZIP inventory differs from its manifest.',
+      'Runtime overlay metadata differs from the verified archive.',
     );
   }
-  const archivedManifest = archive.file(
-    `${root}/${WORLD_ART_RUNTIME_OVERLAY_MANIFEST_PATH}`,
-  );
-  if (!archivedManifest) {
-    fail('world-art-delivery-build.overlay', 'Runtime overlay manifest is missing.');
-  }
-  const canonicalManifest = await serializeCanonicalWorldArtRuntimeOverlay(manifest);
-  const actualManifest = await archivedManifest.async('uint8array');
-  if (
-    actualManifest.byteLength !== canonicalManifest.byteLength
-    || actualManifest.some((byte, index) => byte !== canonicalManifest[index])
-  ) {
-    fail('world-art-delivery-build.overlay', 'Runtime overlay manifest bytes changed.');
-  }
-  for (const record of manifest.files) {
-    const entry = archive.file(`${root}/${record.path}`);
-    if (!entry) {
-      fail('world-art-delivery-build.overlay', `Runtime overlay file is missing: ${record.path}.`);
-    }
-    const fileBytes = await entry.async('uint8array');
-    if (
-      fileBytes.byteLength !== record.bytes
-      || await sha256(fileBytes) !== record.sha256
-    ) {
-      fail('world-art-delivery-build.overlay', `Runtime overlay file changed: ${record.path}.`);
-    }
-  }
-  return Object.freeze({
-    bytes,
-    sha256: await sha256(bytes),
-    manifest,
-  });
+  return verified;
 }
 
 function expectedReviewFiles(

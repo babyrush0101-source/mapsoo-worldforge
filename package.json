@@ -129,6 +129,7 @@
     "production-art:operator-admission:verify": "vite-node scripts/verify-operator-production-art-run-set-admission.ts",
     "production-art:run-set:verify": "vite-node scripts/verify-production-art-run-set.ts",
     "production-art:review-pack:build": "vite-node scripts/build-production-review-pack.ts",
+    "production-art:human-review": "vite-node scripts/run-human-art-review.ts",
     "world-delivery:workspace": "vite-node scripts/run-world-delivery-workspace.ts",
     "world-family:continuity": "vite-node scripts/verify-world-family-continuity.ts",
     "world-runner:pck:build": "node scripts/build-world-runner-pck.mjs",

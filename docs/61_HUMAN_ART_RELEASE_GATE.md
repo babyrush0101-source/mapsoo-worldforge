@@ -1,7 +1,8 @@
 # Human art and delivery release gate
 
-Status: **implemented contract and fail-closed promotion boundary; no real
-candidate is approved by this repository**.
+Status: **implemented contract, artifact-verifying maintainer CLI and
+fail-closed promotion boundary; no real candidate is approved by this
+repository**.
 
 Automated checks can prove that generated files are complete, hash-bound,
 sliceable and loadable in Godot. They cannot decide that a world looks good,
@@ -57,6 +58,61 @@ The canonical JSON shape is
 [`schemas/mapsoo-human-art-review-receipt-1.0.schema.json`](../schemas/mapsoo-human-art-review-receipt-1.0.schema.json).
 Semantic validation and promotion live in
 [`src/core/human-art-review-receipt.ts`](../src/core/human-art-review-receipt.ts).
+The maintainer workflow is exposed by
+[`scripts/run-human-art-review.ts`](../scripts/run-human-art-review.ts).
+
+## Maintainer CLI
+
+The CLI reads the production review and exact RuntimeOverlay ZIP instead of
+asking the operator to copy their hashes. It verifies the ZIP CRC, canonical
+manifest, complete inventory and every file digest, then derives the preview,
+Godot-capture, projection and overlay bindings. The only character input is an
+already-created one-way SHA-256; no character description or reference path is
+accepted.
+
+Create the initial fail-closed record:
+
+```console
+pnpm production-art:human-review -- template \
+  --review <production-world-review.json> \
+  --overlay <world-art-runtime-overlay.zip> \
+  --capture-evidence <rendered-world-capture-evidence-id> \
+  --character-binding <one-way-lowercase-sha256> \
+  --review-id <kebab-case-id> \
+  --reviewer-id <opaque-kebab-case-id> \
+  --reviewed-at <canonical-UTC-ISO> \
+  --out <receipt-template.json>
+```
+
+The result is always `blocked`; all 15 criteria start as `not-reviewed`.
+The human reviewer inspects the assets and edits those decisions. Validate the
+completed content against the same files:
+
+```console
+pnpm production-art:human-review -- validate \
+  --review <production-world-review.json> \
+  --overlay <world-art-runtime-overlay.zip> \
+  --capture-evidence <rendered-world-capture-evidence-id> \
+  --character-binding <one-way-lowercase-sha256> \
+  --receipt <human-completed-receipt.json>
+```
+
+Only a complete approval can be promoted:
+
+```console
+pnpm production-art:human-review -- promote \
+  --review <production-world-review.json> \
+  --overlay <world-art-runtime-overlay.zip> \
+  --capture-evidence <rendered-world-capture-evidence-id> \
+  --character-binding <one-way-lowercase-sha256> \
+  --receipt <human-completed-receipt.json> \
+  --receipt-path <safe/path/in-delivery-kit.json> \
+  --canonical-receipt-out <canonical-receipt.json> \
+  --out <approved-production-world-review.json>
+```
+
+These commands make zero remote requests. They never upload or publish and
+never overwrite different existing output bytes.
 
 ## Private and public decisions
 
@@ -77,14 +133,15 @@ redistributable.
 1. Generate the internal-review candidate through an explicitly authorized
    provider or the offline baseline.
 2. Import the exact runtime overlay in Godot and capture the review evidence.
-3. Call `createHumanArtReviewTemplate()` with opaque reviewer and review IDs
-   plus the six artifact bindings.
+3. Run the CLI `template` command with opaque reviewer and review IDs; it
+   verifies the artifacts and calls `createHumanArtReviewTemplate()`.
 4. Inspect the atlases at 1x and nearest-neighbour 4x, every character action,
    the final world, collisions and traversal.
 5. Record every criterion. Keep the decision blocked when revisions are
    required.
-6. Encode the accepted record with `encodeHumanArtReviewReceipt()`.
-7. Call `promoteProductionWorldReview()` with those exact canonical bytes.
+6. Run the CLI `validate` command against the same exact inputs.
+7. Run the CLI `promote` command; it encodes the canonical record and calls
+   `promoteProductionWorldReview()` with those exact bytes.
 8. Only the returned authorization may be used by a later private delivery or
    public release assembler.
 
