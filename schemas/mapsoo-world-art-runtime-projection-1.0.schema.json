@@ -108,12 +108,14 @@
       "additionalProperties": false,
       "required": ["distribution", "license"],
       "properties": {
-        "distribution": { "enum": ["private", "public"] },
+        "distribution": { "enum": ["private", "internal-review", "public"] },
         "license": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 120,
-          "pattern": "^(?:[A-Za-z0-9.+-]+|LicenseRef-[A-Za-z0-9.+-]+)$"
+          "enum": [
+            "CC0-1.0",
+            "CC-BY-4.0",
+            "CC-BY-SA-4.0",
+            "LicenseRef-Proprietary"
+          ]
         },
         "attribution": {
           "type": "string",

@@ -3,6 +3,10 @@ import type {
   ProductionArtAlphaPolicy,
   ProductionArtRights,
 } from './production-art-contract';
+import {
+  PRODUCTION_ART_DISTRIBUTIONS,
+  PRODUCTION_ART_LICENSES,
+} from './production-art-contract';
 
 export const WORLD_ART_RUNTIME_PROJECTION_VERSION = '1.0.0' as const;
 
@@ -112,7 +116,6 @@ const SAFE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SAFE_ROLE = /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/;
 const SAFE_PATH = /^[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)*$/;
 const PROJECTION_ID = /^world-art-runtime-projection-[a-f0-9]{16}$/;
-const LICENSE_ID = /^(?:[A-Za-z0-9.+-]+|LicenseRef-[A-Za-z0-9.+-]+)$/;
 const USAGE_ORDER: Readonly<Record<WorldArtRuntimeUsageKind, number>> = Object.freeze({
   'terrain-material': 0,
   landmark: 1,
@@ -220,10 +223,13 @@ function materializeRights(value: unknown): ProductionArtRights {
     : ['distribution', 'license', 'attribution'];
   exactKeys(value, expectedKeys, 'Projection rights');
   if (
-    !['private', 'public'].includes(String(value.distribution))
+    !PRODUCTION_ART_DISTRIBUTIONS.includes(
+      value.distribution as ProductionArtRights['distribution'],
+    )
     || typeof value.license !== 'string'
-    || value.license.length > 120
-    || !LICENSE_ID.test(value.license)
+    || !PRODUCTION_ART_LICENSES.includes(
+      value.license as ProductionArtRights['license'],
+    )
     || (
       value.attribution !== undefined
       && (
@@ -238,7 +244,7 @@ function materializeRights(value: unknown): ProductionArtRights {
   }
   return Object.freeze({
     distribution: value.distribution as ProductionArtRights['distribution'],
-    license: value.license,
+    license: value.license as ProductionArtRights['license'],
     ...(value.attribution === undefined ? {} : { attribution: value.attribution }),
   });
 }

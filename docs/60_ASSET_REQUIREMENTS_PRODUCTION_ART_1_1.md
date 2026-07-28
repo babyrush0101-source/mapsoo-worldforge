@@ -1,8 +1,8 @@
 # AssetRequirements and ProductionArtPlan 1.1
 
 Status: **implemented requirements, plan, provider, normalization, run-set,
-output, reviewed selection, and runtime projection contracts; Pack/Godot
-application pending**
+output, reviewed selection, runtime projection, and reproducible runtime
+overlay; Godot application pending**
 
 This revision adds the smallest core abstraction needed for a confirmed world
 to request multiple genuinely distinct visual assets. It does not alter the
@@ -44,7 +44,8 @@ confirmed dialogue
   -> normalized reviewed slot inventory (next integration slice)
   -> WorldArtVariantMap 1.0             (implemented contract)
   -> WorldArtRuntimeProjection 1.0      (implemented byte-bound adapter)
-  -> reviewed pack + Godot importer     (next runtime slice)
+  -> WorldArtRuntimeOverlay 1.0         (implemented reproducible ZIP)
+  -> shared Godot overlay importer      (next runtime slice)
 ```
 
 Only the first four stages are core domain logic. Image generation, animation,
@@ -169,6 +170,28 @@ RunSet, review binding, image digest, region, pose, or selected variant changes
 the identity. Prompt text, reference paths, provider request IDs, remote asset
 IDs, credentials, and private world labels are excluded.
 
+## Runtime overlay
+
+`WorldArtRuntimeOverlay 1.0` packages the complete runtime projection and every
+PNG it references without rebuilding an existing world Pack. It is a small,
+version-neutral layer that a runner can apply to an already loaded world.
+This keeps the public contract independent of the four historical Alpha Pack
+exporters and avoids copying four profile-specific delivery paths.
+
+Implemented by:
+
+- `src/core/world-art-runtime-overlay.ts`;
+- `schemas/mapsoo-world-art-runtime-overlay-1.0.schema.json`;
+- `src/adapters/build-world-art-runtime-overlay.ts`.
+
+The builder rematerializes the projection, verifies every path, byte count,
+SHA-256, and referenced image, rejects extra files, then emits a deterministic
+single-root ZIP. The manifest binds the source projection, layout, review
+record, rights, and review gates. It excludes original references, raw prompts,
+provider metadata, account data, and credentials. Proprietary assets may be
+used for private or internal review, but cannot be marked for public
+distribution.
+
 ## Reusing existing tools
 
 WorldForge should not rebuild mature image-generation products. SpriteCook and
@@ -191,28 +214,25 @@ The implemented SpriteCook boundary is documented in
 
 The 1.1 contracts intentionally stop before paid generation. Provider
 execution, local PNG normalization, run-set assembly, reviewed selection, and
-Pack-facing runtime projection now have explicit versioned branches. The
-result is not yet accepted by:
+Pack-facing runtime projection and overlay assembly now have explicit versioned
+branches. The result is not yet accepted by:
 
-- reviewed-Pack archive assembly;
-- the Godot importers.
+- the shared Godot overlay importer.
 
 Until those stages are implemented and tested for all four profiles, the
 workspace continues to execute the stable 1.0 path. A 1.1 plan is planning and
 review evidence only. A `WorldArtVariantMap` is a validated runtime binding
-contract, but not proof that its atlas has been projected into a playable
-Godot pack.
+contract. A runtime overlay is a verified art layer, not a standalone world
+and not proof that Godot has applied it to a playable scene.
 
 ## Next vertical slices
 
-1. Add the runtime projection and its referenced PNGs to one reproducible,
-   version-neutral reviewed asset overlay.
-2. Load and persist that overlay through the shared Godot importer.
-3. Apply selected terrain materials and per-landmark sprites for all profiles.
-4. Complete side-platformer and isometric non-enterable `terrain.water`.
-5. Complete top-down and layered hazard visuals and `Area2D` behavior.
-6. Reuse the character profile runtime to apply projected pose regions.
-7. Add opt-in remote execution only after explicit user authorization.
-8. Run human art review and a physical Raspberry Pi 4B smoke test.
+1. Load and persist the overlay through the shared Godot importer.
+2. Apply selected terrain materials and per-landmark sprites for all profiles.
+3. Complete side-platformer and isometric non-enterable `terrain.water`.
+4. Complete top-down and layered hazard visuals and `Area2D` behavior.
+5. Reuse the character profile runtime to apply projected pose regions.
+6. Add opt-in remote execution only after explicit user authorization.
+7. Run human art review and a physical Raspberry Pi 4B smoke test.
 
 No live provider request is authorized or claimed by this core revision.
