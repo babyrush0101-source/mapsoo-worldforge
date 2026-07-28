@@ -14,6 +14,7 @@ export interface WorldArtDeliveryFile {
     | 'application/zip'
     | 'image/png'
     | 'video/mp4'
+    | 'video/x-msvideo'
     | 'text/markdown'
     | 'text/plain';
   readonly bytes: number;
@@ -111,6 +112,7 @@ const MEDIA_TYPES = Object.freeze([
   'application/zip',
   'image/png',
   'video/mp4',
+  'video/x-msvideo',
   'text/markdown',
   'text/plain',
 ] as const);
@@ -226,6 +228,7 @@ function materializeFile(value: unknown, index: number): WorldArtDeliveryFile {
     || (value.media_type === 'application/zip' && !path.endsWith('.zip'))
     || (value.media_type === 'image/png' && !path.endsWith('.png'))
     || (value.media_type === 'video/mp4' && !path.endsWith('.mp4'))
+    || (value.media_type === 'video/x-msvideo' && !path.endsWith('.avi'))
     || (value.media_type === 'text/markdown' && !path.endsWith('.md'))
   ) {
     fail('world-art-delivery.invalid-file', `File ${index} media type is invalid.`);

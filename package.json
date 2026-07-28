@@ -130,6 +130,7 @@
     "production-art:run-set:verify": "vite-node scripts/verify-production-art-run-set.ts",
     "production-art:review-pack:build": "vite-node scripts/build-production-review-pack.ts",
     "production-art:technical-review": "vite-node scripts/build-production-world-review.ts",
+    "production-art:technical-review:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-four-profile-production-world-reviews-godot.ps1",
     "production-art:human-review": "vite-node scripts/run-human-art-review.ts",
     "world-delivery:workspace": "vite-node scripts/run-world-delivery-workspace.ts",
     "world-family:continuity": "vite-node scripts/verify-world-family-continuity.ts",

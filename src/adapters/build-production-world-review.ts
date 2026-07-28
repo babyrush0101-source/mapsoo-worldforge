@@ -28,7 +28,11 @@ export interface ProductionWorldReviewBuildInput {
 
 export interface ProductionWorldReviewFile {
   readonly path: string;
-  readonly media_type: 'image/png' | 'video/mp4' | 'application/json';
+  readonly media_type:
+    | 'image/png'
+    | 'video/mp4'
+    | 'video/x-msvideo'
+    | 'application/json';
   readonly bytes: number;
   readonly sha256: string;
   readBytes(): Uint8Array;
@@ -61,8 +65,8 @@ const PATHS = Object.freeze({
   capture: 'review-evidence/rendered-world-capture.png',
   roles: 'review-evidence/role-placement-overlay.png',
   collision: 'review-evidence/art-collision-overlay.png',
-  spawnExit: 'review-evidence/spawn-exit-traversal.mp4',
-  navigation: 'review-evidence/navigation-traversal.mp4',
+  spawnExit: 'review-evidence/spawn-exit-traversal',
+  navigation: 'review-evidence/navigation-traversal',
 } as const);
 
 function fail(
@@ -141,22 +145,44 @@ function pngDimensions(
   return Object.freeze({ width, height });
 }
 
-function assertMp4(bytes: Uint8Array, label: string): void {
+function videoFormat(
+  bytes: Uint8Array,
+  label: string,
+): Readonly<{
+  mediaType: 'video/mp4' | 'video/x-msvideo';
+  extension: 'mp4' | 'avi';
+}> {
   if (bytes.byteLength < 12) {
-    fail('production-world-review-build.media', `${label} is too short for MP4.`);
+    fail('production-world-review-build.media', `${label} video is too short.`);
   }
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const firstBoxBytes = view.getUint32(0);
   if (
-    firstBoxBytes < 12
-    || firstBoxBytes > bytes.byteLength
-    || String.fromCharCode(...bytes.subarray(4, 8)) !== 'ftyp'
+    firstBoxBytes >= 12
+    && firstBoxBytes <= bytes.byteLength
+    && String.fromCharCode(...bytes.subarray(4, 8)) === 'ftyp'
   ) {
-    fail(
-      'production-world-review-build.media',
-      `${label} must begin with a bounded MP4 ftyp box.`,
-    );
+    return Object.freeze({
+      mediaType: 'video/mp4' as const,
+      extension: 'mp4' as const,
+    });
   }
+  const riffSize = view.getUint32(4, true);
+  if (
+    String.fromCharCode(...bytes.subarray(0, 4)) === 'RIFF'
+    && String.fromCharCode(...bytes.subarray(8, 12)) === 'AVI '
+    && riffSize >= 4
+    && riffSize + 8 <= bytes.byteLength
+  ) {
+    return Object.freeze({
+      mediaType: 'video/x-msvideo' as const,
+      extension: 'avi' as const,
+    });
+  }
+  return fail(
+    'production-world-review-build.media',
+    `${label} must be an MP4 ftyp stream or Godot-native RIFF AVI.`,
+  );
 }
 
 async function file(
@@ -206,7 +232,7 @@ async function imageEvidence(
 async function videoEvidence(
   evidenceId: string,
   kind: ProductionWorldEvidence['kind'],
-  path: string,
+  pathWithoutExtension: string,
   bytes: Uint8Array,
   godotVersions: readonly ('4.3' | '4.7')[],
   claim: string,
@@ -214,15 +240,16 @@ async function videoEvidence(
   evidence: ProductionWorldEvidence;
   file: ProductionWorldReviewFile;
 }>> {
-  assertMp4(bytes, evidenceId);
-  const artifact = await file(path, 'video/mp4', bytes);
+  const format = videoFormat(bytes, evidenceId);
+  const path = `${pathWithoutExtension}.${format.extension}`;
+  const artifact = await file(path, format.mediaType, bytes);
   return Object.freeze({
     file: artifact,
     evidence: Object.freeze({
       evidence_id: evidenceId,
       kind,
       path,
-      media_type: 'video/mp4',
+      media_type: format.mediaType,
       bytes: artifact.bytes,
       sha256: artifact.sha256,
       claim,

@@ -37,6 +37,15 @@ function mp4(brand: string): Uint8Array {
   return bytes;
 }
 
+function avi(): Uint8Array {
+  return Uint8Array.from([
+    82, 73, 70, 70,
+    8, 0, 0, 0,
+    65, 86, 73, 32,
+    0, 0, 0, 0,
+  ]);
+}
+
 function fixture(): ProductionWorldReviewBuildInput {
   return {
     reviewId: 'topdown-farm-review-one',
@@ -47,7 +56,7 @@ function fixture(): ProductionWorldReviewBuildInput {
     rolePlacementOverlay: source(png(30)),
     artCollisionOverlay: source(png(40)),
     spawnExitTraversal: source(mp4('mp42')),
-    navigationTraversal: source(mp4('isom')),
+    navigationTraversal: source(avi()),
   };
 }
 
@@ -75,7 +84,7 @@ describe('production world review builder', () => {
       'review-evidence/role-placement-overlay.png',
       'review-evidence/art-collision-overlay.png',
       'review-evidence/spawn-exit-traversal.mp4',
-      'review-evidence/navigation-traversal.mp4',
+      'review-evidence/navigation-traversal.avi',
       'review/production-world-review.json',
     ]);
     expect(left.files.map(({ sha256 }) => sha256)).toEqual(
@@ -112,6 +121,14 @@ describe('production world review builder', () => {
       ...fixture(),
       navigationTraversal: source(Uint8Array.from([
         0, 0, 0, 12, 98, 97, 100, 33, 0, 0, 0, 0,
+      ])),
+    })).rejects.toBeInstanceOf(BuildProductionWorldReviewError);
+    await expect(buildProductionWorldReview({
+      ...fixture(),
+      navigationTraversal: source(Uint8Array.from([
+        82, 73, 70, 70,
+        255, 255, 255, 127,
+        65, 86, 73, 32,
       ])),
     })).rejects.toBeInstanceOf(BuildProductionWorldReviewError);
     await expect(buildProductionWorldReview({

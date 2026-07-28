@@ -42,8 +42,8 @@ identical.
     world-capture.png
     role-overlay.png
     collision-overlay.png
-    spawn-exit.mp4
-    navigation.mp4
+    spawn-exit.avi|mp4
+    navigation.avi|mp4
 ```
 
 The exact evidence names come from the approved review. The archive contains no
@@ -97,4 +97,3 @@ its JSON Schema in
 [`schemas/mapsoo-world-art-delivery-kit-1.0.schema.json`](../schemas/mapsoo-world-art-delivery-kit-1.0.schema.json),
 and the ZIP adapter in
 [`src/adapters/build-approved-world-art-delivery-kit.ts`](../src/adapters/build-approved-world-art-delivery-kit.ts).
-

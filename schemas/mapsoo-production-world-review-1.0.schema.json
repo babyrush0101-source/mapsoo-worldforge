@@ -101,7 +101,13 @@
         },
         "path": { "$ref": "#/$defs/safePath" },
         "media_type": {
-          "enum": ["image/png", "application/json", "video/mp4", "text/plain"]
+          "enum": [
+            "image/png",
+            "application/json",
+            "video/mp4",
+            "video/x-msvideo",
+            "text/plain"
+          ]
         },
         "bytes": { "type": "integer", "minimum": 1, "maximum": 134217728 },
         "sha256": { "$ref": "#/$defs/sha256" },
@@ -185,7 +191,11 @@
             "required": ["kind"]
           },
           "then": {
-            "properties": { "media_type": { "const": "video/mp4" } }
+            "properties": {
+              "media_type": {
+                "enum": ["video/mp4", "video/x-msvideo"]
+              }
+            }
           }
         },
         {

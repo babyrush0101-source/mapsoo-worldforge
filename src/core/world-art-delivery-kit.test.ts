@@ -17,6 +17,7 @@ const HASH = Object.freeze({
   license: 'f'.repeat(64),
   readme: '0'.repeat(64),
   projection: '1'.repeat(64),
+  navigation: '2'.repeat(64),
 });
 
 function draft(): WorldArtDeliveryKitDraft {
@@ -98,6 +99,12 @@ function draft(): WorldArtDeliveryKitDraft {
         media_type: 'application/json',
         bytes: 1024,
         sha256: HASH.human,
+      },
+      {
+        path: 'review-evidence/navigation.avi',
+        media_type: 'video/x-msvideo',
+        bytes: 4096,
+        sha256: HASH.navigation,
       },
       {
         path: 'review-evidence/world-preview.png',

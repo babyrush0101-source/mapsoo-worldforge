@@ -1,6 +1,7 @@
 extends SceneTree
 
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd")
+const ProductionReviewOverlay = preload("res://tests/helpers/production_review_overlay.gd")
 const VIEWPORT_SIZE := Vector2i(640, 360)
 const LAYER_SOURCE_SIZE := Vector2i(1280, 720)
 const PROP_CELL_SIZE := Vector2i(96, 96)
@@ -18,10 +19,13 @@ func _run() -> void:
 	var npc_manifest_path := _argument_value("--npc-manifest=")
 	var repo_root := _argument_value("--repo-root=")
 	var output_path := _argument_value("--output=")
+	var evidence_mode := _evidence_mode()
 	if layers_manifest_path.is_empty() or props_manifest_path.is_empty() \
 			or player_manifest_path.is_empty() or npc_manifest_path.is_empty() \
 			or repo_root.is_empty() or output_path.is_empty():
 		_fail("Pass all four manifests, repo-root and output.")
+		return
+	if evidence_mode.is_empty():
 		return
 
 	var layers_manifest := _load_json(layers_manifest_path)
@@ -86,6 +90,7 @@ func _run() -> void:
 	var player := _add_player(actors, player_texture, player_manifest)
 	if player == null:
 		return
+	_attach_review_overlay(world, evidence_mode)
 
 	for _frame in 3:
 		await physics_frame
@@ -421,6 +426,7 @@ func _add_player(
 	var player := CharacterBody2D.new()
 	player.name = "Player"
 	player.set_script(PlayerController)
+	player.set_meta("mapsoo_role", "character.player.atlas")
 	player.position = Vector2(112, 286)
 	player.collision_layer = 1
 	player.collision_mask = 1
@@ -582,6 +588,25 @@ func _argument_value(prefix: String) -> String:
 		if argument.begins_with(prefix):
 			return argument.trim_prefix(prefix)
 	return ""
+
+
+func _evidence_mode() -> String:
+	var mode := _argument_value("--evidence-mode=")
+	if mode.is_empty():
+		return "normal"
+	if mode not in ["normal", "role-overlay", "collision-overlay", "spawn-exit", "navigation"]:
+		_fail("Unsupported evidence mode: %s." % mode)
+		return ""
+	return mode
+
+
+func _attach_review_overlay(world: Node2D, mode: String) -> void:
+	if mode not in ["role-overlay", "collision-overlay", "navigation"]:
+		return
+	var overlay := ProductionReviewOverlay.new()
+	overlay.name = "ProductionReviewOverlay"
+	world.add_child(overlay)
+	overlay.configure(mode, world)
 
 
 func _fail(message: String) -> void:

@@ -21,7 +21,15 @@ function evidence(
   return {
     evidence_id: evidenceId,
     kind,
-    path: `review-evidence/${evidenceId}.${mediaType === 'image/png' ? 'png' : mediaType === 'video/mp4' ? 'mp4' : 'json'}`,
+    path: `review-evidence/${evidenceId}.${
+      mediaType === 'image/png'
+        ? 'png'
+        : mediaType === 'video/mp4'
+          ? 'mp4'
+          : mediaType === 'video/x-msvideo'
+            ? 'avi'
+            : 'json'
+    }`,
     media_type: mediaType,
     bytes: 4096 + index,
     sha256: HASHES[index],
@@ -87,6 +95,36 @@ describe('production world visual/collision review contract', () => {
       })),
     };
     expect(validateProductionWorldReview(value)).toEqual([]);
+  });
+
+  it('accepts Godot-native AVI traversal and rejects mismatched extensions', () => {
+    const value = contract();
+    const withAvi: ProductionWorldReviewContract = {
+      ...value,
+      evidence: value.evidence.map((record) =>
+        record.evidence_id === 'navigation-video'
+          ? {
+            ...record,
+            path: 'review-evidence/navigation-video.avi',
+            media_type: 'video/x-msvideo' as const,
+          }
+          : record),
+    };
+    const validate = new Ajv2020({ strict: true, allErrors: true })
+      .compile(reviewSchema);
+    expect(validate(withAvi), JSON.stringify(validate.errors)).toBe(true);
+    expect(validateProductionWorldReview(withAvi)).toEqual([]);
+
+    expect(validateProductionWorldReview({
+      ...withAvi,
+      evidence: withAvi.evidence.map((record) =>
+        record.evidence_id === 'navigation-video'
+          ? { ...record, path: 'review-evidence/navigation-video.mp4' }
+          : record),
+    })).toContainEqual(expect.objectContaining({
+      code: 'evidence.media-path',
+      evidence_id: 'navigation-video',
+    }));
   });
 
   it.each([

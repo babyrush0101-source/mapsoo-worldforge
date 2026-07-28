@@ -173,7 +173,7 @@ async function approvedFixture(
       height: 2,
     }),
     reviewFile('review-evidence/spawn-exit.mp4', 'video/mp4', videoA),
-    reviewFile('review-evidence/navigation.mp4', 'video/mp4', videoB),
+    reviewFile('review-evidence/navigation.avi', 'video/x-msvideo', videoB),
   ]);
   const byPath = new Map(files.map((file) => [file.path, file]));
   const evidence = (
@@ -227,7 +227,7 @@ async function approvedFixture(
       evidence(
         'navigation-route',
         'navigation-traversal',
-        'review-evidence/navigation.mp4',
+        'review-evidence/navigation.avi',
       ),
     ],
     gates: [

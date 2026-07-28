@@ -208,6 +208,7 @@
             "application/zip",
             "image/png",
             "video/mp4",
+            "video/x-msvideo",
             "text/markdown",
             "text/plain"
           ]

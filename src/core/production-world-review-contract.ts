@@ -37,7 +37,12 @@ export interface ProductionWorldEvidence {
   readonly evidence_id: string;
   readonly kind: ProductionWorldEvidenceKind;
   readonly path: string;
-  readonly media_type: 'image/png' | 'application/json' | 'video/mp4' | 'text/plain';
+  readonly media_type:
+    | 'image/png'
+    | 'application/json'
+    | 'video/mp4'
+    | 'video/x-msvideo'
+    | 'text/plain';
   readonly bytes: number;
   readonly sha256: string;
   readonly claim: string;
@@ -84,6 +89,7 @@ const EVIDENCE_MEDIA_TYPES = Object.freeze([
   'image/png',
   'application/json',
   'video/mp4',
+  'video/x-msvideo',
   'text/plain',
 ] as const);
 const ALLOWED_TECHNICAL_EVIDENCE: Readonly<Record<ProductionWorldReviewGate, readonly ProductionWorldEvidenceKind[]>> =
@@ -135,6 +141,24 @@ function validateEvidenceRecord(
     issues.push({
       code: 'evidence.path',
       message: 'Evidence paths must be unique safe relative paths.',
+      evidence_id: evidence.evidence_id,
+    });
+  }
+  if (
+    (evidence.media_type === 'image/png' && !evidence.path.endsWith('.png'))
+    || (
+      evidence.media_type === 'application/json'
+      && !evidence.path.endsWith('.json')
+    )
+    || (evidence.media_type === 'video/mp4' && !evidence.path.endsWith('.mp4'))
+    || (
+      evidence.media_type === 'video/x-msvideo'
+      && !evidence.path.endsWith('.avi')
+    )
+  ) {
+    issues.push({
+      code: 'evidence.media-path',
+      message: 'Evidence media type must match its portable file extension.',
       evidence_id: evidence.evidence_id,
     });
   }
@@ -201,10 +225,14 @@ function validateEvidenceRecord(
       evidence_id: evidence.evidence_id,
     });
   }
-  if (videoEvidenceKinds.includes(evidence.kind) && evidence.media_type !== 'video/mp4') {
+  if (
+    videoEvidenceKinds.includes(evidence.kind)
+    && evidence.media_type !== 'video/mp4'
+    && evidence.media_type !== 'video/x-msvideo'
+  ) {
     issues.push({
       code: 'evidence.media-type',
-      message: 'Traversal evidence must be an MP4 recording.',
+      message: 'Traversal evidence must be an MP4 or Godot-native AVI recording.',
       evidence_id: evidence.evidence_id,
     });
   }

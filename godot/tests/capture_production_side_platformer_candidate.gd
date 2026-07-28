@@ -1,6 +1,7 @@
 extends SceneTree
 
 const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd")
+const ProductionReviewOverlay = preload("res://tests/helpers/production_review_overlay.gd")
 const WORLD_SIZE := Vector2i(1280, 720)
 const VIEWPORT_SIZE := Vector2i(640, 360)
 const TERRAIN_CELL := Vector2i(48, 48)
@@ -16,8 +17,11 @@ func _run() -> void:
 	var manifest_path := _argument_value("--manifest=")
 	var repo_root := _argument_value("--repo-root=")
 	var output_path := _argument_value("--output=")
+	var evidence_mode := _evidence_mode()
 	if manifest_path.is_empty() or repo_root.is_empty() or output_path.is_empty():
 		_fail("Pass manifest, repo-root and output.")
+		return
+	if evidence_mode.is_empty():
 		return
 	var manifest := _load_json(manifest_path)
 	if manifest.is_empty() or str(manifest.get("schema_version", "")) != "mapsoo-production-world-preview/1.0":
@@ -77,6 +81,7 @@ func _run() -> void:
 	var foreground_count := _add_foreground(world, repo_root, background_manifest)
 	if foreground_count != 1:
 		return
+	_attach_review_overlay(world, evidence_mode, 2.0)
 
 	for _frame in 90:
 		await physics_frame
@@ -98,7 +103,8 @@ func _run() -> void:
 	if save_error != OK:
 		_fail("Unable to save production candidate render: %s" % error_string(save_error))
 		return
-	world.visible = false
+	if evidence_mode not in ["spawn-exit", "navigation"]:
+		world.visible = false
 
 	player.set("input_enabled", true)
 	Input.action_press("ui_right")
@@ -514,6 +520,7 @@ func _add_player(
 	var player := CharacterBody2D.new()
 	player.name = "Player"
 	player.set_script(PlayerController)
+	player.set_meta("mapsoo_role", "character.player.atlas")
 	player.position = Vector2(spawn.get("x", 0), spawn.get("y", 0))
 	player.collision_layer = 1
 	player.collision_mask = 1
@@ -638,6 +645,25 @@ func _argument_value(prefix: String) -> String:
 		if argument.begins_with(prefix):
 			return argument.trim_prefix(prefix)
 	return ""
+
+
+func _evidence_mode() -> String:
+	var mode := _argument_value("--evidence-mode=")
+	if mode.is_empty():
+		return "normal"
+	if mode not in ["normal", "role-overlay", "collision-overlay", "spawn-exit", "navigation"]:
+		_fail("Unsupported evidence mode: %s." % mode)
+		return ""
+	return mode
+
+
+func _attach_review_overlay(world: Node2D, mode: String, unit_scale: float) -> void:
+	if mode not in ["role-overlay", "collision-overlay", "navigation"]:
+		return
+	var overlay := ProductionReviewOverlay.new()
+	overlay.name = "ProductionReviewOverlay"
+	world.add_child(overlay)
+	overlay.configure(mode, world, unit_scale)
 
 
 func _fail(message: String) -> void:
