@@ -130,6 +130,7 @@
     "world-art-overlay:apply:godot:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-world-art-runtime-overlay-applier-godot.ps1",
     "production-art:model": "vite-node scripts/run-production-art-source.ts",
     "production-art:workflow": "vite-node scripts/run-production-art-workflow.ts",
+    "production-art:world-session": "vite-node scripts/run-complete-world-execution-session.ts",
     "production-art:workflow:verify": "node scripts/verify-production-art-workflow.mjs",
     "production-art:operator-import": "vite-node scripts/materialize-operator-production-art-candidate.ts",
     "production-art:operator-import:verify": "node scripts/verify-operator-production-art-candidate.mjs",

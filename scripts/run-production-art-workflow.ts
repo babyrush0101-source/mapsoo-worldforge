@@ -60,6 +60,9 @@ import {
 import {
   createProductionArtProgress,
 } from '../src/core/production-art-progress';
+import {
+  createCompleteWorldExecutionSnapshot,
+} from '../src/core/complete-world-execution-session';
 import type {
   ProductionArtGenerationEvidence,
 } from '../src/adapters/normalize-production-art-png';
@@ -873,7 +876,7 @@ function taskArguments(
       );
     }
   }
-  if (task.task_id === 'scene-direction') {
+  if (task.kind === 'scene-direction') {
     values.push(
       '--environment-reference',
       job.environment_reference,
@@ -1391,6 +1394,11 @@ function workflowSummary(
     progress,
     human_review: 'required',
     distribution: 'internal-review',
+    execution_snapshot: createCompleteWorldExecutionSnapshot(
+      state,
+      plan,
+      approvedDirectionSha256,
+    ),
   };
 }
 
@@ -1760,7 +1768,7 @@ async function main(): Promise<void> {
       if (!selectedTaskId) break;
       const task = plan.tasks.find(({ task_id: taskId }) => taskId === selectedTaskId);
       if (!task) throw new Error('Selected workflow task is not in the canonical plan.');
-      if (selectedTaskId !== 'scene-direction' && !job.approved_direction) {
+      if (task.kind !== 'scene-direction' && !job.approved_direction) {
         throw new Error(
           'Remote execution requires the frozen approved direction file; no request was started.',
         );
@@ -1768,7 +1776,7 @@ async function main(): Promise<void> {
       state = beginProductionArtWorkflowTask(state, plan, {
         expectedStateRevision: state.state_revision,
         taskId: selectedTaskId,
-        ...(selectedTaskId === 'scene-direction'
+        ...(task.kind === 'scene-direction'
           ? {}
           : { approvedDirectionSha256 }),
         ...(args.retryTask

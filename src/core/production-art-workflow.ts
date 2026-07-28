@@ -263,8 +263,14 @@ function assertPlanIdentity(
 function sceneTask(
   plan: ProductionArtWorkflowPlan,
 ): ProductionArtWorkflowPlanTask | undefined {
-  return plan.tasks.find(({ task_id: taskId }) =>
-    taskId === 'scene-direction');
+  const tasks = plan.tasks.filter(({ kind }) => kind === 'scene-direction');
+  if (tasks.length > 1) {
+    fail(
+      'workflow.scene-task-ambiguous',
+      'Canonical workflow may contain at most one scene-direction task.',
+    );
+  }
+  return tasks[0];
 }
 
 function isLegacyPlayerTask(task: ProductionArtWorkflowPlanTask): boolean {
@@ -444,7 +450,7 @@ export function parseProductionArtWorkflowState(
       fail('workflow.invalid-state', 'A started workflow task requires an attempt.');
     }
     if (candidate.status === 'running') runningTasks += 1;
-    if (expectedTask.task_id !== 'scene-direction') {
+    if (expectedTask.kind !== 'scene-direction') {
       downstreamAttempts += candidate.attempts.length;
     }
     for (let attemptIndex = 0; attemptIndex < candidate.attempts.length; attemptIndex += 1) {
@@ -593,10 +599,12 @@ function sceneState(
   state: ProductionArtWorkflowState,
   plan: ProductionArtWorkflowPlan,
 ): ProductionArtWorkflowTaskState {
-  if (!sceneTask(plan)) {
+  const plannedScene = sceneTask(plan);
+  if (!plannedScene) {
     fail('workflow.scene-task-missing', 'Canonical workflow has no scene-direction task.');
   }
-  const scene = state.tasks.find(({ task_id: taskId }) => taskId === 'scene-direction');
+  const scene = state.tasks.find(({ task_id: taskId }) =>
+    taskId === plannedScene.task_id);
   if (!scene) {
     fail('workflow.scene-task-missing', 'Canonical workflow has no scene-direction task.');
   }
@@ -676,7 +684,8 @@ export function selectNextProductionArtWorkflowTask(
     return Object.freeze({ phase: 'review-required' });
   }
   const next = state.tasks.find(({ status, task_id: taskId }) =>
-    taskId !== 'scene-direction' && status === 'pending');
+    status === 'pending'
+    && planTaskById(plan, taskId).kind !== 'scene-direction');
   if (next) return Object.freeze({ phase: 'ready', task_id: next.task_id });
   return Object.freeze({ phase: 'complete' });
 }
@@ -720,7 +729,7 @@ export function beginProductionArtWorkflowTask(
     fail('workflow.budget-exhausted', 'Remote request budget is exhausted.');
   }
   const task = taskById(state, input.taskId);
-  planTaskById(plan, input.taskId);
+  const plannedTask = planTaskById(plan, input.taskId);
   const retry = task.status === 'rejected' || task.status === 'uncertain';
   if (
     task.status === 'succeeded'
@@ -751,7 +760,7 @@ export function beginProductionArtWorkflowTask(
     }
   }
 
-  if (input.taskId === 'scene-direction') {
+  if (plannedTask.kind === 'scene-direction') {
     if (task.attempts.length > 0 && !retry) {
       fail('workflow.task-not-runnable', 'Scene direction has already been attempted.');
     }
@@ -787,7 +796,7 @@ export function beginProductionArtWorkflowTask(
   (next.tasks as ProductionArtWorkflowTaskState[])[taskIndex] = replacement;
   (next as { state_revision: number }).state_revision += 1;
   (next as { requests_started: number }).requests_started = requestOrdinal;
-  if (input.taskId !== 'scene-direction') {
+  if (plannedTask.kind !== 'scene-direction') {
     (next as { approved_direction_sha256?: string }).approved_direction_sha256 =
       input.approvedDirectionSha256 ?? state.approved_direction_sha256;
   }

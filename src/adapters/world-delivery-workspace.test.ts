@@ -332,11 +332,37 @@ describe('world delivery workspace preparation', () => {
         maxBuffer: 1024 * 1024,
       });
     expect(JSON.parse(completeArtDryRunStdout)).toMatchObject({
-      status: 'awaiting-direction-approval',
+      status: 'ready',
       mode: 'dry-run',
       profile,
       total_tasks: manifest.complete_art_plan.task_count,
       remote_request_count_this_invocation: 0,
+    });
+    const { stdout: completeWorldSessionStdout } =
+      await execFileAsync(process.execPath, [
+        resolve(process.cwd(), 'node_modules/vite-node/vite-node.mjs'),
+        resolve(
+          process.cwd(),
+          'scripts/run-complete-world-execution-session.ts',
+        ),
+        '--job',
+        completeArtJobPath,
+      ], {
+        cwd: process.cwd(),
+        windowsHide: true,
+        maxBuffer: 1024 * 1024,
+      });
+    expect(JSON.parse(completeWorldSessionStdout)).toMatchObject({
+      document_type: 'complete-world-execution-dry-run',
+      mode: 'dry-run',
+      remote_request_count: 0,
+      preview: {
+        profile,
+        scope: 'scene-direction-only',
+        maximum_remote_requests: 1,
+        executable: true,
+        retry_policy: 'never',
+      },
     });
     const assetRequirements = JSON.parse(await readFile(
       resolve(workspace, 'asset-requirements.json'),
@@ -501,6 +527,14 @@ describe('world delivery workspace preparation', () => {
         resolve(workspace, manifest.complete_art_plan.requirements_path),
         '--production-art-plan-file',
         resolve(workspace, manifest.complete_art_plan.plan_path),
+        '--environment-reference',
+        completeJob.environment_reference,
+        '--environment-reference-id',
+        completeJob.private_input_binding.environment_reference_id,
+        '--character-reference',
+        completeJob.character_reference,
+        '--character-reference-id',
+        completeJob.private_input_binding.character_reference_id,
       ], {
         cwd: process.cwd(),
         windowsHide: true,

@@ -76,7 +76,7 @@ export interface ProductionArtProgress {
 
 function nextAction(
   phase: ProductionArtWorkflowPhase,
-  nextTaskId: string | undefined,
+  nextTaskKind: ProductionArtTaskKind | undefined,
 ): ProductionArtProgressNextAction {
   if (phase === 'running') return 'wait-for-running-task';
   if (phase === 'awaiting-scene-direction') {
@@ -92,7 +92,7 @@ function nextAction(
     return 'start-new-budgeted-workflow';
   }
   if (phase === 'complete') return 'assemble-production-review-pack';
-  return nextTaskId === 'scene-direction'
+  return nextTaskKind === 'scene-direction'
     ? 'generate-scene-direction'
     : 'generate-next-asset-task';
 }
@@ -143,8 +143,11 @@ export function createProductionArtProgress(
   const succeededRoles = tasks
     .filter(({ status }) => status === 'succeeded')
     .reduce((sum, task) => sum + task.roles.length, 0);
-  const scene = state.tasks.find(({ task_id: taskId }) =>
-    taskId === 'scene-direction');
+  const scenePlanTask = plan.tasks.find(({ kind }) => kind === 'scene-direction');
+  const scene = scenePlanTask
+    ? state.tasks.find(({ task_id: taskId }) =>
+      taskId === scenePlanTask.task_id)
+    : undefined;
   const sceneDigest = scene?.attempts.at(-1)?.artifact?.normalized_sha256;
   const externalDirection = state.approved_direction_sha256
     ?? approvedDirectionSha256;
@@ -169,7 +172,13 @@ export function createProductionArtProgress(
     profile: state.profile,
     state_revision: state.state_revision,
     phase: selection.phase,
-    next_action: nextAction(selection.phase, selection.task_id),
+    next_action: nextAction(
+      selection.phase,
+      selection.task_id
+        ? plan.tasks.find(({ task_id: taskId }) =>
+          taskId === selection.task_id)?.kind
+        : undefined,
+    ),
     ...(selection.task_id ? { next_task_id: selection.task_id } : {}),
     ...(activeTaskId ? { active_task_id: activeTaskId } : {}),
     attention_task_ids: attentionTaskIds,

@@ -29,6 +29,21 @@ function plan() {
   });
 }
 
+function suffixedScenePlan() {
+  const base = plan();
+  return {
+    ...base,
+    plan_id: 'layered-depth-2d-suffixed-scene-plan',
+    tasks: base.tasks.map((task) =>
+      task.kind === 'scene-direction'
+        ? {
+          ...task,
+          task_id: 'scene-direction-world-preview-base-001',
+        }
+        : task),
+  };
+}
+
 function completePlan(): ProductionArtPlanV1_1 {
   const task = (
     taskId: string,
@@ -177,6 +192,57 @@ describe('production art workflow', () => {
     });
     expect(Object.isFrozen(running)).toBe(true);
     expect(Object.isFrozen(running.tasks[0].attempts)).toBe(true);
+  });
+
+  it('recognizes a complete-plan scene direction by kind instead of a fixed task id', () => {
+    const productionPlan = suffixedScenePlan();
+    const sceneTask = productionPlan.tasks.find(({ kind }) =>
+      kind === 'scene-direction')!;
+    let state = createProductionArtWorkflowState({
+      workflowId: 'suffixed-scene-workflow-v1',
+      plan: productionPlan,
+      provider: {
+        id: 'test-provider',
+        model: 'test-model',
+        quality: 'medium',
+      },
+      inputBindingSha256: SHA_A,
+      privateInputBinding: {
+        confirmed_intake_sha256: SHA_B,
+        seed: 'suffixed-scene-seed',
+        character_identity_digest_sha256: SHA_C,
+        environment_reference_id: 'suffixed-environment',
+        character_reference_id: 'suffixed-character',
+      },
+      requestBudget: productionPlan.tasks.length,
+    });
+    expect(selectNextProductionArtWorkflowTask(state, productionPlan)).toEqual({
+      phase: 'ready',
+      task_id: sceneTask.task_id,
+    });
+
+    state = beginProductionArtWorkflowTask(state, productionPlan, {
+      expectedStateRevision: state.state_revision,
+      taskId: sceneTask.task_id,
+    });
+    state = completeProductionArtWorkflowTask(state, productionPlan, {
+      expectedStateRevision: state.state_revision,
+      taskId: sceneTask.task_id,
+      attempt: 1,
+      outcome: 'succeeded',
+      artifact: artifact(sceneTask.task_id),
+    });
+    expect(selectNextProductionArtWorkflowTask(state, productionPlan)).toEqual({
+      phase: 'awaiting-direction-approval',
+    });
+    expect(selectNextProductionArtWorkflowTask(
+      state,
+      productionPlan,
+      SHA_C,
+    )).toMatchObject({
+      phase: 'ready',
+      task_id: productionPlan.tasks[1].task_id,
+    });
   });
 
   it('requires exact human-approved direction bytes before downstream work', () => {

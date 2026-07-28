@@ -32,6 +32,21 @@ function plan(profile: WorldAssetProfile): ProductionArtPlan {
   });
 }
 
+function suffixedScenePlan(profile: WorldAssetProfile): ProductionArtPlan {
+  const base = plan(profile);
+  return {
+    ...base,
+    plan_id: `${profile}-suffixed-scene-plan`,
+    tasks: base.tasks.map((task) =>
+      task.kind === 'scene-direction'
+        ? {
+          ...task,
+          task_id: 'scene-direction-world-preview-base-001',
+        }
+        : task),
+  };
+}
+
 function initial(productionPlan: ProductionArtPlan): ProductionArtWorkflowState {
   return createProductionArtWorkflowState({
     workflowId: `progress-${productionPlan.profile}-v1`,
@@ -100,6 +115,28 @@ function succeed(
 }
 
 describe('production art progress', () => {
+  it.each(WORLD_ASSET_PROFILES)(
+    'reports a suffixed scene-direction task correctly for %s',
+    (profile) => {
+      const productionPlan = suffixedScenePlan(profile);
+      const sceneTask = productionPlan.tasks.find(({ kind }) =>
+        kind === 'scene-direction')!;
+      const progress = createProductionArtProgress(
+        initial(productionPlan),
+        productionPlan,
+      );
+      expect(progress).toMatchObject({
+        phase: 'ready',
+        next_action: 'generate-scene-direction',
+        next_task_id: sceneTask.task_id,
+        direction: {
+          generated: false,
+          approved: false,
+        },
+      });
+    },
+  );
+
   it.each(WORLD_ASSET_PROFILES)(
     'publishes schema-valid privacy-minimized initial progress for %s',
     (profile) => {
