@@ -118,6 +118,11 @@ jobs:
           scripts/build-character-profile-family-godot-fixture.ts
           --out release/godot-pack-set/character-family
 
+      - name: Generate the reviewed-family runtime contract fixture
+        run: >-
+          pnpm character-family:reviewed:runtime:fixture --
+          --out release/godot-pack-set/reviewed-character-family
+
       - name: Bind the public example packs and External Host bridge pack for Godot jobs
         id: candidate-pack
         shell: bash
@@ -299,6 +304,7 @@ jobs:
             res://tests/runtime_shell_smoke.gd
             res://tests/character_profile_runtime_smoke.gd
             res://tests/character_profile_family_runtime_smoke.gd
+            res://tests/reviewed_character_profile_family_runtime_acceptance.gd
             res://tests/npc_interaction_controller_smoke.gd
             res://tests/texture_persistence_probe.gd
           )
@@ -371,6 +377,14 @@ jobs:
           mkdir -p godot/tests/.generated/character-family
           cp -R "$RUNNER_TEMP/mapsoo-candidate-packs/character-family/." \
             godot/tests/.generated/character-family/
+
+      - name: Stage the reviewed-family runtime contract fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p godot/tests/.generated/reviewed-character-family
+          cp -R "$RUNNER_TEMP/mapsoo-candidate-packs/reviewed-character-family/." \
+            godot/tests/.generated/reviewed-character-family/
 
       - name: Import generated resources in the editor
         shell: bash
@@ -630,6 +644,22 @@ jobs:
             exit 1
           fi
 
+      - name: Bind exact reviewed-family artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$RUNNER_TEMP/mapsoo-reviewed-character-family-${{ matrix.version }}.log"
+          "$GODOT_BIN" --headless --path godot \
+            --script res://tests/reviewed_character_profile_family_runtime_acceptance.gd \
+            2>&1 | tee "$log_file"
+          grep -Fq \
+            'MAPSOO_REVIEWED_CHARACTER_FAMILY_GODOT_OK profiles=4 clips=84 exact_artifacts=true' \
+            "$log_file"
+          if grep -Eq '^(SCRIPT )?ERROR:' "$log_file"; then
+            echo "Godot emitted an engine error during reviewed-family binding." >&2
+            exit 1
+          fi
+
       - name: Share deterministic NPC interaction across all world types
         shell: bash
         run: |
@@ -793,6 +823,7 @@ jobs:
             'res://tests/runtime_shell_smoke.gd',
             'res://tests/character_profile_runtime_smoke.gd',
             'res://tests/character_profile_family_runtime_smoke.gd',
+            'res://tests/reviewed_character_profile_family_runtime_acceptance.gd',
             'res://tests/npc_interaction_controller_smoke.gd',
             'res://tests/texture_persistence_probe.gd'
           )
@@ -946,6 +977,18 @@ jobs:
           New-Item -ItemType Directory -Path $fixtureRoot -Force | Out-Null
           Copy-Item `
             -Path (Join-Path $env:RUNNER_TEMP 'mapsoo-candidate-packs/character-family/*') `
+            -Destination $fixtureRoot `
+            -Recurse `
+            -Force
+
+      - name: Stage the reviewed-family runtime contract fixture on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $fixtureRoot = Join-Path (Resolve-Path godot/tests).Path '.generated/reviewed-character-family'
+          New-Item -ItemType Directory -Path $fixtureRoot -Force | Out-Null
+          Copy-Item `
+            -Path (Join-Path $env:RUNNER_TEMP 'mapsoo-candidate-packs/reviewed-character-family/*') `
             -Destination $fixtureRoot `
             -Recurse `
             -Force
@@ -1122,6 +1165,29 @@ jobs:
             )
           ) {
             throw 'Generated character-family runtime binding failed.'
+          }
+
+      - name: Bind exact reviewed-family artifacts on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = @(
+            & $env:GODOT_BIN `
+              --headless `
+              --path godot `
+              --script res://tests/reviewed_character_profile_family_runtime_acceptance.gd 2>&1
+          )
+          $lines = @($output | ForEach-Object { $_.ToString() })
+          $lines | ForEach-Object { Write-Host $_ }
+          if (
+            $LASTEXITCODE -ne 0 -or
+            $lines -match '^(?:SCRIPT )?ERROR:' -or
+            -not (
+              $lines -contains
+                'MAPSOO_REVIEWED_CHARACTER_FAMILY_GODOT_OK profiles=4 clips=84 exact_artifacts=true'
+            )
+          ) {
+            throw 'Reviewed character-family exact-artifact binding failed.'
           }
 
       - name: Share deterministic NPC interaction across all world types on Windows

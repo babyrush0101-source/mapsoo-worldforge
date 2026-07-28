@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-reviewed-character-profile-family-runtime-acceptance-1.0.schema.json",
+  "title": "Mapsoo Reviewed Character Profile Family Runtime Acceptance 1.0",
+  "description": "Exact-artifact Godot 4.3 and 4.7 technical runtime evidence for one reviewed four-profile character family. It does not repeat visual, human, or physical Raspberry Pi review.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "acceptance_id",
+    "family",
+    "profiles",
+    "runs",
+    "privacy",
+    "claims",
+    "status"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": {
+      "const": "reviewed-character-profile-family-runtime-acceptance"
+    },
+    "acceptance_id": {
+      "type": "string",
+      "pattern": "^reviewed-character-runtime-[a-f0-9]{16}$"
+    },
+    "family": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "family_id",
+        "manifest_path",
+        "manifest_bytes",
+        "manifest_sha256",
+        "character_id",
+        "character_identity_sha256"
+      ],
+      "properties": {
+        "family_id": { "$ref": "#/$defs/id" },
+        "manifest_path": {
+          "const": "reviewed-character-profile-family.json"
+        },
+        "manifest_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "character_id": { "$ref": "#/$defs/id" },
+        "character_identity_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "$ref": "#/$defs/sideProfile" },
+        { "$ref": "#/$defs/isometricProfile" },
+        { "$ref": "#/$defs/topdownProfile" },
+        { "$ref": "#/$defs/layeredProfile" }
+      ],
+      "items": false
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "$ref": "#/$defs/run43" },
+        { "$ref": "#/$defs/run47" }
+      ],
+      "items": false
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "local_paths_included",
+        "source_images_included",
+        "raw_engine_output_included",
+        "reviewer_identity_included"
+      ],
+      "properties": {
+        "local_paths_included": { "const": false },
+        "source_images_included": { "const": false },
+        "raw_engine_output_included": { "const": false },
+        "reviewer_identity_included": { "const": false }
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact_family_artifacts_tested",
+        "technical_runtime_compatibility",
+        "visual_quality_reassessed",
+        "human_art_review_reassessed",
+        "physical_raspberry_pi_tested"
+      ],
+      "properties": {
+        "exact_family_artifacts_tested": { "const": true },
+        "technical_runtime_compatibility": { "const": "passed" },
+        "visual_quality_reassessed": { "const": false },
+        "human_art_review_reassessed": { "const": false },
+        "physical_raspberry_pi_tested": { "const": false }
+      }
+    },
+    "status": { "const": "technical-runtime-pass" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "profile_revision_id",
+        "revision_path",
+        "revision_bytes",
+        "revision_sha256",
+        "atlas_path",
+        "atlas_bytes",
+        "atlas_sha256",
+        "clip_count"
+      ],
+      "properties": {
+        "profile": {
+          "enum": [
+            "side-platformer",
+            "isometric-action",
+            "topdown-farm",
+            "layered-depth-2d"
+          ]
+        },
+        "profile_revision_id": { "$ref": "#/$defs/id" },
+        "revision_path": { "$ref": "#/$defs/safePath" },
+        "revision_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "revision_sha256": { "$ref": "#/$defs/sha256" },
+        "atlas_path": { "$ref": "#/$defs/safePath" },
+        "atlas_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 536870912
+        },
+        "atlas_sha256": { "$ref": "#/$defs/sha256" },
+        "clip_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        }
+      }
+    },
+    "sideProfile": {
+      "allOf": [
+        { "$ref": "#/$defs/member" },
+        {
+          "type": "object",
+          "properties": {
+            "profile": { "const": "side-platformer" },
+            "revision_path": {
+              "const": "profiles/side-platformer/character-profile-revision.json"
+            },
+            "atlas_path": {
+              "const": "profiles/side-platformer/character-profile-atlas.png"
+            }
+          }
+        }
+      ]
+    },
+    "isometricProfile": {
+      "allOf": [
+        { "$ref": "#/$defs/member" },
+        {
+          "type": "object",
+          "properties": {
+            "profile": { "const": "isometric-action" },
+            "revision_path": {
+              "const": "profiles/isometric-action/character-profile-revision.json"
+            },
+            "atlas_path": {
+              "const": "profiles/isometric-action/character-profile-atlas.png"
+            }
+          }
+        }
+      ]
+    },
+    "topdownProfile": {
+      "allOf": [
+        { "$ref": "#/$defs/member" },
+        {
+          "type": "object",
+          "properties": {
+            "profile": { "const": "topdown-farm" },
+            "revision_path": {
+              "const": "profiles/topdown-farm/character-profile-revision.json"
+            },
+            "atlas_path": {
+              "const": "profiles/topdown-farm/character-profile-atlas.png"
+            }
+          }
+        }
+      ]
+    },
+    "layeredProfile": {
+      "allOf": [
+        { "$ref": "#/$defs/member" },
+        {
+          "type": "object",
+          "properties": {
+            "profile": { "const": "layered-depth-2d" },
+            "revision_path": {
+              "const": "profiles/layered-depth-2d/character-profile-revision.json"
+            },
+            "atlas_path": {
+              "const": "profiles/layered-depth-2d/character-profile-atlas.png"
+            }
+          }
+        }
+      ]
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compatibility_version",
+        "engine_version",
+        "executable_sha256",
+        "host_platform",
+        "host_architecture",
+        "mode",
+        "profiles_loaded",
+        "clips_loaded",
+        "result"
+      ],
+      "properties": {
+        "compatibility_version": { "enum": ["4.3", "4.7"] },
+        "engine_version": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 96,
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+-]+$"
+        },
+        "executable_sha256": { "$ref": "#/$defs/sha256" },
+        "host_platform": {
+          "enum": ["windows", "linux", "macos"]
+        },
+        "host_architecture": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[a-z0-9_-]+$"
+        },
+        "mode": { "const": "headless-character-family-bind" },
+        "profiles_loaded": { "const": 4 },
+        "clips_loaded": { "const": 84 },
+        "result": { "const": "pass" }
+      }
+    },
+    "run43": {
+      "allOf": [
+        { "$ref": "#/$defs/run" },
+        {
+          "type": "object",
+          "properties": {
+            "compatibility_version": { "const": "4.3" },
+            "engine_version": {
+              "type": "string",
+              "pattern": "^4\\.3\\."
+            }
+          }
+        }
+      ]
+    },
+    "run47": {
+      "allOf": [
+        { "$ref": "#/$defs/run" },
+        {
+          "type": "object",
+          "properties": {
+            "compatibility_version": { "const": "4.7" },
+            "engine_version": {
+              "type": "string",
+              "pattern": "^4\\.7\\."
+            }
+          }
+        }
+      ]
+    }
+  }
+}

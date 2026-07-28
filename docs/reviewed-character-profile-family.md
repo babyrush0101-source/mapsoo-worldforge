@@ -86,3 +86,30 @@ records are deliberately excluded. Their one-way hashes remain in the manifest.
 human art review have passed. It does not claim the combined family has passed
 Godot runtime acceptance or physical Raspberry Pi acceptance. Those two gates
 remain `pending` until their separate evidence is produced.
+
+## Exact-artifact Godot runtime acceptance
+
+After assembly, run the separate acceptance boundary against a new receipt
+path:
+
+```text
+pnpm character-family:reviewed:runtime:accept -FamilyDirectory <assembled-family-directory> -OutputReceipt <new-runtime-acceptance.json>
+```
+
+The harness first verifies the canonical family manifest and all eight
+referenced artifacts, stages only those exact bytes in the controlled Godot
+test directory, and then requires both the pinned Godot 4.3 and 4.7 console
+executables to bind all four profiles and 84 clips. The canonical receipt binds
+the family manifest, every revision and atlas byte count/SHA-256, both engine
+versions, and both executable SHA-256 values.
+
+The receipt is deliberately separate from the family manifest. It proves
+desktop technical runtime compatibility for the exact family files. It does
+not repeat visual-quality review, does not repeat the human art decision, and
+does not claim a physical Raspberry Pi run. Local paths, raw engine logs,
+source images, and reviewer identity are excluded.
+
+CI uses a clearly labelled synthetic fixture to exercise this public contract
+on Linux and Windows in the Godot 4.3/4.7 matrix. That fixture is contract
+evidence only; it is not production art or evidence that a human reviewed its
+appearance.
