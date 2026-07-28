@@ -94,6 +94,13 @@ This command does not decide whether the art is good, does not confirm source
 authority, does not grant redistribution rights and does not publish. It makes
 zero remote requests.
 
+For a source-free World Art Runtime Candidate, the stricter acceptance path
+also binds the exact candidate receipt, layout, overlay, projection, Godot
+executable, runtime-visible binding counts, and capture evidence. It treats
+catalog-only assets as packaged but not visibly applied, and a prior per-slot
+human pass does not satisfy the whole-composition human gate. See
+[`72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md`](72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md).
+
 After capture, pass `review/production-world-review.json` and the exact
 RuntimeOverlay ZIP to the
 [human art release gate](61_HUMAN_ART_RELEASE_GATE.md). The human reviewer must

@@ -1114,6 +1114,13 @@ jobs:
             throw 'WorldArtRuntimeOverlay visual application failed.'
           }
 
+      - name: Capture exact reviewed runtime evidence across all world types on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & scripts/verify-world-art-runtime-overlay-capture-godot.ps1 `
+            -GodotConsoles $env:GODOT_BIN
+
       - name: Run generated-world runtime shell contract on Windows
         shell: pwsh
         run: |

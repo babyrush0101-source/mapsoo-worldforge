@@ -166,10 +166,13 @@ The projection keeps a complete catalog of every Plan 1.1 slot and every task
 image that owns one, including background, prop, structure, effect, terrain,
 landmark, hazard, and character assets. A separate binding list records which
 catalog assets the current world's terrain, landmarks, hazards, and characters
-actually use. Grid cells become explicit pixel regions. Character catalog
-assets also expand to complete action, direction, frame, duration, and
-pixel-region records so Godot never has to infer pose geometry from a prompt
-or provider response. It also contains deterministic hazard instances: each
+actually use. Catalog membership alone is not evidence that an asset is a
+visible runtime replacement: current visibility claims are limited to the
+bound terrain, landmarks, hazards, and player atlas. Grid cells become explicit
+pixel regions. Character catalog assets also expand to complete action,
+direction, frame, duration, and pixel-region records so Godot never has to
+infer pose geometry from a prompt or provider response. It also contains
+deterministic hazard instances: each
 instance binds one reviewed hazard usage to a bounded logical rectangle and a
 trusted `respawn` behavior. Isometric instances may bind a separate reviewed
 telegraph. Calm worlds contain no instances; guarded and dangerous worlds
@@ -285,6 +288,9 @@ hazard `Area2D` nodes. Reviewed player pose regions reuse the portable
 character-profile runtime rather than introducing a parallel animation path.
 The reviewed-candidate command and strict workspace loader are documented in
 [`71_REVIEWED_WORLD_ART_RUNTIME_CANDIDATE.md`](71_REVIEWED_WORLD_ART_RUNTIME_CANDIDATE.md).
+The separate source-bound local Godot capture and technical claim boundary are
+documented in
+[`72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md`](72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md).
 
 A 1.1 plan alone is planning and review evidence only. A
 `WorldArtVariantMap` is a validated runtime binding contract. A persisted
@@ -292,8 +298,11 @@ runtime overlay plus a passing applier receipt proves that its human-approved
 atlas slots and selected terrain
 and landmark pixels are visible and that its reviewed hazards trigger trusted
 controller respawn. It also proves the reviewed player atlas drives complete
-profile animations through the existing runtime. It does not yet prove final
-human art quality or physical-device performance.
+profile animations through the existing runtime. Here, human approval means
+per-slot review; it does not prove the whole composition passed holistic human
+inspection. The local Godot technical receipt remains
+`raspberry_pi: pending`, `production_ready: false`, and
+`remote_request_count: 0`; it does not prove physical-device performance.
 
 Side-platformer and isometric-action layouts now materialize confirmed water as
 later-wins `water` terrain, include every water terrain ID in solid collision,

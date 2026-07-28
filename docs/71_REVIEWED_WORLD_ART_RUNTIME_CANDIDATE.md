@@ -1,5 +1,9 @@
 # Reviewed world-art runtime candidate
 
+Status: **implemented source-free candidate assembly after per-slot human
+review; local Godot technical review, holistic composition review, and physical
+Raspberry Pi acceptance remain separate**.
+
 This boundary turns a completed `ProductionArtRunSet 1.1` into a
 source-free Godot runtime overlay, but only after a human approves every
 generated atlas slot.
@@ -19,12 +23,12 @@ model-runs directory:
 
 ```bash
 pnpm production-art:runtime-candidate -- template \
-  --layout C:/private/world/world-layout-plan.json \
-  --requirements C:/private/world/asset-requirements-1.1.json \
-  --plan C:/private/world/production-art-plan-1.1.json \
-  --run-set C:/private/world/production-art-run-set.json \
-  --model-runs-root C:/private/world/model-runs \
-  --out C:/private/world/world-art-selection-review.json
+  --layout <private-workspace>/world-layout-plan.json \
+  --requirements <private-workspace>/asset-requirements-1.1.json \
+  --plan <private-workspace>/production-art-plan-1.1.json \
+  --run-set <private-workspace>/production-art-run-set.json \
+  --model-runs-root <private-workspace>/model-runs \
+  --out <private-workspace>/world-art-selection-review.json
 ```
 
 The loader checks the fixed task-directory inventory, real-path containment,
@@ -55,13 +59,13 @@ change to any bound field invalidates the review.
 
 ```bash
 pnpm production-art:runtime-candidate -- build \
-  --layout C:/private/world/world-layout-plan.json \
-  --requirements C:/private/world/asset-requirements-1.1.json \
-  --plan C:/private/world/production-art-plan-1.1.json \
-  --run-set C:/private/world/production-art-run-set.json \
-  --model-runs-root C:/private/world/model-runs \
-  --review C:/private/world/world-art-selection-review.json \
-  --out C:/private/world/runtime-candidate
+  --layout <private-workspace>/world-layout-plan.json \
+  --requirements <private-workspace>/asset-requirements-1.1.json \
+  --plan <private-workspace>/production-art-plan-1.1.json \
+  --run-set <private-workspace>/production-art-run-set.json \
+  --model-runs-root <private-workspace>/model-runs \
+  --review <private-workspace>/world-art-selection-review.json \
+  --out <private-workspace>/runtime-candidate
 ```
 
 The output directory is transactional and idempotent. It contains:
@@ -75,6 +79,15 @@ The output directory is transactional and idempotent. It contains:
 Pending, rejected, partial, rights-drifted, path-escaped, aliased, or tampered
 inputs produce no candidate.
 
+`human_art: pass` at this boundary means every individual atlas slot passed
+human inspection. It does not mean that the whole rendered composition passed
+human review.
+
+The runtime projection contains both a complete reviewed asset catalog and the
+bindings selected for this world. Only bound terrain, landmarks, hazards, and
+the player atlas are runtime-visible replacements at this stage. Assets that
+exist only in the catalog are not counted as visibly applied.
+
 ## Claim boundary
 
 The candidate receipt and overlay say:
@@ -87,3 +100,6 @@ The candidate receipt and overlay say:
 
 The candidate is ready for the separate Godot loader/capture gate. It is not
 a final release, World Runner PCK, or physical Raspberry Pi acceptance.
+The local capture contract and its deliberately narrow technical claim are
+documented in
+[`72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md`](72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md).
