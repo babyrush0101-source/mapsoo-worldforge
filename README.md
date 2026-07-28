@@ -130,6 +130,13 @@ runtime artifact, portable contract, created-character revision, and
 headless-smoke report. No private product record or launch protocol enters
 this repository; see the
 [private-consumer bridge](docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md).
+The confirmed browser flow now removes the former manual file-copy gap: after
+preview approval it can download one deterministic
+[private production handoff](docs/63_PRIVATE_PRODUCTION_HANDOFF.md) containing
+the exact intake and both original references. The CLI accepts that archive
+directly with `--handoff`; it verifies every byte in memory and still makes
+zero remote requests. Because the archive contains original user images, it is
+explicitly non-public and is never a repository or release artifact.
 The projector rejects occupied undeclared cells, empty, duplicate, mirrored,
 border-touching and mis-anchored frames. Layered-depth player and NPC tasks also
 project into exact Pack 1.0 `48 × 72` Godot atlases with complete two-frame clip
@@ -363,6 +370,7 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 - [Independent character profile revisions and neutral runtime binding](docs/33_CHARACTER_PROFILE_REVISION.md)
 - [Godot runtime binding for portable character profiles](docs/50_CHARACTER_PROFILE_RUNTIME_BINDING.md)
 - [Private-consumer world creation and World Runner bridge](docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md)
+- [Browser-to-production private handoff](docs/63_PRIVATE_PRODUCTION_HANDOFF.md)
 - [Generation Provider SDK](docs/09_PROVIDER_SDK.md)
 - [Model-backed production art and safe single-task CLI](docs/49_MODEL_BACKED_PRODUCTION_ART.md)
 - [Live-model four-profile direction review](docs/52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md)

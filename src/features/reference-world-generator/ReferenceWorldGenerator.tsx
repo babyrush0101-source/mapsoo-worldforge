@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 
 import { readBrowserReferenceImage, type BrowserReferenceImage } from '../../adapters/read-reference-image-file';
+import {
+  buildPrivateProductionHandoff,
+  type BuiltPrivateProductionHandoff,
+} from '../../adapters/private-production-handoff';
 import type { ConfirmedDialogueInput } from '../../core/confirmed-generation-binding';
 import type {
   ConfirmedWorldFacts,
@@ -123,6 +127,8 @@ export function ReferenceWorldGenerator({
   const [layoutConstraintsSha256, setLayoutConstraintsSha256] = useState<string | null>(null);
   const [layoutConstraintOrigin, setLayoutConstraintOrigin] = useState<WorldLayoutConstraintOrigin | null>(null);
   const [layoutPlanSha256, setLayoutPlanSha256] = useState<string | null>(null);
+  const [productionHandoff, setProductionHandoff] =
+    useState<BuiltPrivateProductionHandoff | null>(null);
 
   useEffect(() => () => {
     abortRef.current?.abort();
@@ -152,6 +158,7 @@ export function ReferenceWorldGenerator({
     setLayoutConstraintsSha256(null);
     setLayoutConstraintOrigin(null);
     setLayoutPlanSha256(null);
+    setProductionHandoff(null);
     replacePreviewUrl(null);
     setState('idle');
     setNotice(nextNotice);
@@ -191,6 +198,7 @@ export function ReferenceWorldGenerator({
     generationRef.current = token;
     setState('generating');
     setPack(null);
+    setProductionHandoff(null);
     setNotice(`Generating the complete ${PROFILE_JOB_LABEL[profile]} asset graph…`);
     try {
       let confirmedGenerated:
@@ -218,6 +226,15 @@ export function ReferenceWorldGenerator({
           completedAt: new Date().toISOString(), confirmation: initialConfirmation, signal: controller.signal,
           approvedIntentPreviewSha256: initialApprovedIntentPreviewSha256,
         });
+      const nextProductionHandoff = confirmedGenerated
+        ? await buildPrivateProductionHandoff(
+          confirmedGenerated.confirmedIntake,
+          [
+            { descriptor: environment.descriptor, bytes: environment.bytes },
+            { descriptor: character.descriptor, bytes: character.bytes },
+          ],
+        )
+        : null;
       if (controller.signal.aborted || token !== generationRef.current) return;
       const previewBuffer = new ArrayBuffer(generated.previewBytes.byteLength);
       new Uint8Array(previewBuffer).set(generated.previewBytes);
@@ -235,6 +252,7 @@ export function ReferenceWorldGenerator({
       setLayoutConstraintsSha256(confirmedGenerated?.layoutConstraintsSha256 ?? null);
       setLayoutConstraintOrigin(confirmedGenerated?.layoutConstraints.origin ?? null);
       setLayoutPlanSha256(confirmedGenerated?.layoutPlanSha256 ?? null);
+      setProductionHandoff(nextProductionHandoff);
       setState('ready');
       setNotice(`Complete Pack ${generated.packSchemaVersion} ready for visual review: ${generated.generatedFileCount} generated files, ${generated.requiredRoleCount} required roles, ${generated.characterClipCount} character clips.`);
     } catch (error) {
@@ -399,6 +417,26 @@ export function ReferenceWorldGenerator({
           <button className="secondary-action is-ready" type="button" disabled={!pack || !frozenLaunch} onClick={() => pack && frozenLaunch && downloadBytes(pack.filename, pack.bytes)}>
             {pack && frozenLaunch ? `Download frozen Godot pack · ${pack.filename}` : 'Approve the preview before downloading'}
           </button>
+          <button
+            className="secondary-action is-ready"
+            type="button"
+            disabled={!productionHandoff || !frozenLaunch}
+            onClick={() => productionHandoff
+              && frozenLaunch
+              && downloadBytes(
+                productionHandoff.filename,
+                productionHandoff.readBytes(),
+              )}
+          >
+            {productionHandoff && frozenLaunch
+              ? 'Download private production handoff'
+              : 'Complete the confirmed dialogue and approve the preview first'}
+          </button>
+          {productionHandoff && (
+            <p className="reference-generator-status">
+              Private handoff contains both original references. Keep it local; do not publish or commit it.
+            </p>
+          )}
           {frozenLaunch && <p className="reference-generator-status">Godot scene after import: <code>{frozenLaunch.scene_path}</code></p>}
         </div>
       </div>

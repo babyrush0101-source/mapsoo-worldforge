@@ -128,9 +128,8 @@ export interface GodotHeadlessSmokeReport {
   }>;
 }
 
-export interface PrepareWorldDeliveryWorkspaceInput {
+interface PrepareWorldDeliveryWorkspaceCommonInput {
   readonly intake: unknown;
-  readonly referenceRoot: string;
   readonly workspace: string;
   readonly characterId: string;
   readonly completedAt: string;
@@ -141,6 +140,21 @@ export interface PrepareWorldDeliveryWorkspaceInput {
   readonly requestBudget?: number;
   readonly characterIdentitySemantics?: unknown;
 }
+
+export type PrepareWorldDeliveryWorkspaceInput =
+  PrepareWorldDeliveryWorkspaceCommonInput & (
+    | Readonly<{
+      readonly referenceRoot: string;
+      readonly referenceFiles?: never;
+    }>
+    | Readonly<{
+      readonly referenceRoot?: never;
+      readonly referenceFiles: readonly Readonly<{
+        readonly descriptor: ReferenceImageDescriptor;
+        readonly bytes: Uint8Array;
+      }>[];
+    }>
+  );
 
 export interface FinalizeWorldRunnerDeliveryInput {
   readonly intake: unknown;
@@ -461,12 +475,29 @@ export async function prepareWorldDeliveryWorkspace(
   }
 
   const referenceRecords = await Promise.all(intake.references.map(async (descriptor) => {
-    const sourcePath = await resolveFileInside(
-      input.referenceRoot,
-      descriptor.path,
-      `${descriptor.role} reference`,
-    );
-    const bytes = Uint8Array.from(await readFile(sourcePath));
+    let bytes: Uint8Array;
+    if ('referenceFiles' in input && input.referenceFiles !== undefined) {
+      const matches = input.referenceFiles.filter(({ descriptor: candidate }) =>
+        candidate.id === descriptor.id
+        && candidate.role === descriptor.role
+        && candidate.path === descriptor.path);
+      if (
+        matches.length !== 1
+        || input.referenceFiles.length !== intake.references.length
+      ) {
+        throw new Error(
+          'Embedded reference inventory must match the confirmed intake exactly.',
+        );
+      }
+      bytes = Uint8Array.from(matches[0].bytes);
+    } else {
+      const sourcePath = await resolveFileInside(
+        input.referenceRoot,
+        descriptor.path,
+        `${descriptor.role} reference`,
+      );
+      bytes = Uint8Array.from(await readFile(sourcePath));
+    }
     await bindReferenceImage(descriptor, bytes);
     return { descriptor, bytes, name: referenceName(descriptor) };
   }));

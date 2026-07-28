@@ -41,7 +41,24 @@ The public CLI accepts only `ConfirmedWorldCreationIntake 1.0`. It does not
 know a consumer product name, account, daemon route, internal character record,
 NPC record, or launch transport.
 
-First, prepare a private workspace:
+The confirmed public browser flow can first create one deterministic private
+handoff archive containing the exact intake and both original references.
+Prepare directly from that archive:
+
+```bash
+pnpm world-delivery:workspace -- prepare \
+  --handoff <private-production-handoff.zip> \
+  --workspace <absolute-private-workspace-outside-this-repository> \
+  --character-id <portable-character-id> \
+  --completed-at <canonical-UTC-ISO>
+```
+
+The archive is local-only and must not be committed or published. Its reader
+rejects added files, changed references, changed intake bytes, unsafe paths and
+public-distribution claims before workspace preparation.
+
+For a consumer that already stores the intake and references separately, the
+original form remains available:
 
 ```bash
 pnpm world-delivery:workspace -- prepare \
@@ -393,6 +410,8 @@ Implemented in this repository:
 - strict four-profile world-family continuity receipt binding one shared world
   identity and character identity to the exact four intake/revision pairs;
 - zero-request private-workspace preparation CLI with atomic/idempotent output;
+- deterministic browser-to-production private handoff with exact intake,
+  reference, CRC, SHA-256, path and non-public-distribution verification;
 - external private workflow-state and candidate-art roots, proven by a real
   workflow dry run;
 - portable runtime and character-profile contracts;

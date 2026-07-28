@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -6,6 +6,9 @@ import {
   finalizeWorldRunnerDelivery,
   prepareWorldDeliveryWorkspace,
 } from '../src/app/world-delivery-workspace';
+import {
+  readPrivateProductionHandoff,
+} from '../src/adapters/private-production-handoff';
 import {
   WORLD_RUNNER_ARCHITECTURES,
   WORLD_RUNNER_ARTIFACT_KINDS,
@@ -16,8 +19,10 @@ import { parseStrictJsonDocument } from '../src/adapters/import-world-spec';
 
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const MAX_INTAKE_BYTES = 4 * 1024 * 1024;
+const MAX_HANDOFF_BYTES = 64 * 1024 * 1024;
 
 const PREPARE_FLAGS = new Set([
+  '--handoff',
   '--intake',
   '--reference-root',
   '--workspace',
@@ -52,6 +57,16 @@ function usage(): string {
     '',
     'Prepare a local production-art job without making a remote request:',
     '  pnpm world-delivery:workspace -- prepare \\',
+    '    --handoff <private-production-handoff.zip> \\',
+    '    --workspace <private-workspace-outside-this-repository> \\',
+    '    --character-id <neutral-kebab-case-id> \\',
+    '    --completed-at <canonical-UTC-ISO> \\',
+    '    [--provider openai|spritecook] [--model <spritecook-model>] \\',
+    '    [--resolution 1K|2K|4K] [--quality low|medium|high] \\',
+    '    [--request-budget <integer>]',
+    '',
+    'Or prepare from separately staged intake and reference files:',
+    '  pnpm world-delivery:workspace -- prepare \\',
     '    --intake <confirmed-intake.json> \\',
     '    --reference-root <reference-root> \\',
     '    --workspace <private-workspace-outside-this-repository> \\',
@@ -77,6 +92,7 @@ function usage(): string {
     '    --player-slot-id <kebab-case-id> --out <delivery.json>',
     '',
     'Privacy and safety:',
+    '  - --handoff is a local private archive and must never be committed or published;',
     '  - prepare writes private references, briefs, and absolute paths only outside the repository;',
     '  - prepare also writes a hash-bound Godot-import-ready procedural baseline pack;',
     '  - the baseline is a playable placeholder and is never labelled as finished model art;',
@@ -160,15 +176,41 @@ async function readStrictJson(pathValue: string, label: string): Promise<unknown
   return parsed.value;
 }
 
+async function readPrivateHandoff(pathValue: string) {
+  const path = resolveInputPath(pathValue, 'Private production handoff');
+  const metadata = await stat(path);
+  if (
+    !metadata.isFile()
+    || metadata.size < 1
+    || metadata.size > MAX_HANDOFF_BYTES
+  ) {
+    throw new Error(
+      'Private production handoff must be a file no larger than 64 MiB.',
+    );
+  }
+  const bytes = Uint8Array.from(await readFile(path));
+  if (bytes.byteLength !== metadata.size) {
+    throw new Error('Private production handoff changed while it was read.');
+  }
+  return readPrivateProductionHandoff(bytes);
+}
+
 async function prepare(argv: readonly string[]): Promise<void> {
   const values = parseValueFlags(argv, PREPARE_FLAGS);
-  for (const flag of [
-    '--intake',
-    '--reference-root',
-    '--workspace',
-    '--character-id',
-    '--completed-at',
-  ]) required(values, flag);
+  for (const flag of ['--workspace', '--character-id', '--completed-at']) {
+    required(values, flag);
+  }
+  const hasHandoff = values.has('--handoff');
+  const hasIntake = values.has('--intake');
+  const hasReferenceRoot = values.has('--reference-root');
+  if (
+    (hasHandoff && (hasIntake || hasReferenceRoot))
+    || (!hasHandoff && (!hasIntake || !hasReferenceRoot))
+  ) {
+    throw new Error(
+      'Use either --handoff or the --intake/--reference-root pair.',
+    );
+  }
   const requestBudgetText = values.get('--request-budget');
   if (requestBudgetText && !/^[1-9]\d?$/.test(requestBudgetText)) {
     throw new Error('--request-budget must be an integer from 1 to 99.');
@@ -191,12 +233,20 @@ async function prepare(argv: readonly string[]): Promise<void> {
   ) {
     throw new Error('--model and --resolution require --provider spritecook.');
   }
+  const handoff = hasHandoff
+    ? await readPrivateHandoff(required(values, '--handoff'))
+    : undefined;
   const result = await prepareWorldDeliveryWorkspace({
-    intake: await readStrictJson(required(values, '--intake'), 'Confirmed intake'),
-    referenceRoot: resolveInputPath(
-      required(values, '--reference-root'),
-      'Reference root',
-    ),
+    intake: handoff?.intake
+      ?? await readStrictJson(required(values, '--intake'), 'Confirmed intake'),
+    ...(handoff
+      ? { referenceFiles: handoff.references }
+      : {
+        referenceRoot: resolveInputPath(
+          required(values, '--reference-root'),
+          'Reference root',
+        ),
+      }),
     workspace: privateWorkspacePath(required(values, '--workspace')),
     characterId: required(values, '--character-id'),
     ...(values.has('--character-identity-semantics')
