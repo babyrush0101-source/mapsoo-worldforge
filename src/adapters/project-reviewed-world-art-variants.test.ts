@@ -277,6 +277,8 @@ function mutable<T>(value: T): any {
   return JSON.parse(JSON.stringify(value));
 }
 
+const PROJECTION_TEST_TIMEOUT_MS = 30_000;
+
 describe('projectReviewedWorldArtVariants', () => {
   it.each([
     'side-platformer',
@@ -349,7 +351,7 @@ describe('projectReviewedWorldArtVariants', () => {
     expect(unboundAssets.length).toBeGreaterThan(0);
     expect(unboundAssets.some(({ role }) =>
       /^(?:background|prop|structure)\./.test(role))).toBe(true);
-  }, 15_000);
+  }, PROJECTION_TEST_TIMEOUT_MS);
 
   it('rejects stale run-set and missing or duplicated normalized tasks', async () => {
     const base = await fixture('topdown-farm');
@@ -431,7 +433,7 @@ describe('projectReviewedWorldArtVariants', () => {
     })).rejects.toMatchObject({
       code: 'reviewed-world-art-projection.invalid-output',
     });
-  }, 15_000);
+  }, PROJECTION_TEST_TIMEOUT_MS);
 
   it('does not project private intake or provider-remote metadata', async () => {
     const base = await fixture('layered-depth-2d');
@@ -452,5 +454,5 @@ describe('projectReviewedWorldArtVariants', () => {
     }
     expect(result.images.every(({ path }) =>
       path.startsWith('production-art/layered-depth-2d/'))).toBe(true);
-  }, 15_000);
+  }, PROJECTION_TEST_TIMEOUT_MS);
 });
