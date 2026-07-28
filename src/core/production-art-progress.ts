@@ -1,10 +1,11 @@
 import type {
-  ProductionArtPlan,
   ProductionArtTaskKind,
 } from './production-art-contract';
 import {
   parseProductionArtWorkflowState,
   selectNextProductionArtWorkflowTask,
+  type ProductionArtWorkflowPlan,
+  type ProductionArtWorkflowPlanTask,
   type ProductionArtWorkflowPhase,
   type ProductionArtWorkflowState,
   type ProductionArtWorkflowTaskStatus,
@@ -113,7 +114,7 @@ function freeze<T>(value: T): T {
  */
 export function createProductionArtProgress(
   stateValue: ProductionArtWorkflowState,
-  plan: ProductionArtPlan,
+  plan: ProductionArtWorkflowPlan,
   approvedDirectionSha256?: string,
 ): ProductionArtProgress {
   const state = parseProductionArtWorkflowState(stateValue, plan);
@@ -132,7 +133,7 @@ export function createProductionArtProgress(
       kind: task.kind,
       status: taskState.status,
       attempts: taskState.attempts.length,
-      roles: task.role_mappings.map(({ role }) => role),
+      roles: taskRoles(task),
     } satisfies ProductionArtProgressTask;
   });
   const missingRoles = tasks
@@ -143,19 +144,17 @@ export function createProductionArtProgress(
     .filter(({ status }) => status === 'succeeded')
     .reduce((sum, task) => sum + task.roles.length, 0);
   const scene = state.tasks.find(({ task_id: taskId }) =>
-    taskId === 'scene-direction')!;
-  const sceneDigest = scene.attempts.at(-1)?.artifact?.normalized_sha256;
-  const directionApproved = Boolean(
-    scene.status === 'succeeded'
-    && sceneDigest
-    && (
-      state.approved_direction_sha256 === sceneDigest
-      || (
-        state.approved_direction_sha256 === undefined
-        && approvedDirectionSha256 === sceneDigest
-      )
-    ),
-  );
+    taskId === 'scene-direction');
+  const sceneDigest = scene?.attempts.at(-1)?.artifact?.normalized_sha256;
+  const externalDirection = state.approved_direction_sha256
+    ?? approvedDirectionSha256;
+  const directionApproved = scene
+    ? Boolean(
+      scene.status === 'succeeded'
+      && sceneDigest
+      && externalDirection === sceneDigest
+    )
+    : Boolean(externalDirection);
   const activeTaskId = state.tasks.find(({ status }) => status === 'running')?.task_id;
   const attentionTaskIds = state.tasks
     .filter(({ status }) => status === 'rejected' || status === 'uncertain')
@@ -175,7 +174,7 @@ export function createProductionArtProgress(
     ...(activeTaskId ? { active_task_id: activeTaskId } : {}),
     attention_task_ids: attentionTaskIds,
     direction: {
-      generated: scene.status === 'succeeded',
+      generated: scene ? scene.status === 'succeeded' : Boolean(externalDirection),
       approved: directionApproved,
     },
     requests: {
@@ -196,4 +195,10 @@ export function createProductionArtProgress(
     runtime_verified: false,
     runner_delivery_ready: false,
   });
+}
+
+function taskRoles(task: ProductionArtWorkflowPlanTask): readonly string[] {
+  return 'role_mappings' in task
+    ? task.role_mappings.map(({ role }) => role)
+    : task.slot_mappings.map(({ role }) => role);
 }

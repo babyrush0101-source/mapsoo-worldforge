@@ -3,7 +3,8 @@
 Status: **implemented requirements, plan, provider, normalization, run-set,
 output, reviewed selection, runtime projection, reproducible runtime overlay,
 and shared Godot application; complete private-workspace blueprint integrated;
-resumable 1.1 remote batch execution pending explicit authorization**
+same resumable runner accepts 1.0 and 1.1 jobs; live execution remains pending
+explicit authorization**
 
 This revision adds the smallest core abstraction needed for a confirmed world
 to request multiple genuinely distinct visual assets. It does not alter the
@@ -32,9 +33,9 @@ remain frozen.
 
 The private world-delivery workspace now writes the complete 1.1 requirements
 and Plan under `complete-art/` and binds their full SHA-256 values and counts in
-`workspace-manifest.json.complete_art_plan`. The executable 1.0 compatibility
-workflow remains alongside them; it is not silently presented as the complete
-1.1 batch runner.
+`workspace-manifest.json.complete_art_plan`. It also writes a bound 1.1 job for
+the same resumable runner. The executable 1.0 compatibility workflow remains
+alongside it; neither job silently claims that paid generation occurred.
 
 ## Minimal architecture
 
@@ -44,6 +45,7 @@ confirmed dialogue
   -> WorldLayoutPlan 1.0
   -> AssetRequirements 1.1
   -> ProductionArtPlan 1.1
+  -> shared resumable workflow runner   (implemented, dry-run by default)
   -> replaceable GeneratorAdapter       (implemented versioned port)
   -> PNG normalize + slot evidence      (implemented local boundary)
   -> ProductionArtOutput 1.1
@@ -271,8 +273,11 @@ The implemented SpriteCook boundary is documented in
 
 ## Fail-closed delivery boundary
 
-The 1.1 contracts intentionally stop before paid generation. Provider
-execution, local PNG normalization, run-set assembly, reviewed selection, and
+The 1.1 contracts do not authorize paid generation. The shared resumable
+runner validates the canonical 1.1 requirements and Plan, freezes one external
+approved-direction digest on the first attempt, journals request accounting,
+and dispatches each dynamic task through the same provider port used by 1.0.
+Provider execution, local PNG normalization, run-set assembly, reviewed selection, and
 Pack-facing runtime projection, overlay assembly, and shared Godot
 load/persistence now have explicit versioned branches. The loaded catalog is
 applied to logical terrain TileSets, landmark scene nodes, and deterministic
@@ -289,10 +294,9 @@ human art quality or physical-device performance.
 
 ## Next vertical slices
 
-1. Upgrade the resumable private workflow runner to consume the bound 1.1
-   requirements and Plan without creating a second provider path.
-2. Complete side-platformer and isometric non-enterable `terrain.water`.
-3. Add opt-in remote execution only after explicit user authorization.
-4. Run human art review and a physical Raspberry Pi 4B smoke test.
+1. Complete side-platformer and isometric non-enterable `terrain.water`.
+2. Run one opt-in remote task only after explicit user authorization.
+3. Complete human art review and assemble the reviewed 1.1 runtime overlay.
+4. Run a physical Raspberry Pi 4B smoke test.
 
 No live provider request is authorized or claimed by this core revision.

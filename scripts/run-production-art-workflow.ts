@@ -30,6 +30,16 @@ import {
   type ProductionArtTask,
 } from '../src/core/production-art-contract';
 import {
+  materializeProductionArtPlanV1_1,
+  serializeCanonicalProductionArtPlanV1_1,
+  type ProductionArtPlanV1_1,
+  type ProductionArtTaskV1_1,
+} from '../src/core/production-art-contract-v1-1';
+import {
+  materializeProductionArtOutputV1_1,
+  type ProductionArtOutputV1_1,
+} from '../src/core/production-art-output-v1-1';
+import {
   beginProductionArtWorkflowTask,
   completeProductionArtWorkflowTask,
   createProductionArtWorkflowState,
@@ -39,6 +49,8 @@ import {
   type ProductionArtWorkflowArtifact,
   type ProductionArtWorkflowQuality,
   type ProductionArtPrivateInputBinding,
+  type ProductionArtWorkflowPlan,
+  type ProductionArtWorkflowPlanTask,
   type ProductionArtWorkflowState,
 } from '../src/core/production-art-workflow';
 import {
@@ -60,6 +72,9 @@ import {
 } from '../src/core/character-profile-revision';
 import { createProductionArtRunSet } from '../src/core/production-art-run-set';
 import {
+  buildProductionArtRunSetV1_1,
+} from '../src/core/production-art-run-set-v1-1';
+import {
   fingerprintWorldLayoutPlan,
   materializeWorldLayoutPlan,
   serializeCanonicalWorldLayoutPlan,
@@ -72,6 +87,14 @@ import {
   materializeAssetRequirements,
   serializeCanonicalAssetRequirements,
 } from '../src/core/asset-requirements';
+import {
+  materializeAssetRequirementsV1_1,
+  serializeCanonicalAssetRequirementsV1_1,
+  type AssetRequirementsV1_1,
+} from '../src/core/asset-requirements-v1-1';
+import type {
+  ProductionArtGenerationEvidenceV1_1,
+} from '../src/adapters/normalize-production-art-png-v1-1';
 import {
   materializeProductionArtRequirementsBinding,
   serializeCanonicalProductionArtRequirementsBinding,
@@ -117,7 +140,7 @@ interface Arguments {
 }
 
 interface WorkflowJob {
-  readonly schema_version: '1.0.0';
+  readonly schema_version: '1.0.0' | '1.1.0';
   readonly document_type: 'production-art-workflow-job';
   readonly workflow_id: string;
   readonly profile: WorldAssetProfile;
@@ -131,6 +154,7 @@ interface WorkflowJob {
   readonly character_identity_semantics_file?: string;
   readonly world_layout_plan_file?: string;
   readonly asset_requirements_file?: string;
+  readonly production_art_plan_file?: string;
   readonly production_art_requirements_binding_file?: string;
   readonly environment_reference: string;
   readonly character_reference: string;
@@ -330,6 +354,10 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     value,
     'asset_requirements_file',
   );
+  const hasProductionArtPlan = Object.prototype.hasOwnProperty.call(
+    value,
+    'production_art_plan_file',
+  );
   const hasProductionArtRequirementsBinding =
     Object.prototype.hasOwnProperty.call(
       value,
@@ -367,13 +395,14 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
         : []),
       ...(hasWorldLayoutPlan ? ['world_layout_plan_file'] : []),
       ...(hasAssetRequirements ? ['asset_requirements_file'] : []),
+      ...(hasProductionArtPlan ? ['production_art_plan_file'] : []),
       ...(hasProductionArtRequirementsBinding
         ? ['production_art_requirements_binding_file']
         : []),
       ...(hasApprovedDirection ? ['approved_direction'] : []),
       ...(hasPrivateOutputRoot ? ['private_output_root'] : []),
     ])
-    || value.schema_version !== '1.0.0'
+    || !['1.0.0', '1.1.0'].includes(value.schema_version as string)
     || value.document_type !== 'production-art-workflow-job'
     || typeof value.workflow_id !== 'string'
     || value.workflow_id.length > 80
@@ -412,10 +441,27 @@ function parseWorkflowJob(value: unknown): WorkflowJob {
     )
     || (hasWorldLayoutPlan && !safePathValue(value.world_layout_plan_file))
     || hasAssetRequirements !== hasProductionArtRequirementsBinding
+      && value.schema_version === '1.0.0'
+    || (
+      value.schema_version === '1.1.0'
+      && (
+        !hasAssetRequirements
+        || !hasProductionArtPlan
+        || hasProductionArtRequirementsBinding
+      )
+    )
+    || (
+      value.schema_version === '1.0.0'
+      && hasProductionArtPlan
+    )
     || (hasAssetRequirements && !hasWorldLayoutPlan)
     || (
       hasAssetRequirements
       && !safePathValue(value.asset_requirements_file)
+    )
+    || (
+      hasProductionArtPlan
+      && !safePathValue(value.production_art_plan_file)
     )
     || (
       hasProductionArtRequirementsBinding
@@ -533,6 +579,7 @@ function privateInputBinding(input: {
   readonly characterIdentitySemantics?: Uint8Array;
   readonly worldLayoutPlan?: Uint8Array;
   readonly assetRequirements?: Uint8Array;
+  readonly productionArtPlan?: Uint8Array;
   readonly productionArtRequirementsBinding?: Uint8Array;
   readonly environmentReference: Uint8Array;
   readonly characterReference: Uint8Array;
@@ -581,6 +628,9 @@ function privateInputBinding(input: {
     ...(input.assetRequirements
       ? [['asset-requirements', input.assetRequirements] as const]
       : []),
+    ...(input.productionArtPlan
+      ? [['production-art-plan', input.productionArtPlan] as const]
+      : []),
     ...(input.productionArtRequirementsBinding
       ? [[
         'production-art-requirements-binding',
@@ -623,7 +673,7 @@ function stateFileName(revision: number): string {
 
 async function readLatestState(
   directory: string,
-  plan: ReturnType<typeof createProductionArtPlan>,
+  plan: ProductionArtWorkflowPlan,
 ): Promise<ProductionArtWorkflowState | undefined> {
   let entries: string[];
   try {
@@ -765,15 +815,22 @@ function assertStateMatchesJob(
   }
 }
 
-function isPlayerCharacterTask(task: ProductionArtTask): boolean {
+function taskRoles(
+  task: ProductionArtWorkflowPlanTask,
+): readonly string[] {
+  return 'role_mappings' in task
+    ? task.role_mappings.map(({ role }) => role)
+    : task.slot_mappings.map(({ role }) => role);
+}
+
+function isPlayerCharacterTask(task: ProductionArtWorkflowPlanTask): boolean {
   return task.kind === 'character-animation-sheet'
-    && task.role_mappings.length === 1
-    && task.role_mappings[0].role === 'character.player.atlas';
+    && taskRoles(task).includes('character.player.atlas');
 }
 
 function taskArguments(
   job: WorkflowJob,
-  task: ProductionArtTask,
+  task: ProductionArtWorkflowPlanTask,
 ): string[] {
   const values = [
     '--provider',
@@ -789,6 +846,18 @@ function taskArguments(
     '--style-bible-file',
     job.style_bible_file,
   ];
+  if (
+    job.schema_version === '1.1.0'
+    && job.asset_requirements_file
+    && job.production_art_plan_file
+  ) {
+    values.push(
+      '--asset-requirements-file',
+      job.asset_requirements_file,
+      '--production-art-plan-file',
+      job.production_art_plan_file,
+    );
+  }
   if (job.provider === 'spritecook') {
     if (job.model) values.push('--model', job.model);
     values.push('--resolution', job.resolution ?? '2K');
@@ -816,6 +885,11 @@ function taskArguments(
       job.private_input_binding.character_reference_id,
     );
   } else {
+    if (!job.approved_direction) {
+      throw new Error(
+        'A non-direction task requires the approved direction file in the workflow job.',
+      );
+    }
     values.push('--approved-direction', job.approved_direction!);
     if (task.reference_roles.includes('character')) {
       values.push(
@@ -855,7 +929,7 @@ function taskArguments(
 
 async function runTaskProcess(
   job: WorkflowJob,
-  task: ProductionArtTask,
+  task: ProductionArtWorkflowPlanTask,
 ): Promise<{
   readonly exitCode: number | null;
   readonly stdout: string;
@@ -967,12 +1041,13 @@ function parseJsonRecord(bytes: Uint8Array, label: string): Record<string, unkno
 
 async function verifyRunDirectory(
   profile: WorldAssetProfile,
-  plan: ProductionArtPlan,
+  plan: ProductionArtWorkflowPlan,
   taskId: string,
   runDirectory: string,
   expectedCharacterId: string,
   allowProjectionRejected = false,
   privateOutputRoot?: string,
+  requirements?: AssetRequirementsV1_1,
 ): Promise<ProductionArtWorkflowArtifact> {
   const root = privateOutputRoot
     ? resolve(privateOutputRoot, 'model-runs')
@@ -1006,16 +1081,86 @@ async function verifyRunDirectory(
   } catch {
     throw new Error('Run directory is incomplete.');
   }
-  const output = parseJsonRecord(
+  const outputRecord = parseJsonRecord(
     outputBytes,
     'Production-art output',
-  ) as unknown as ProductionArtOutput;
-  const evidence = parseJsonRecord(
+  );
+  const evidenceRecord = parseJsonRecord(
     evidenceBytes,
     'Production-art evidence',
-  ) as unknown as ProductionArtGenerationEvidence;
+  );
   const sourceSha256 = digestBytes(source);
   const normalizedSha256 = digestBytes(normalized);
+  const artifact: ProductionArtWorkflowArtifact = {
+    run_directory: relative(
+      privateOutputRoot ? root : process.cwd(),
+      directory,
+    ).replaceAll('\\', '/'),
+    source_sha256: sourceSha256,
+    normalized_sha256: normalizedSha256,
+  };
+  if (plan.schema_version === '1.1.0') {
+    if (!requirements) {
+      throw new Error(
+        'Plan 1.1 output requires its verified AssetRequirements source.',
+      );
+    }
+    let output: ProductionArtOutputV1_1;
+    try {
+      output = await materializeProductionArtOutputV1_1(
+        outputRecord,
+        plan,
+        requirements,
+      );
+    } catch {
+      throw new Error(
+        'Plan 1.1 output is invalid or does not match its verified sources.',
+      );
+    }
+    const task = plan.tasks.find(({ task_id: candidate }) =>
+      candidate === taskId)!;
+    const evidence =
+      evidenceRecord as unknown as ProductionArtGenerationEvidenceV1_1;
+    if (
+      output.profile !== profile
+      || output.task_id !== taskId
+      || output.sha256 !== normalizedSha256
+      || output.bytes !== normalized.byteLength
+      || evidence.schema_version !== '1.1.0'
+      || evidence.document_type !== 'production-art-generation-evidence'
+      || evidence.plan_id !== plan.plan_id
+      || evidence.profile !== profile
+      || evidence.task_id !== taskId
+      || evidence.source_binding?.plan_sha256 !== output.source.plan_sha256
+      || evidence.source_binding?.requirements_sha256
+        !== output.source.requirements_sha256
+      || evidence.source_png?.sha256 !== sourceSha256
+      || evidence.source_png?.bytes !== source.byteLength
+      || evidence.normalized_png?.sha256 !== normalizedSha256
+      || evidence.normalized_png?.bytes !== normalized.byteLength
+      || !Array.isArray(evidence.slots)
+      || evidence.slots.length !== task.slot_mappings.length
+      || evidence.slots.some((slot, index) => {
+        const expected = task.slot_mappings[index];
+        return slot.slot_id !== expected.slot_id
+          || slot.requirement_id !== expected.requirement_id
+          || slot.role !== expected.role
+          || slot.variant_id !== expected.variant_id
+          || slot.atlas_cell?.column !== expected.grid_rect.column
+          || slot.atlas_cell?.row !== expected.grid_rect.row
+          || slot.atlas_cell?.column_span !== expected.grid_rect.column_span
+          || slot.atlas_cell?.row_span !== expected.grid_rect.row_span
+          || typeof slot.cell_sha256 !== 'string'
+          || !SAFE_SHA256.test(slot.cell_sha256);
+      })
+    ) {
+      throw new Error('Plan 1.1 run directory hashes or task bindings are invalid.');
+    }
+    return artifact;
+  }
+  const output = outputRecord as unknown as ProductionArtOutput;
+  const evidence =
+    evidenceRecord as unknown as ProductionArtGenerationEvidence;
   assertValidProductionArtOutput(output, plan);
   if (
     output.plan_id !== plan.plan_id
@@ -1033,14 +1178,6 @@ async function verifyRunDirectory(
   ) {
     throw new Error('Run directory hashes or task bindings are invalid.');
   }
-  const artifact: ProductionArtWorkflowArtifact = {
-    run_directory: relative(
-      privateOutputRoot ? root : process.cwd(),
-      directory,
-    ).replaceAll('\\', '/'),
-    source_sha256: sourceSha256,
-    normalized_sha256: normalizedSha256,
-  };
   if (output.roles.length === 1 && output.roles[0] === 'character.player.atlas') {
     let atlasBytes: Buffer;
     let revisionBytes: Buffer;
@@ -1132,10 +1269,59 @@ function interruptedTask(state: ProductionArtWorkflowState):
 async function writeRunSet(
   directory: string,
   state: ProductionArtWorkflowState,
-  plan: ProductionArtPlan,
+  plan: ProductionArtWorkflowPlan,
   privateOutputRoot?: string,
+  requirements?: AssetRequirementsV1_1,
 ): Promise<string | undefined> {
   if (!state.tasks.every(({ status }) => status === 'succeeded')) return undefined;
+  if (plan.schema_version === '1.1.0') {
+    if (!requirements) {
+      throw new Error(
+        'Completed Plan 1.1 workflow is missing its verified AssetRequirements source.',
+      );
+    }
+    const runInputs = await Promise.all(state.tasks.map(async (task) => {
+      const runDirectory = task.attempts.at(-1)?.artifact?.run_directory;
+      if (!runDirectory) {
+        throw new Error('Successful workflow task has no frozen run directory.');
+      }
+      const absoluteRunDirectory = privateOutputRoot
+        ? resolve(privateOutputRoot, 'model-runs', runDirectory)
+        : resolve(runDirectory);
+      const output = parseJsonRecord(
+        await readFile(resolve(absoluteRunDirectory, 'output.json')),
+        'Production-art Output 1.1',
+      ) as unknown as ProductionArtOutputV1_1;
+      return {
+        taskId: task.task_id,
+        runDirectory,
+        output,
+        evidence: {
+          artifactPath: output.path,
+          bytes: output.bytes,
+          sha256: output.sha256,
+        },
+      };
+    }));
+    const runSet = await buildProductionArtRunSetV1_1(
+      plan,
+      requirements,
+      runInputs,
+    );
+    const path = resolve(directory, 'production-art-run-set.json');
+    const text = `${JSON.stringify(runSet, null, 2)}\n`;
+    try {
+      await writeFile(path, text, { encoding: 'utf8', flag: 'wx' });
+    } catch {
+      const existing = await readFile(path, 'utf8');
+      if (existing !== text) {
+        throw new Error(
+          'Existing Plan 1.1 production-art run-set differs from completed workflow.',
+        );
+      }
+    }
+    return relative(process.cwd(), path).replaceAll('\\', '/');
+  }
   const runs = Object.fromEntries(state.tasks.map((task) => {
     const runDirectory = task.attempts.at(-1)?.artifact?.run_directory;
     if (!runDirectory) throw new Error('Successful workflow task has no frozen run directory.');
@@ -1163,7 +1349,7 @@ async function writeRunSet(
 
 function workflowSummary(
   state: ProductionArtWorkflowState,
-  plan: ReturnType<typeof createProductionArtPlan>,
+  plan: ProductionArtWorkflowPlan,
   approvedDirectionSha256: string | undefined,
   mode: 'dry-run' | 'executed' | 'reconciled',
   runSet?: string,
@@ -1215,10 +1401,6 @@ async function main(): Promise<void> {
     return;
   }
   const job = await readJob(args.job!);
-  const plan = createProductionArtPlan(job.profile, {
-    distribution: 'internal-review',
-    license: 'LicenseRef-Proprietary',
-  });
   if (args.execute && !job.character_identity_semantics_file) {
     throw new Error(
       'Remote workflow execution requires a human-confirmed character identity semantics file.',
@@ -1230,6 +1412,7 @@ async function main(): Promise<void> {
     characterIdentitySemanticsBytes,
     worldLayoutPlanBytes,
     assetRequirementsBytes,
+    productionArtPlanBytes,
     productionArtRequirementsBindingBytes,
     environmentReference,
     characterReference,
@@ -1248,6 +1431,9 @@ async function main(): Promise<void> {
       : undefined,
     job.asset_requirements_file
       ? readBoundedBinary(job.asset_requirements_file, 'Asset requirements')
+      : undefined,
+    job.production_art_plan_file
+      ? readBoundedBinary(job.production_art_plan_file, 'Production art plan')
       : undefined,
     job.production_art_requirements_binding_file
       ? readBoundedBinary(
@@ -1309,9 +1495,68 @@ async function main(): Promise<void> {
       );
     }
   }
+  let plan: ProductionArtWorkflowPlan;
+  let completeRequirements: AssetRequirementsV1_1 | undefined;
   let productionArtRequirementsBinding:
     ProductionArtRequirementsBinding | undefined;
-  if (assetRequirementsBytes && productionArtRequirementsBindingBytes) {
+  if (job.schema_version === '1.1.0') {
+    if (
+      !worldLayoutPlanSha256
+      || !assetRequirementsBytes
+      || !productionArtPlanBytes
+    ) {
+      throw new Error(
+        'Plan 1.1 workflow requires its canonical layout, AssetRequirements, and production-art plan.',
+      );
+    }
+    if (
+      assetRequirementsBytes.byteLength > 512 * 1024
+      || productionArtPlanBytes.byteLength > 2 * 1024 * 1024
+    ) {
+      throw new Error(
+        'Plan 1.1 AssetRequirements and production-art plan exceed their fixed size limits.',
+      );
+    }
+    completeRequirements = await materializeAssetRequirementsV1_1(
+      parseJsonRecord(assetRequirementsBytes, 'Asset requirements 1.1'),
+    );
+    const canonicalRequirements =
+      await serializeCanonicalAssetRequirementsV1_1(completeRequirements);
+    plan = await materializeProductionArtPlanV1_1(
+      parseJsonRecord(productionArtPlanBytes, 'Production art plan 1.1'),
+      completeRequirements,
+    );
+    const canonicalPlan = await serializeCanonicalProductionArtPlanV1_1(
+      plan,
+      completeRequirements,
+    );
+    if (
+      canonicalRequirements.byteLength !== assetRequirementsBytes.byteLength
+      || canonicalRequirements.some((byte, index) =>
+        byte !== assetRequirementsBytes[index])
+      || canonicalPlan.byteLength !== productionArtPlanBytes.byteLength
+      || canonicalPlan.some((byte, index) =>
+        byte !== productionArtPlanBytes[index])
+      || completeRequirements.profile !== job.profile
+      || plan.profile !== job.profile
+      || completeRequirements.source.layout_plan_sha256
+        !== worldLayoutPlanSha256
+    ) {
+      throw new Error(
+        'Plan 1.1 inputs must be canonical and bind the workflow profile and layout.',
+      );
+    }
+  } else {
+    plan = createProductionArtPlan(job.profile, {
+      distribution: 'internal-review',
+      license: 'LicenseRef-Proprietary',
+    });
+  }
+  if (
+    job.schema_version === '1.0.0'
+    && assetRequirementsBytes
+    && productionArtRequirementsBindingBytes
+  ) {
     if (!worldLayoutPlanSha256) {
       throw new Error(
         'Asset requirements require a canonical world layout plan.',
@@ -1378,6 +1623,9 @@ async function main(): Promise<void> {
     ...(worldLayoutPlanBytes ? { worldLayoutPlan: worldLayoutPlanBytes } : {}),
     ...(assetRequirementsBytes
       ? { assetRequirements: assetRequirementsBytes }
+      : {}),
+    ...(productionArtPlanBytes
+      ? { productionArtPlan: productionArtPlanBytes }
       : {}),
     ...(productionArtRequirementsBindingBytes
       ? {
@@ -1452,6 +1700,7 @@ async function main(): Promise<void> {
         job.character_id,
         false,
         job.private_output_root,
+        completeRequirements,
       );
       state = reconcileProductionArtWorkflowTask(state, plan, {
         expectedStateRevision: state.state_revision,
@@ -1459,7 +1708,13 @@ async function main(): Promise<void> {
         artifact,
       });
       await persistState(directory, state);
-      const runSet = await writeRunSet(directory, state, plan, job.private_output_root);
+      const runSet = await writeRunSet(
+        directory,
+        state,
+        plan,
+        job.private_output_root,
+        completeRequirements,
+      );
       console.log(JSON.stringify(workflowSummary(
         state,
         plan,
@@ -1471,7 +1726,13 @@ async function main(): Promise<void> {
     }
 
     if (!args.execute) {
-      const runSet = await writeRunSet(directory, state, plan, job.private_output_root);
+      const runSet = await writeRunSet(
+        directory,
+        state,
+        plan,
+        job.private_output_root,
+        completeRequirements,
+      );
       console.log(JSON.stringify(workflowSummary(
         state,
         plan,
@@ -1499,6 +1760,11 @@ async function main(): Promise<void> {
       if (!selectedTaskId) break;
       const task = plan.tasks.find(({ task_id: taskId }) => taskId === selectedTaskId);
       if (!task) throw new Error('Selected workflow task is not in the canonical plan.');
+      if (selectedTaskId !== 'scene-direction' && !job.approved_direction) {
+        throw new Error(
+          'Remote execution requires the frozen approved direction file; no request was started.',
+        );
+      }
       state = beginProductionArtWorkflowTask(state, plan, {
         expectedStateRevision: state.state_revision,
         taskId: selectedTaskId,
@@ -1533,6 +1799,7 @@ async function main(): Promise<void> {
           result.exitCode === 2
             || summary.status === 'candidate-written-projection-rejected',
           job.private_output_root,
+          completeRequirements,
         );
         if (
           artifact.source_sha256 !== summary.source_sha256
@@ -1571,7 +1838,13 @@ async function main(): Promise<void> {
         break;
       }
     }
-    const runSet = await writeRunSet(directory, state, plan, job.private_output_root);
+    const runSet = await writeRunSet(
+      directory,
+      state,
+      plan,
+      job.private_output_root,
+      completeRequirements,
+    );
     const summary = workflowSummary(
       state,
       plan,

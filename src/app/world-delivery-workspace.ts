@@ -103,6 +103,8 @@ export interface PreparedWorldDeliveryWorkspace {
     plan_path: 'complete-art/production-art-plan-1.1.json';
     plan_sha256: string;
     task_count: number;
+    workflow_job_path:
+      'complete-art/production-art-workflow-job-1.1.json';
     execution: 'explicit-authorization-required';
   }>;
   readonly baseline: Readonly<{
@@ -313,6 +315,16 @@ function canonicalUtcInstant(value: string): string {
     throw new Error('Completed-at must be a real canonical UTC ISO instant.');
   }
   return value;
+}
+
+function completeArtWorkflowId(
+  intakeId: string,
+  planSha256: string,
+): string {
+  const stem = intakeId.slice(0, 48).replace(/-+$/u, '');
+  const workflowId =
+    `${stem}-complete-art-${planSha256.slice(0, 12)}`;
+  return assertSafeId(workflowId, 'Complete-art workflow id', 80);
 }
 
 function worldBrief(intake: ConfirmedWorldCreationIntake): string {
@@ -605,20 +617,30 @@ export async function prepareWorldDeliveryWorkspace(
     throw new Error('Procedural baseline does not match the confirmed intake.');
   }
   const workspace = resolve(input.workspace);
-  const job = {
-    schema_version: '1.0.0',
+  const providerJobFields = provider === 'spritecook'
+    ? {
+      provider,
+      ...(input.model ? { model: input.model } : {}),
+      resolution: input.resolution ?? '2K',
+    }
+    : {};
+  const privateInputBinding = {
+    confirmed_intake_sha256: intakeSha256,
+    seed: intake.seed,
+    character_identity_digest_sha256:
+      intake.character_source.identity_digest_sha256,
+    environment_reference_id: environment.descriptor.id,
+    character_reference_id: character.descriptor.id,
+  };
+  const privateOutputRoot = resolve(
+    dirname(workspace),
+    `${basename(workspace)}-production-art-output`,
+  );
+  const sharedJobFields = {
     document_type: 'production-art-workflow-job',
-    workflow_id: intake.intake_id,
     profile: intake.profile,
-    ...(provider === 'spritecook'
-      ? {
-        provider,
-        ...(input.model ? { model: input.model } : {}),
-        resolution: input.resolution ?? '2K',
-      }
-      : {}),
+    ...providerJobFields,
     quality,
-    request_budget: requestBudget,
     world_brief_file: resolve(workspace, 'world-brief.txt'),
     style_bible_file: resolve(workspace, 'style-bible.txt'),
     ...(characterIdentitySemantics
@@ -629,26 +651,40 @@ export async function prepareWorldDeliveryWorkspace(
         ),
       }
       : {}),
+    environment_reference: resolve(workspace, ...environment.name.split('/')),
+    character_reference: resolve(workspace, ...character.name.split('/')),
+    character_id: characterId,
+    private_input_binding: privateInputBinding,
+    private_output_root: privateOutputRoot,
+  };
+  const job = {
+    schema_version: '1.0.0',
+    workflow_id: intake.intake_id,
+    request_budget: requestBudget,
+    ...sharedJobFields,
     world_layout_plan_file: resolve(workspace, 'world-layout-plan.json'),
     asset_requirements_file: resolve(workspace, 'asset-requirements.json'),
     production_art_requirements_binding_file: resolve(
       workspace,
       'production-art-requirements-binding.json',
     ),
-    environment_reference: resolve(workspace, ...environment.name.split('/')),
-    character_reference: resolve(workspace, ...character.name.split('/')),
-    character_id: characterId,
-    private_input_binding: {
-      confirmed_intake_sha256: intakeSha256,
-      seed: intake.seed,
-      character_identity_digest_sha256:
-        intake.character_source.identity_digest_sha256,
-      environment_reference_id: environment.descriptor.id,
-      character_reference_id: character.descriptor.id,
-    },
-    private_output_root: resolve(
-      dirname(workspace),
-      `${basename(workspace)}-production-art-output`,
+  };
+  const completeArtJob = {
+    schema_version: '1.1.0',
+    workflow_id: completeArtWorkflowId(
+      intake.intake_id,
+      completeProductionArtPlanSha256,
+    ),
+    request_budget: completeProductionArtPlan.tasks.length,
+    ...sharedJobFields,
+    world_layout_plan_file: resolve(workspace, 'world-layout-plan.json'),
+    asset_requirements_file: resolve(
+      workspace,
+      'complete-art/asset-requirements-1.1.json',
+    ),
+    production_art_plan_file: resolve(
+      workspace,
+      'complete-art/production-art-plan-1.1.json',
     ),
   };
   const sourceFiles = new Map<string, Uint8Array>([
@@ -679,6 +715,10 @@ export async function prepareWorldDeliveryWorkspace(
       ] as const]
       : []),
     ['production-art-workflow-job.json', jsonBytes(job)],
+    [
+      'complete-art/production-art-workflow-job-1.1.json',
+      jsonBytes(completeArtJob),
+    ],
     [`baseline/${baseline.pack.filename}`, baseline.pack.bytes],
     ['baseline/world-preview.png', baseline.previewBytes],
     ['baseline/world-asset-revision.json', jsonBytes(baseline.assetRevision)],
@@ -715,6 +755,8 @@ export async function prepareWorldDeliveryWorkspace(
       plan_path: 'complete-art/production-art-plan-1.1.json' as const,
       plan_sha256: completeProductionArtPlanSha256,
       task_count: completeProductionArtPlan.tasks.length,
+      workflow_job_path:
+        'complete-art/production-art-workflow-job-1.1.json' as const,
       execution: 'explicit-authorization-required' as const,
     }),
     baseline: Object.freeze({

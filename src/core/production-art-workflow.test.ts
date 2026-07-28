@@ -6,6 +6,7 @@ import workflowStateSchema from '../../schemas/mapsoo-production-art-workflow-st
 import exampleWorkflowJob from '../../config/production-art-workflow.example.json';
 
 import { createProductionArtPlan } from './production-art-contract';
+import type { ProductionArtPlanV1_1 } from './production-art-contract-v1-1';
 import {
   ProductionArtWorkflowError,
   beginProductionArtWorkflowTask,
@@ -26,6 +27,66 @@ function plan() {
     distribution: 'internal-review',
     license: 'LicenseRef-Proprietary',
   });
+}
+
+function completePlan(): ProductionArtPlanV1_1 {
+  const task = (
+    taskId: string,
+    role: string,
+  ): ProductionArtPlanV1_1['tasks'][number] => ({
+    task_id: taskId,
+    kind: 'transparent-prop-sheet',
+    expected_output_path: `production/${taskId}.png`,
+    target: {
+      width: 64,
+      height: 64,
+      cell_width: 64,
+      cell_height: 64,
+    },
+    alpha_policy: 'straight-alpha',
+    seam_policy: 'transparent-cell-padding',
+    pivot: { x: 32, y: 63, unit: 'pixels' },
+    reference_roles: ['environment-style'],
+    requirement_assignments: [{
+      requirement_id: `requirement-${taskId}`,
+      role,
+      strategy: 'one-cell-per-variant',
+      required_variant_count: 1,
+      slot_ids: [`slot-${taskId}`],
+    }],
+    slot_mappings: [{
+      slot_id: `slot-${taskId}`,
+      requirement_id: `requirement-${taskId}`,
+      variant_id: `variant-${taskId}`,
+      role,
+      grid_rect: {
+        column: 0,
+        row: 0,
+        column_span: 1,
+        row_span: 1,
+      },
+    }],
+    prompt: `Render ${role}.`,
+    negative_constraints: ['Do not add text.'],
+  });
+  return {
+    schema_version: '1.1.0',
+    document_type: 'production-art-plan',
+    plan_id: 'complete-plan-v1',
+    profile: 'topdown-farm',
+    source: {
+      requirements_id: 'complete-requirements-v1',
+      requirements_sha256: SHA_A,
+    },
+    rights: {
+      distribution: 'internal-review',
+      license: 'LicenseRef-Proprietary',
+    },
+    tasks: [
+      task('complete-prop-sheet-1', 'prop.environment.atlas'),
+      task('complete-effect-sheet-1', 'effect.environment.atlas'),
+    ],
+  };
 }
 
 function initial(requestBudget = 14) {
@@ -152,6 +213,123 @@ describe('production art workflow', () => {
       approvedDirectionSha256: SHA_C,
     });
     expect(terrain.approved_direction_sha256).toBe(SHA_C);
+  });
+
+  it('runs a complete Plan 1.1 only after one externally approved direction is frozen', () => {
+    const productionPlan = completePlan();
+    let state = createProductionArtWorkflowState({
+      workflowId: 'complete-plan-workflow-v1',
+      plan: productionPlan,
+      provider: {
+        id: 'test-provider',
+        model: 'test-model',
+        quality: 'medium',
+      },
+      inputBindingSha256: SHA_A,
+      privateInputBinding: {
+        confirmed_intake_sha256: SHA_B,
+        seed: 'complete-plan-seed',
+        character_identity_digest_sha256: SHA_C,
+        environment_reference_id: 'complete-environment',
+        character_reference_id: 'complete-character',
+      },
+      requestBudget: productionPlan.tasks.length,
+    });
+    expect(selectNextProductionArtWorkflowTask(
+      state,
+      productionPlan,
+    )).toEqual({ phase: 'awaiting-direction-approval' });
+    expect(selectNextProductionArtWorkflowTask(
+      state,
+      productionPlan,
+      SHA_C,
+    )).toEqual({
+      phase: 'ready',
+      task_id: productionPlan.tasks[0].task_id,
+    });
+
+    for (const task of productionPlan.tasks) {
+      const running = beginProductionArtWorkflowTask(state, productionPlan, {
+        expectedStateRevision: state.state_revision,
+        taskId: task.task_id,
+        approvedDirectionSha256: SHA_C,
+      });
+      state = completeProductionArtWorkflowTask(running, productionPlan, {
+        expectedStateRevision: running.state_revision,
+        taskId: task.task_id,
+        attempt: 1,
+        outcome: 'succeeded',
+        artifact: artifact(task.task_id),
+      });
+    }
+    expect(state.approved_direction_sha256).toBe(SHA_C);
+    expect(selectNextProductionArtWorkflowTask(
+      state,
+      productionPlan,
+      SHA_C,
+    )).toEqual({ phase: 'complete' });
+    expect(() => selectNextProductionArtWorkflowTask(
+      state,
+      productionPlan,
+      SHA_B,
+    )).toThrowError(expect.objectContaining({
+      code: 'workflow.direction-replaced',
+    }));
+
+    const tampered = JSON.parse(JSON.stringify(state));
+    delete tampered.approved_direction_sha256;
+    expect(() => parseProductionArtWorkflowState(
+      tampered,
+      productionPlan,
+    )).toThrowError(expect.objectContaining({
+      code: 'workflow.invalid-state',
+    }));
+  });
+
+  it('keeps the frozen Plan 1.1 direction on an explicitly acknowledged retry', () => {
+    const productionPlan = completePlan();
+    let state = createProductionArtWorkflowState({
+      workflowId: 'complete-plan-retry-v1',
+      plan: productionPlan,
+      provider: {
+        id: 'test-provider',
+        model: 'test-model',
+        quality: 'medium',
+      },
+      inputBindingSha256: SHA_A,
+      privateInputBinding: {
+        confirmed_intake_sha256: SHA_B,
+        seed: 'complete-plan-retry-seed',
+        character_identity_digest_sha256: SHA_C,
+        environment_reference_id: 'complete-environment',
+        character_reference_id: 'complete-character',
+      },
+      requestBudget: productionPlan.tasks.length + 1,
+    });
+    const taskId = productionPlan.tasks[0].task_id;
+    state = beginProductionArtWorkflowTask(state, productionPlan, {
+      expectedStateRevision: state.state_revision,
+      taskId,
+      approvedDirectionSha256: SHA_C,
+    });
+    state = completeProductionArtWorkflowTask(state, productionPlan, {
+      expectedStateRevision: state.state_revision,
+      taskId,
+      attempt: 1,
+      outcome: 'rejected',
+      artifact: artifact(taskId),
+      errorCode: 'task.semantic-rejected',
+    });
+    state = beginProductionArtWorkflowTask(state, productionPlan, {
+      expectedStateRevision: state.state_revision,
+      taskId,
+      acknowledgeDuplicateCostRisk: true,
+    });
+    expect(state.approved_direction_sha256).toBe(SHA_C);
+    expect(() => parseProductionArtWorkflowState(
+      state,
+      productionPlan,
+    )).not.toThrow();
   });
 
   it('does not silently retry a rejected or uncertain paid attempt', () => {

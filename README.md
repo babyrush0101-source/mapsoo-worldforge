@@ -71,8 +71,10 @@ cell. The plan carries the complete requirements SHA-256, requirement
 assignments, slot IDs, row-major placement, composite preview sheets, and
 character pose-grid bindings. The provider port, normalizer, run set, reviewed
 variant map, runtime overlay, and shared Godot appliers accept the 1.1 chain.
-The private resumable batch runner still uses the stable 1.0 compatibility
-inventory until it is upgraded; it cannot silently claim full 1.1 execution.
+The same private resumable batch runner now accepts either the stable 1.0
+compatibility inventory or the complete 1.1 task inventory. A generated 1.1
+job remains dry-run-only until an operator supplies an approved direction
+image and explicitly authorizes remote upload and execution.
 See
 [AssetRequirements and ProductionArtPlan 1.1](docs/60_ASSET_REQUIREMENTS_PRODUCTION_ART_1_1.md).
 
@@ -126,9 +128,10 @@ profiles. The same zero-request preparation now also creates a complete
 Godot-import-ready procedural baseline pack from the confirmed layout, so a
 playable placeholder world exists before paid final-art tasks begin. It also
 writes the complete 1.1 requirements and Plan under `complete-art/`, with
-their hashes and counts bound in the workspace manifest. This is an executable
-provider-neutral blueprint, not a claim that its complete task inventory has
-already run. References, briefs, workflow state, baseline and generated
+their hashes, counts, and a 1.1 workflow job bound in the workspace manifest.
+The job uses the existing provider-neutral runner and initializes to
+`awaiting-direction-approval` with zero remote requests; it is not a claim that
+its complete task inventory has already run. References, briefs, workflow state, baseline and generated
 candidates are forced outside the public repository. After review and a trusted
 Godot build, the same CLI finalizes an exact-byte delivery by binding the world
 pack, runtime artifact, portable contract, created-character revision, and

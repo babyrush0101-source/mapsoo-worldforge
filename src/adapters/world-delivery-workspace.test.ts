@@ -14,6 +14,8 @@ import smokeReportSchema
   from '../../schemas/mapsoo-godot-headless-smoke-report-1.0.schema.json';
 import workflowJobSchema
   from '../../schemas/mapsoo-production-art-workflow-job-1.0.schema.json';
+import workflowJobV1_1Schema
+  from '../../schemas/mapsoo-production-art-workflow-job-1.1.schema.json';
 import {
   finalizeWorldRunnerDelivery,
   prepareWorldDeliveryWorkspace,
@@ -194,6 +196,8 @@ describe('world delivery workspace preparation', () => {
       requirements_path:
         'complete-art/asset-requirements-1.1.json',
       plan_path: 'complete-art/production-art-plan-1.1.json',
+      workflow_job_path:
+        'complete-art/production-art-workflow-job-1.1.json',
       execution: 'explicit-authorization-required',
     });
     expect(manifest.complete_art_plan.requirement_count).toBeGreaterThan(1);
@@ -225,6 +229,7 @@ describe('world delivery workspace preparation', () => {
       'asset-requirements.json',
       manifest.complete_art_plan.requirements_path,
       manifest.complete_art_plan.plan_path,
+      manifest.complete_art_plan.workflow_job_path,
       'production-art-workflow-job.json',
       'production-art-requirements-binding.json',
       'references/environment.png',
@@ -290,6 +295,49 @@ describe('world delivery workspace preparation', () => {
       resolve(workspace, 'production-art-requirements-binding.json'),
     );
     expect(new Ajv2020().compile(workflowJobSchema)(job)).toBe(true);
+    const completeArtJobPath = resolve(
+      workspace,
+      manifest.complete_art_plan.workflow_job_path,
+    );
+    const completeArtJob = JSON.parse(await readFile(
+      completeArtJobPath,
+      'utf8',
+    ));
+    expect(new Ajv2020().compile(workflowJobV1_1Schema)(completeArtJob))
+      .toBe(true);
+    expect(completeArtJob).toMatchObject({
+      schema_version: '1.1.0',
+      profile,
+      request_budget: manifest.complete_art_plan.task_count,
+      asset_requirements_file: resolve(
+        workspace,
+        manifest.complete_art_plan.requirements_path,
+      ),
+      production_art_plan_file: resolve(
+        workspace,
+        manifest.complete_art_plan.plan_path,
+      ),
+    });
+    expect(completeArtJob)
+      .not.toHaveProperty('production_art_requirements_binding_file');
+    const { stdout: completeArtDryRunStdout } =
+      await execFileAsync(process.execPath, [
+        resolve(process.cwd(), 'node_modules/vite-node/vite-node.mjs'),
+        resolve(process.cwd(), 'scripts/run-production-art-workflow.ts'),
+        '--job',
+        completeArtJobPath,
+      ], {
+        cwd: process.cwd(),
+        windowsHide: true,
+        maxBuffer: 1024 * 1024,
+      });
+    expect(JSON.parse(completeArtDryRunStdout)).toMatchObject({
+      status: 'awaiting-direction-approval',
+      mode: 'dry-run',
+      profile,
+      total_tasks: manifest.complete_art_plan.task_count,
+      remote_request_count_this_invocation: 0,
+    });
     const assetRequirements = JSON.parse(await readFile(
       resolve(workspace, 'asset-requirements.json'),
       'utf8',
@@ -395,6 +443,76 @@ describe('world delivery workspace preparation', () => {
         model: 'gemini-3.1-flash-image',
       },
       remote_request_count_this_invocation: 0,
+    });
+    const completeJobPath = resolve(
+      workspace,
+      manifest.complete_art_plan.workflow_job_path,
+    );
+    const completeJob = JSON.parse(await readFile(completeJobPath, 'utf8'));
+    expect(new Ajv2020().compile(workflowJobV1_1Schema)(completeJob))
+      .toBe(true);
+    const approvedCompleteJobPath = resolve(
+      workspace,
+      'complete-art/approved-workflow-job-1.1.json',
+    );
+    await writeFile(approvedCompleteJobPath, `${JSON.stringify({
+      ...completeJob,
+      approved_direction: resolve(
+        workspace,
+        manifest.baseline.preview_path,
+      ),
+    }, null, 2)}\n`);
+    const { stdout: approvedStdout } = await execFileAsync(
+      process.execPath,
+      [
+        resolve(process.cwd(), 'node_modules/vite-node/vite-node.mjs'),
+        resolve(process.cwd(), 'scripts/run-production-art-workflow.ts'),
+        '--job',
+        approvedCompleteJobPath,
+      ],
+      {
+        cwd: process.cwd(),
+        windowsHide: true,
+        maxBuffer: 1024 * 1024,
+      },
+    );
+    const approvedSummary = JSON.parse(approvedStdout);
+    expect(approvedSummary).toMatchObject({
+      status: 'ready',
+      mode: 'dry-run',
+      provider: {
+        id: 'spritecook-game-art',
+        model: 'gemini-3.1-flash-image',
+      },
+      remote_request_count_this_invocation: 0,
+    });
+    expect(approvedSummary.next_task).toBeTruthy();
+    const { stdout: sourceTaskDryRunStdout } =
+      await execFileAsync(process.execPath, [
+        resolve(process.cwd(), 'node_modules/vite-node/vite-node.mjs'),
+        resolve(process.cwd(), 'scripts/run-production-art-source.ts'),
+        '--provider',
+        'spritecook',
+        '--profile',
+        'topdown-farm',
+        '--task',
+        approvedSummary.next_task,
+        '--asset-requirements-file',
+        resolve(workspace, manifest.complete_art_plan.requirements_path),
+        '--production-art-plan-file',
+        resolve(workspace, manifest.complete_art_plan.plan_path),
+      ], {
+        cwd: process.cwd(),
+        windowsHide: true,
+        maxBuffer: 1024 * 1024,
+      });
+    expect(JSON.parse(sourceTaskDryRunStdout)).toMatchObject({
+      mode: 'dry-run',
+      provider: 'spritecook-game-art',
+      profile: 'topdown-farm',
+      task_id: approvedSummary.next_task,
+      plan_schema_version: '1.1.0',
+      remote_request_count: 0,
     });
   });
 

@@ -58,6 +58,7 @@ The relevant code is:
   provider-bound request accounting, direction approval, state transitions,
   interruption/retry policy, and artifact bindings;
 - [`schemas/mapsoo-production-art-workflow-job-1.0.schema.json`](../schemas/mapsoo-production-art-workflow-job-1.0.schema.json)
+- [`schemas/mapsoo-production-art-workflow-job-1.1.schema.json`](../schemas/mapsoo-production-art-workflow-job-1.1.schema.json)
   and [`schemas/mapsoo-production-art-workflow-state-1.0.schema.json`](../schemas/mapsoo-production-art-workflow-state-1.0.schema.json):
   portable strict schemas for operator input and the privacy-minimized journal;
 - [`src/core/production-art-progress.ts`](../src/core/production-art-progress.ts)

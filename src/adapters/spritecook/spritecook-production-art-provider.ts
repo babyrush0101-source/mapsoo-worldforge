@@ -5,6 +5,8 @@ import {
   ProductionArtProviderError,
   type ProductionArtProvider,
   type ProductionArtProviderJob,
+  type ProductionArtProviderJobV1_1,
+  type ProductionArtProviderV1_1,
 } from '../../core/production-art-provider';
 import {
   WORLD_ASSET_PROFILES,
@@ -141,7 +143,11 @@ export function selectSpriteCookIntentSize(target: {
   );
 }
 
-function validateDirectAuthorization(job: ProductionArtProviderJob): void {
+type SpriteCookProductionArtJob =
+  | ProductionArtProviderJob
+  | ProductionArtProviderJobV1_1;
+
+function validateDirectAuthorization(job: SpriteCookProductionArtJob): void {
   const authorization = job.remoteAuthorization;
   const referenceIds = job.references.map(({ descriptor }) => descriptor.id);
   if (
@@ -330,7 +336,7 @@ async function fitSourceToTarget(
   );
 }
 
-function palette(job: ProductionArtProviderJob): readonly string[] | undefined {
+function palette(job: SpriteCookProductionArtJob): readonly string[] | undefined {
   const colors = job.characterIdentitySemantics?.cues.palette;
   return colors && colors.length > 0
     ? Object.freeze([...colors])
@@ -339,7 +345,7 @@ function palette(job: ProductionArtProviderJob): readonly string[] | undefined {
 
 export function createSpriteCookProductionArtProvider(
   options: SpriteCookProductionArtProviderOptions = {},
-): ProductionArtProvider {
+): ProductionArtProvider & ProductionArtProviderV1_1 {
   const model = options.model ?? SPRITECOOK_DEFAULT_MODEL;
   const quality = options.quality ?? 'medium';
   const resolution = options.resolution ?? '2K';
@@ -393,7 +399,7 @@ export function createSpriteCookProductionArtProvider(
       providerDocumentationUrl: SPRITECOOK_DOCUMENTATION_URL,
     }),
     generate: async (
-      job: ProductionArtProviderJob,
+      job: SpriteCookProductionArtJob,
       generateOptions: {
         readonly signal?: AbortSignal;
         readonly credential?: string;

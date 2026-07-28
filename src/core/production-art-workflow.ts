@@ -2,6 +2,10 @@ import type {
   ProductionArtPlan,
   ProductionArtTask,
 } from './production-art-contract';
+import type {
+  ProductionArtPlanV1_1,
+  ProductionArtTaskV1_1,
+} from './production-art-contract-v1-1';
 import type { WorldAssetProfile } from './asset-profile';
 
 export const PRODUCTION_ART_WORKFLOW_VERSION = '1.0.0' as const;
@@ -92,6 +96,14 @@ export type ProductionArtWorkflowPhase =
   | 'budget-exhausted'
   | 'complete';
 
+export type ProductionArtWorkflowPlan =
+  | ProductionArtPlan
+  | ProductionArtPlanV1_1;
+
+export type ProductionArtWorkflowPlanTask =
+  | ProductionArtTask
+  | ProductionArtTaskV1_1;
+
 export interface ProductionArtWorkflowSelection {
   readonly phase: ProductionArtWorkflowPhase;
   readonly task_id?: string;
@@ -99,7 +111,7 @@ export interface ProductionArtWorkflowSelection {
 
 export interface CreateProductionArtWorkflowInput {
   readonly workflowId: string;
-  readonly plan: ProductionArtPlan;
+  readonly plan: ProductionArtWorkflowPlan;
   readonly provider: {
     readonly id: string;
     readonly model: string;
@@ -227,7 +239,7 @@ function safeArtifactDirectory(value: unknown): value is string {
 
 function assertPlanIdentity(
   state: ProductionArtWorkflowState,
-  plan: ProductionArtPlan,
+  plan: ProductionArtWorkflowPlan,
 ): void {
   if (state.plan_id !== plan.plan_id || state.profile !== plan.profile) {
     fail(
@@ -246,6 +258,20 @@ function assertPlanIdentity(
       'Workflow task order does not match the canonical production-art plan.',
     );
   }
+}
+
+function sceneTask(
+  plan: ProductionArtWorkflowPlan,
+): ProductionArtWorkflowPlanTask | undefined {
+  return plan.tasks.find(({ task_id: taskId }) =>
+    taskId === 'scene-direction');
+}
+
+function isLegacyPlayerTask(task: ProductionArtWorkflowPlanTask): boolean {
+  return 'role_mappings' in task
+    && task.kind === 'character-animation-sheet'
+    && task.role_mappings.length === 1
+    && task.role_mappings[0].role === 'character.player.atlas';
 }
 
 function validateArtifact(value: unknown): value is ProductionArtWorkflowArtifact {
@@ -330,7 +356,7 @@ function validateAttempt(
 
 export function parseProductionArtWorkflowState(
   value: unknown,
-  plan: ProductionArtPlan,
+  plan: ProductionArtWorkflowPlan,
 ): ProductionArtWorkflowState {
   if (
     !isPlainObject(value)
@@ -446,9 +472,7 @@ export function parseProductionArtWorkflowState(
       fail('workflow.invalid-state', 'Task status must match its latest attempt.');
     }
     const latestArtifact = latest?.artifact;
-    const isPlayerTask = expectedTask.kind === 'character-animation-sheet'
-      && expectedTask.role_mappings.length === 1
-      && expectedTask.role_mappings[0].role === 'character.player.atlas';
+    const isPlayerTask = isLegacyPlayerTask(expectedTask);
     if (
       latestArtifact
       && (
@@ -477,31 +501,44 @@ export function parseProductionArtWorkflowState(
     );
   }
   const state = value as unknown as ProductionArtWorkflowState;
-  const parsedScene = state.tasks[0];
-  const parsedDirectionDigest = parsedScene.attempts.at(-1)?.artifact?.normalized_sha256;
-  if (
-    downstreamAttempts > 0
-    && (
-      parsedScene.status !== 'succeeded'
-      || !state.approved_direction_sha256
-      || state.approved_direction_sha256 !== parsedDirectionDigest
-    )
+  const plannedScene = sceneTask(plan);
+  if (plannedScene) {
+    const parsedScene = state.tasks.find(({ task_id: taskId }) =>
+      taskId === plannedScene.task_id)!;
+    const parsedDirectionDigest =
+      parsedScene.attempts.at(-1)?.artifact?.normalized_sha256;
+    if (
+      downstreamAttempts > 0
+      && (
+        parsedScene.status !== 'succeeded'
+        || !state.approved_direction_sha256
+        || state.approved_direction_sha256 !== parsedDirectionDigest
+      )
+    ) {
+      fail(
+        'workflow.invalid-state',
+        'Downstream attempts require the exact successful scene-direction binding.',
+      );
+    }
+    if (
+      state.approved_direction_sha256
+      && (
+        downstreamAttempts === 0
+        || state.approved_direction_sha256 !== parsedDirectionDigest
+      )
+    ) {
+      fail(
+        'workflow.invalid-state',
+        'Approved direction binding is not backed by downstream workflow state.',
+      );
+    }
+  } else if (
+    (downstreamAttempts > 0 && !state.approved_direction_sha256)
+    || (downstreamAttempts === 0 && state.approved_direction_sha256)
   ) {
     fail(
       'workflow.invalid-state',
-      'Downstream attempts require the exact successful scene-direction binding.',
-    );
-  }
-  if (
-    state.approved_direction_sha256
-    && (
-      downstreamAttempts === 0
-      || state.approved_direction_sha256 !== parsedDirectionDigest
-    )
-  ) {
-    fail(
-      'workflow.invalid-state',
-      'Approved direction binding is not backed by downstream workflow state.',
+      'Plan 1.1 attempts require one frozen externally approved direction binding.',
     );
   }
   assertPlanIdentity(state, plan);
@@ -554,7 +591,11 @@ export function createProductionArtWorkflowState(
 
 function sceneState(
   state: ProductionArtWorkflowState,
+  plan: ProductionArtWorkflowPlan,
 ): ProductionArtWorkflowTaskState {
+  if (!sceneTask(plan)) {
+    fail('workflow.scene-task-missing', 'Canonical workflow has no scene-direction task.');
+  }
   const scene = state.tasks.find(({ task_id: taskId }) => taskId === 'scene-direction');
   if (!scene) {
     fail('workflow.scene-task-missing', 'Canonical workflow has no scene-direction task.');
@@ -564,28 +605,34 @@ function sceneState(
 
 function directionDigest(
   state: ProductionArtWorkflowState,
+  plan: ProductionArtWorkflowPlan,
 ): string | undefined {
-  return sceneState(state).attempts.at(-1)?.artifact?.normalized_sha256;
+  return sceneState(state, plan).attempts.at(-1)?.artifact?.normalized_sha256;
 }
 
 function validateDirectionApproval(
   state: ProductionArtWorkflowState,
+  plan: ProductionArtWorkflowPlan,
   approvedDirectionSha256: string | undefined,
 ): boolean {
-  if (!approvedDirectionSha256) return false;
-  if (!SHA256.test(approvedDirectionSha256)) {
+  const selectedDirectionSha256 = approvedDirectionSha256
+    ?? state.approved_direction_sha256;
+  if (!selectedDirectionSha256) return false;
+  if (!SHA256.test(selectedDirectionSha256)) {
     fail('workflow.direction-invalid', 'Approved direction digest must be canonical SHA-256.');
   }
-  const expected = directionDigest(state);
-  if (!expected || approvedDirectionSha256 !== expected) {
-    fail(
-      'workflow.direction-mismatch',
-      'Approved direction must exactly match the successful scene-direction output.',
-    );
+  if (sceneTask(plan)) {
+    const expected = directionDigest(state, plan);
+    if (!expected || selectedDirectionSha256 !== expected) {
+      fail(
+        'workflow.direction-mismatch',
+        'Approved direction must exactly match the successful scene-direction output.',
+      );
+    }
   }
   if (
     state.approved_direction_sha256
-    && state.approved_direction_sha256 !== approvedDirectionSha256
+    && state.approved_direction_sha256 !== selectedDirectionSha256
   ) {
     fail(
       'workflow.direction-replaced',
@@ -597,29 +644,32 @@ function validateDirectionApproval(
 
 export function selectNextProductionArtWorkflowTask(
   state: ProductionArtWorkflowState,
-  plan: ProductionArtPlan,
+  plan: ProductionArtWorkflowPlan,
   approvedDirectionSha256?: string,
 ): ProductionArtWorkflowSelection {
   assertPlanIdentity(state, plan);
   if (state.tasks.some(({ status }) => status === 'running')) {
     return Object.freeze({ phase: 'running' });
   }
+
+  const plannedScene = sceneTask(plan);
+  if (plannedScene) {
+    const scene = sceneState(state, plan);
+    if (scene.status === 'pending') {
+      return Object.freeze({ phase: 'ready', task_id: scene.task_id });
+    }
+    if (scene.status !== 'succeeded') {
+      return Object.freeze({ phase: 'awaiting-scene-direction' });
+    }
+  }
+  if (!validateDirectionApproval(state, plan, approvedDirectionSha256)) {
+    return Object.freeze({ phase: 'awaiting-direction-approval' });
+  }
   if (state.tasks.every(({ status }) => status === 'succeeded')) {
     return Object.freeze({ phase: 'complete' });
   }
   if (state.requests_started >= state.request_budget) {
     return Object.freeze({ phase: 'budget-exhausted' });
-  }
-
-  const scene = sceneState(state);
-  if (scene.status === 'pending') {
-    return Object.freeze({ phase: 'ready', task_id: scene.task_id });
-  }
-  if (scene.status !== 'succeeded') {
-    return Object.freeze({ phase: 'awaiting-scene-direction' });
-  }
-  if (!validateDirectionApproval(state, approvedDirectionSha256)) {
-    return Object.freeze({ phase: 'awaiting-direction-approval' });
   }
 
   if (state.tasks.some(({ status }) => status === 'rejected' || status === 'uncertain')) {
@@ -640,7 +690,10 @@ function taskById(
   return task;
 }
 
-function planTaskById(plan: ProductionArtPlan, taskId: string): ProductionArtTask {
+function planTaskById(
+  plan: ProductionArtWorkflowPlan,
+  taskId: string,
+): ProductionArtWorkflowPlanTask {
   const task = plan.tasks.find(({ task_id: id }) => id === taskId);
   if (!task) fail('workflow.task-unknown', `Unknown production-art task: ${taskId}.`);
   return task;
@@ -648,7 +701,7 @@ function planTaskById(plan: ProductionArtPlan, taskId: string): ProductionArtTas
 
 export function beginProductionArtWorkflowTask(
   state: ProductionArtWorkflowState,
-  plan: ProductionArtPlan,
+  plan: ProductionArtWorkflowPlan,
   input: {
     readonly expectedStateRevision: number;
     readonly taskId: string;
@@ -703,14 +756,16 @@ export function beginProductionArtWorkflowTask(
       fail('workflow.task-not-runnable', 'Scene direction has already been attempted.');
     }
   } else {
-    const scene = sceneState(state);
-    if (scene.status !== 'succeeded') {
-      fail(
-        'workflow.scene-direction-required',
-        'Downstream art tasks require a successful scene-direction task.',
-      );
+    if (sceneTask(plan)) {
+      const scene = sceneState(state, plan);
+      if (scene.status !== 'succeeded') {
+        fail(
+          'workflow.scene-direction-required',
+          'Downstream art tasks require a successful scene-direction task.',
+        );
+      }
     }
-    validateDirectionApproval(state, input.approvedDirectionSha256);
+    validateDirectionApproval(state, plan, input.approvedDirectionSha256);
   }
 
   const next = cloneState(state);
@@ -734,14 +789,14 @@ export function beginProductionArtWorkflowTask(
   (next as { requests_started: number }).requests_started = requestOrdinal;
   if (input.taskId !== 'scene-direction') {
     (next as { approved_direction_sha256?: string }).approved_direction_sha256 =
-      input.approvedDirectionSha256;
+      input.approvedDirectionSha256 ?? state.approved_direction_sha256;
   }
   return deepFreeze(next);
 }
 
 export function completeProductionArtWorkflowTask(
   state: ProductionArtWorkflowState,
-  plan: ProductionArtPlan,
+  plan: ProductionArtWorkflowPlan,
   input: CompleteProductionArtWorkflowTaskInput,
 ): ProductionArtWorkflowState {
   assertPlanIdentity(state, plan);
@@ -806,7 +861,7 @@ export function completeProductionArtWorkflowTask(
 
 export function reconcileProductionArtWorkflowTask(
   state: ProductionArtWorkflowState,
-  plan: ProductionArtPlan,
+  plan: ProductionArtWorkflowPlan,
   input: {
     readonly expectedStateRevision: number;
     readonly taskId: string;

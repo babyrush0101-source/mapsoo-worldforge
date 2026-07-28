@@ -105,15 +105,24 @@ workflow:
 complete-art/
   asset-requirements-1.1.json
   production-art-plan-1.1.json
+  production-art-workflow-job-1.1.json
 ```
 
-`workspace-manifest.json.complete_art_plan` binds both files, their SHA-256
-values, requirement count, task count, and the
+`workspace-manifest.json.complete_art_plan` binds the two canonical input
+files, their SHA-256 values, requirement count, task count, the 1.1 job path, and the
 `explicit-authorization-required` execution policy. This proves that every
 confirmed visual variant has an exact task and atlas slot before any provider
-is contacted. The existing 1.0 workflow remains the executable compatibility
-path until its resumable runner accepts the 1.1 task inventory; a blueprint is
-not a claim of paid generation or finished art.
+is contacted. The 1.0 compatibility job and complete 1.1 job use the same
+resumable runner. Inspecting the 1.1 job without execution initializes an
+`awaiting-direction-approval` state and makes zero remote requests:
+
+```bash
+pnpm production-art:workflow -- \
+  --job <private-workspace>/complete-art/production-art-workflow-job-1.1.json
+```
+
+This remains a blueprint and resumable schedule, not a claim of paid
+generation or finished art.
 
 The previous `--intake` plus `--reference-root` form remains supported. The two
 forms are mutually exclusive so there is one unambiguous reference source.

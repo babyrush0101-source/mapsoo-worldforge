@@ -5,6 +5,8 @@ import {
   ProductionArtProviderError,
   type ProductionArtProvider,
   type ProductionArtProviderJob,
+  type ProductionArtProviderJobV1_1,
+  type ProductionArtProviderV1_1,
 } from '../../core/production-art-provider';
 import { WORLD_ASSET_PROFILES } from '../../core/asset-profile';
 import {
@@ -74,7 +76,11 @@ export function selectOpenAiSourceSize(target: {
   invalidMetadata('Production target has no exact integer-scale GPT Image 2 source resolution.');
 }
 
-export function buildOpenAiProductionArtPrompt(job: ProductionArtProviderJob): string {
+type OpenAiProductionArtJob =
+  | ProductionArtProviderJob
+  | ProductionArtProviderJobV1_1;
+
+export function buildOpenAiProductionArtPrompt(job: OpenAiProductionArtJob): string {
   try {
     return compileProductionArtPrompt(job);
   } catch (error) {
@@ -86,7 +92,7 @@ export function buildOpenAiProductionArtPrompt(job: ProductionArtProviderJob): s
   }
 }
 
-function validateDirectRemoteAuthorization(job: ProductionArtProviderJob): void {
+function validateDirectRemoteAuthorization(job: OpenAiProductionArtJob): void {
   const authorization = job.remoteAuthorization;
   const ids = job.references.map(({ descriptor }) => descriptor.id);
   if (
@@ -160,7 +166,7 @@ function safeRequestId(response: Response): string | undefined {
 
 export function createOpenAiProductionArtProvider(
   options: OpenAiProductionArtProviderOptions = {},
-): ProductionArtProvider {
+): ProductionArtProvider & ProductionArtProviderV1_1 {
   const quality = options.quality ?? 'medium';
   if (!['low', 'medium', 'high'].includes(quality)) invalidMetadata('OpenAI image quality is unsupported.');
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
@@ -186,7 +192,7 @@ export function createOpenAiProductionArtProvider(
       providerDocumentationUrl: OPENAI_IMAGE_DOCUMENTATION_URL,
     }),
     generate: async (
-      job: ProductionArtProviderJob,
+      job: OpenAiProductionArtJob,
       generateOptions: { readonly signal?: AbortSignal; readonly credential?: string } = {},
     ) => {
       if (typeof window !== 'undefined') {

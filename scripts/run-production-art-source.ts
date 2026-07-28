@@ -9,6 +9,9 @@ import {
 
 import { normalizeProductionArtPng } from '../src/adapters/normalize-production-art-png';
 import {
+  normalizeProductionArtPngV1_1,
+} from '../src/adapters/normalize-production-art-png-v1-1';
+import {
   ProductionCharacterProfileProjectionError,
   deriveCharacterIdentityDigestSha256,
   projectProductionCharacterProfile,
@@ -39,8 +42,18 @@ import {
 } from '../src/adapters/spritecook/private-spritecook-reference-cache';
 import {
   createProductionArtPlan,
+  type ProductionArtPlan,
   type ProductionArtTask,
 } from '../src/core/production-art-contract';
+import {
+  materializeProductionArtPlanV1_1,
+  type ProductionArtPlanV1_1,
+  type ProductionArtTaskV1_1,
+} from '../src/core/production-art-contract-v1-1';
+import {
+  materializeAssetRequirementsV1_1,
+  type AssetRequirementsV1_1,
+} from '../src/core/asset-requirements-v1-1';
 import {
   serializeCharacterProfileRevisionCanonical,
 } from '../src/core/character-profile-revision';
@@ -78,6 +91,8 @@ const VALUE_FLAGS = new Set([
   '--spritecook-asset-cache-root',
   '--profile',
   '--task',
+  '--asset-requirements-file',
+  '--production-art-plan-file',
   '--quality',
   '--world-brief-file',
   '--style-bible-file',
@@ -107,6 +122,8 @@ interface Arguments {
   readonly spriteCookAssetCacheRoot?: string;
   readonly profile: WorldAssetProfile;
   readonly taskId: string;
+  readonly assetRequirementsFile?: string;
+  readonly productionArtPlanFile?: string;
   readonly quality: OpenAiProductionArtQuality;
   readonly worldBriefFile?: string;
   readonly styleBibleFile?: string;
@@ -144,6 +161,14 @@ function usage(): string {
     '    --approved-direction <accepted-direction.png> --character-reference <character.png> \\',
     '    --character-identity-semantics-file <human-confirmed-character.json> \\',
     '    --quality medium --execute --allow-remote-upload',
+    '',
+    'Execute one complete Plan 1.1 task through the same provider port:',
+    '  pnpm production-art:model -- --profile topdown-farm \\',
+    '    --asset-requirements-file <asset-requirements-1.1.json> \\',
+    '    --production-art-plan-file <production-art-plan-1.1.json> \\',
+    '    --task <plan-task-id> --approved-direction <accepted-direction.png> \\',
+    '    --world-brief-file <private-brief.txt> --style-bible-file <private-style.txt> \\',
+    '    --execute --allow-remote-upload',
     '',
     'Rules:',
     '  - OPENAI_API_KEY or SPRITECOOK_API_KEY is read only at runtime and is never written to output.',
@@ -202,6 +227,14 @@ function parseArguments(argv: readonly string[]): Arguments {
       '--model, --resolution, and --spritecook-asset-cache-root are accepted only with --provider spritecook.',
     );
   }
+  if (
+    values.has('--asset-requirements-file')
+    !== values.has('--production-art-plan-file')
+  ) {
+    throw new Error(
+      '--asset-requirements-file and --production-art-plan-file must be supplied together.',
+    );
+  }
   return Object.freeze({
     execute: booleans.has('--execute'),
     allowRemoteUpload: booleans.has('--allow-remote-upload'),
@@ -218,6 +251,12 @@ function parseArguments(argv: readonly string[]): Arguments {
       : {}),
     profile: profile as WorldAssetProfile,
     taskId: values.get('--task') ?? 'scene-direction',
+    ...(values.has('--asset-requirements-file')
+      ? { assetRequirementsFile: values.get('--asset-requirements-file') }
+      : {}),
+    ...(values.has('--production-art-plan-file')
+      ? { productionArtPlanFile: values.get('--production-art-plan-file') }
+      : {}),
     quality: quality as OpenAiProductionArtQuality,
     ...(values.has('--world-brief-file') ? { worldBriefFile: values.get('--world-brief-file') } : {}),
     ...(values.has('--style-bible-file') ? { styleBibleFile: values.get('--style-bible-file') } : {}),
@@ -254,10 +293,63 @@ function parseArguments(argv: readonly string[]): Arguments {
   });
 }
 
-function selectTask(profile: WorldAssetProfile, taskId: string): {
-  plan: ReturnType<typeof createProductionArtPlan>;
-  task: ProductionArtTask;
-} {
+type SelectedProductionArtTask = Readonly<{
+  plan: ProductionArtPlan | ProductionArtPlanV1_1;
+  task: ProductionArtTask | ProductionArtTaskV1_1;
+  requirements?: AssetRequirementsV1_1;
+}>;
+
+async function readStrictJsonFile(
+  path: string,
+  label: string,
+  maximumBytes = 1024 * 1024,
+): Promise<unknown> {
+  const bytes = Uint8Array.from(await readFile(resolve(path)));
+  if (bytes.byteLength < 2 || bytes.byteLength > maximumBytes) {
+    throw new Error(`${label} must be bounded, non-empty JSON.`);
+  }
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error(`${label} must contain strict UTF-8.`);
+  }
+  const parsed = parseStrictJsonDocument(text, label);
+  if (!parsed.ok) throw new Error(parsed.message);
+  return parsed.value;
+}
+
+async function selectTask(
+  args: Arguments,
+): Promise<SelectedProductionArtTask> {
+  if (args.assetRequirementsFile && args.productionArtPlanFile) {
+    const requirements = await materializeAssetRequirementsV1_1(
+      await readStrictJsonFile(
+        args.assetRequirementsFile,
+        'AssetRequirements 1.1',
+      ),
+    );
+    const plan = await materializeProductionArtPlanV1_1(
+      await readStrictJsonFile(
+        args.productionArtPlanFile,
+        'ProductionArtPlan 1.1',
+      ),
+      requirements,
+    );
+    if (plan.profile !== args.profile) {
+      throw new Error('ProductionArtPlan 1.1 does not match --profile.');
+    }
+    const task = plan.tasks.find(({ task_id: id }) => id === args.taskId);
+    if (!task) {
+      throw new Error(
+        `Unknown task ${args.taskId}. Available: ${
+          plan.tasks.map(({ task_id: id }) => id).join(', ')
+        }.`,
+      );
+    }
+    return Object.freeze({ plan, task, requirements });
+  }
+  const { profile, taskId } = args;
   const plan = createProductionArtPlan(profile, {
     distribution: 'internal-review',
     license: 'LicenseRef-Proprietary',
@@ -269,7 +361,25 @@ function selectTask(profile: WorldAssetProfile, taskId: string): {
   return { plan, task };
 }
 
-function assertExecutionArguments(args: Arguments, task: ProductionArtTask): void {
+function taskRoles(
+  task: ProductionArtTask | ProductionArtTaskV1_1,
+): readonly string[] {
+  return 'role_mappings' in task
+    ? task.role_mappings.map(({ role }) => role)
+    : task.slot_mappings.map(({ role }) => role);
+}
+
+function isPlayerCharacterTask(
+  task: ProductionArtTask | ProductionArtTaskV1_1,
+): boolean {
+  return task.kind === 'character-animation-sheet'
+    && taskRoles(task).includes('character.player.atlas');
+}
+
+function assertExecutionArguments(
+  args: Arguments,
+  task: ProductionArtTask | ProductionArtTaskV1_1,
+): void {
   if (!args.allowRemoteUpload) {
     throw new Error('--execute also requires --allow-remote-upload for this exact request.');
   }
@@ -305,13 +415,11 @@ function assertExecutionArguments(args: Arguments, task: ProductionArtTask): voi
       '--character-identity-semantics-file is accepted only for a character-bearing task.',
     );
   }
-  const isPlayerCharacterTask = task.kind === 'character-animation-sheet'
-    && task.role_mappings.length === 1
-    && task.role_mappings[0].role === 'character.player.atlas';
-  if (isPlayerCharacterTask && !args.characterId) {
+  const isPlayerTask = isPlayerCharacterTask(task);
+  if (isPlayerTask && !args.characterId) {
     throw new Error(`${task.task_id} requires --character-id for the portable character revision.`);
   }
-  if (args.characterId && !isPlayerCharacterTask) {
+  if (args.characterId && !isPlayerTask) {
     throw new Error('--character-id is accepted only for a player animation task.');
   }
   if (args.characterId
@@ -333,7 +441,7 @@ function assertExecutionArguments(args: Arguments, task: ProductionArtTask): voi
   ) {
     throw new Error('--character-identity-digest-sha256 must be canonical SHA-256.');
   }
-  if (args.characterIdentityDigestSha256 && !isPlayerCharacterTask) {
+  if (args.characterIdentityDigestSha256 && !isPlayerTask) {
     throw new Error(
       '--character-identity-digest-sha256 is accepted only for a player animation task.',
     );
@@ -397,7 +505,10 @@ async function loadReference(
   }, bytes);
 }
 
-async function loadReferences(args: Arguments, task: ProductionArtTask): Promise<RuntimeReferenceImage[]> {
+async function loadReferences(
+  args: Arguments,
+  task: ProductionArtTask | ProductionArtTaskV1_1,
+): Promise<RuntimeReferenceImage[]> {
   const references: RuntimeReferenceImage[] = [];
   if (args.approvedDirection) {
     references.push(await loadReference(
@@ -462,7 +573,10 @@ async function readCharacterIdentitySemantics(
   return materializeCharacterIdentitySemantics(value);
 }
 
-function dryRunSummary(args: Arguments, task: ProductionArtTask): object {
+function dryRunSummary(
+  args: Arguments,
+  task: ProductionArtTask | ProductionArtTaskV1_1,
+): object {
   const openAiSource = args.provider === 'openai'
     ? selectOpenAiSourceSize(task.target)
     : undefined;
@@ -502,9 +616,8 @@ function dryRunSummary(args: Arguments, task: ProductionArtTask): object {
     required_reference_roles: task.reference_roles,
     semantic_pose_cells: task.pose_mappings?.length ?? 0,
     requires_approved_direction: task.task_id !== 'scene-direction',
-    requires_character_id: task.kind === 'character-animation-sheet'
-      && task.role_mappings.length === 1
-      && task.role_mappings[0].role === 'character.player.atlas',
+    plan_schema_version: args.productionArtPlanFile ? '1.1.0' : '1.0.0',
+    requires_character_id: isPlayerCharacterTask(task),
     requires_character_identity_semantics:
       task.reference_roles.includes('character'),
     output_policy: 'internal-review',
@@ -528,13 +641,37 @@ async function writeJson(path: string, value: unknown): Promise<void> {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
 }
 
+function canonicalSourceReferenceIds(
+  task: ProductionArtTaskV1_1,
+  references: readonly RuntimeReferenceImage[],
+): readonly string[] {
+  const values = new Set<string>(['approved-scene-direction']);
+  for (const reference of references) {
+    if (reference.descriptor.role === 'character') {
+      values.add('character-reference');
+    } else if (reference.descriptor.id !== 'approved-scene-direction') {
+      values.add('environment-reference');
+    }
+  }
+  const required = [
+    'approved-scene-direction',
+    ...(task.reference_roles.includes('environment-style')
+      ? ['environment-reference']
+      : []),
+    ...(task.reference_roles.includes('character')
+      ? ['character-reference']
+      : []),
+  ];
+  return Object.freeze(required.filter((value) => values.has(value)));
+}
+
 async function main(): Promise<void> {
   const args = parseArguments(process.argv.slice(2));
   if (args.help) {
     console.log(usage());
     return;
   }
-  const { plan, task } = selectTask(args.profile, args.taskId);
+  const { plan, task, requirements } = await selectTask(args);
   if (!args.execute) {
     console.log(JSON.stringify(dryRunSummary(args, task), null, 2));
     return;
@@ -592,22 +729,49 @@ async function main(): Promise<void> {
         spriteCookExecutionStats = stats;
       },
     });
-  const trusted = await runProductionArtProvider(provider, {
-    plan,
-    taskId: task.task_id,
-    worldBrief,
-    styleBible,
-    ...(characterIdentitySemantics ? { characterIdentitySemantics } : {}),
-    references,
-    remoteAuthorization: authorization,
-  }, { credential });
-  const normalized = await normalizeProductionArtPng(trusted);
+  const trusted = requirements
+    ? await runProductionArtProvider(provider, {
+      plan: plan as ProductionArtPlanV1_1,
+      requirements,
+      taskId: task.task_id,
+      worldBrief,
+      styleBible,
+      ...(characterIdentitySemantics ? { characterIdentitySemantics } : {}),
+      references,
+      remoteAuthorization: authorization,
+    }, { credential })
+    : await runProductionArtProvider(provider, {
+      plan: plan as ProductionArtPlan,
+      taskId: task.task_id,
+      worldBrief,
+      styleBible,
+      ...(characterIdentitySemantics ? { characterIdentitySemantics } : {}),
+      references,
+      remoteAuthorization: authorization,
+    }, { credential });
+  const normalized = requirements
+    ? await normalizeProductionArtPngV1_1({
+      plan,
+      requirements,
+      task,
+      asset_id: `${task.task_id}-candidate`,
+      source_reference_ids: canonicalSourceReferenceIds(
+        task as ProductionArtTaskV1_1,
+        references,
+      ),
+      source: {
+        media_type: 'image/png',
+        width: trusted.source.width,
+        height: trusted.source.height,
+        byteLength: trusted.source.byteLength,
+        readBytes: trusted.source.readBytes,
+      },
+    })
+    : await normalizeProductionArtPng(trusted);
   let characterProfileProjection: ProductionCharacterProfileProjection | undefined;
   let characterProfileProjectionErrorCode: string | undefined;
-  const isPlayerCharacterTask = task.kind === 'character-animation-sheet'
-    && task.role_mappings.length === 1
-    && task.role_mappings[0].role === 'character.player.atlas';
-  if (isPlayerCharacterTask) {
+  const isPlayerTask = isPlayerCharacterTask(task);
+  if (isPlayerTask && !requirements) {
     const characterReference = references.find(({ descriptor }) =>
       descriptor.role === 'character');
     if (!characterReference || !args.characterId) {
@@ -618,11 +782,15 @@ async function main(): Promise<void> {
         characterReference.descriptor.sha256,
       );
     try {
-      characterProfileProjection = await projectProductionCharacterProfile(plan, normalized, {
+      characterProfileProjection = await projectProductionCharacterProfile(
+        plan as ProductionArtPlan,
+        normalized as Awaited<ReturnType<typeof normalizeProductionArtPng>>,
+        {
         characterId: args.characterId,
         identityDigestSha256,
         characterReferenceIds: [characterReference.descriptor.id],
-      });
+        },
+      );
     } catch (error) {
       characterProfileProjectionErrorCode =
         error instanceof ProductionCharacterProfileProjectionError
@@ -633,17 +801,32 @@ async function main(): Promise<void> {
 
   let pack10Projection: LayeredDepthCharacterProjection | undefined;
   let pack10ProjectionErrorCode: string | undefined;
-  if (plan.profile === 'layered-depth-2d' && task.kind === 'character-animation-sheet') {
+  if (
+    !requirements
+    && plan.profile === 'layered-depth-2d'
+    && task.kind === 'character-animation-sheet'
+  ) {
     try {
-      pack10Projection = await projectLayeredDepthProductionCharacter(plan, normalized);
+      pack10Projection = await projectLayeredDepthProductionCharacter(
+        plan as ProductionArtPlan,
+        normalized as Awaited<ReturnType<typeof normalizeProductionArtPng>>,
+      );
     } catch (error) {
       pack10ProjectionErrorCode = error instanceof LayeredDepthCharacterProjectionError
         ? error.code
         : 'projection.failed';
     }
   }
-  const runId = normalized.evidence.provider_request_id
-    ?? normalized.evidence.source.sha256.slice(0, 20);
+  const sourceSha256 = normalized.evidence.schema_version === '1.1.0'
+    ? normalized.evidence.source_png.sha256
+    : normalized.evidence.source.sha256;
+  const normalizedSha256 = normalized.evidence.schema_version === '1.1.0'
+    ? normalized.evidence.normalized_png.sha256
+    : normalized.evidence.normalized.sha256;
+  const providerRequestId = normalized.evidence.schema_version === '1.1.0'
+    ? undefined
+    : normalized.evidence.provider_request_id;
+  const runId = providerRequestId ?? sourceSha256.slice(0, 20);
   const directory = safeRunDirectory(args.outputRoot, args.profile, task.task_id, runId);
   await mkdir(resolve(directory, '..'), { recursive: true });
   await mkdir(directory, { recursive: false });
@@ -722,8 +905,8 @@ async function main(): Promise<void> {
       : {}),
     profile: args.profile,
     task_id: task.task_id,
-    source_sha256: normalized.evidence.source.sha256,
-    normalized_sha256: normalized.evidence.normalized.sha256,
+    source_sha256: sourceSha256,
+    normalized_sha256: normalizedSha256,
     character_profile_projection: characterProfileProjection
       ? 'passed'
       : characterProfileProjectionErrorCode
