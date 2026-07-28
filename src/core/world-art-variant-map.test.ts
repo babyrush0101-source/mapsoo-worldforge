@@ -26,6 +26,7 @@ import {
   type WorldLayoutConstraintIntent,
 } from './world-layout-constraints';
 import { solveWorldLayoutPlanFromConstraints } from './world-layout-plan';
+import { worldMaterialRoleForProfile } from './world-material-palette';
 
 const PRIVATE_MARKER = 'PRIVATE_VARIANT_MAP_LABEL';
 const FACTS: ConfirmedWorldFacts = Object.freeze({
@@ -123,12 +124,16 @@ async function fixture(
     ? layout.terrain_layout.bands
     : layout.terrain_layout.zones;
   const materials = [...new Set(terrain.map(({ material }) => material))].sort();
-  const terrainSlots = slots.filter(({ role }) => role.startsWith('terrain.'));
-  const selections: WorldArtVariantSelection[] = materials.map((material, index) => ({
-    usage_kind: 'terrain-material',
-    usage_id: material,
-    slot_id: terrainSlots[index % terrainSlots.length].slot_id,
-  }));
+  const selections: WorldArtVariantSelection[] = materials.map((material) => {
+    const expectedRole = worldMaterialRoleForProfile(profile, material);
+    const slot = slots.find(({ role }) => role === expectedRole);
+    if (!slot) throw new Error(`Test fixture lacks terrain slot for ${profile}/${material}.`);
+    return {
+      usage_kind: 'terrain-material',
+      usage_id: material,
+      slot_id: slot.slot_id,
+    };
+  });
   for (const requirement of requirements.requirements) {
     if (requirement.category !== 'hazard' && requirement.category !== 'character') continue;
     const slot = slots.find(({ requirement_id: id }) => id === requirement.requirement_id);
@@ -214,6 +219,21 @@ describe('WorldArtVariantMap 1.0', () => {
       ...fixtureValue.input,
       reviewed_slot_inventory: privatePath,
     })).rejects.toMatchObject({ code: 'world-art-variant-map.private-path' });
+  });
+
+  it('rejects a reviewed terrain slot that does not match the material palette role', async () => {
+    const fixtureValue = await fixture('topdown-farm');
+    const changedSelections = mutable(fixtureValue.selections);
+    const meadow = changedSelections.find((selection: WorldArtVariantSelection) =>
+      selection.usage_kind === 'terrain-material' && selection.usage_id === 'meadow');
+    const waterSlot = fixtureValue.inventory.slots.find(({ role }) => role === 'terrain.water');
+    if (!meadow || !waterSlot) throw new Error('Test fixture lacks meadow or water selection.');
+    meadow.slot_id = waterSlot.slot_id;
+
+    await expect(buildWorldArtVariantMap({
+      ...fixtureValue.input,
+      selections: changedSelections,
+    })).rejects.toMatchObject({ code: 'world-art-variant-map.invalid-selection' });
   });
 
   it('rejects a layout from another confirmed world', async () => {

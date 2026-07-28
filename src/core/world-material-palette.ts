@@ -96,6 +96,20 @@ const DEFAULT_ROLE_BY_MATERIAL = Object.freeze({
   }),
 } satisfies Readonly<Record<WorldAssetProfile, Readonly<Record<string, string>>>>);
 
+/**
+ * Returns the canonical runtime terrain role for a layout material.
+ *
+ * WorldArtVariantMap and the default palette share this lookup so a reviewed
+ * terrain variant cannot be selected for an unrelated logical material.
+ */
+export function worldMaterialRoleForProfile(
+  profile: WorldAssetProfile,
+  material: string,
+): string | undefined {
+  const roles: Readonly<Record<string, string>> = DEFAULT_ROLE_BY_MATERIAL[profile];
+  return roles[material];
+}
+
 type DataRecord = Record<string, unknown>;
 
 function fail(code: WorldMaterialPaletteErrorCode, message: string): never {
@@ -287,12 +301,9 @@ export async function buildDefaultWorldMaterialPalette(
   layout: PreparedWorldLayoutPackEntry,
   availableRoles: readonly string[],
 ): Promise<WorldMaterialPalette> {
-  const roleByMaterial: Readonly<Record<string, string>> = (
-    DEFAULT_ROLE_BY_MATERIAL[layout.plan.profile]
-  );
   const materials = distinctLayoutMaterials(layout.plan);
   const entries = materials.map((material) => {
-    const role = roleByMaterial[material];
+    const role = worldMaterialRoleForProfile(layout.plan.profile, material);
     if (!role) {
       fail(
         'material-palette.unsupported-material',

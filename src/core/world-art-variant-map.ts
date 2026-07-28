@@ -15,6 +15,7 @@ import {
   materializeWorldLayoutPlan,
   type WorldLayoutPlan,
 } from './world-layout-plan';
+import { worldMaterialRoleForProfile } from './world-material-palette';
 
 export const WORLD_ART_VARIANT_MAP_VERSION = '1.0.0' as const;
 export const REVIEWED_WORLD_ART_SLOT_INVENTORY_VERSION = '1.0.0' as const;
@@ -512,10 +513,15 @@ function selectedBindings(
     }
     const slotRequirement = requirements.get(reviewedSlot.requirement_id);
     const demandedRequirement = required.get(key);
+    const expectedTerrainRole = selection.usage_kind === 'terrain-material'
+      ? worldMaterialRoleForProfile(confirmed.layout.profile, selection.usage_id)
+      : undefined;
     if (
       slotRequirement === undefined
       || (selection.usage_kind === 'terrain-material'
         ? slotRequirement.category !== 'terrain'
+          || expectedTerrainRole === undefined
+          || reviewedSlot.role !== expectedTerrainRole
         : demandedRequirement === null
           || demandedRequirement === undefined
           || reviewedSlot.requirement_id !== demandedRequirement.requirement_id)
