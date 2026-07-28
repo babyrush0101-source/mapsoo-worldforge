@@ -1,5 +1,6 @@
 import { decodeReferenceImageRgba } from './decode-reference-image-rgba';
 import type { NormalizedProductionArtResult } from './normalize-production-art-png';
+import type { NormalizedProductionArtResultV1_1 } from './normalize-production-art-png-v1-1';
 import {
   fingerprintCharacterProfileRevision,
   materializeCharacterProfileRevision,
@@ -12,6 +13,14 @@ import {
   type ProductionArtPoseMapping,
   type ProductionArtTask,
 } from '../core/production-art-contract';
+import {
+  fingerprintProductionArtPlanV1_1,
+  materializeProductionArtPlanV1_1,
+  type ProductionArtPlanV1_1,
+  type ProductionArtPoseMappingV1_1,
+  type ProductionArtTaskV1_1,
+} from '../core/production-art-contract-v1-1';
+import type { AssetRequirementsV1_1 } from '../core/asset-requirements-v1-1';
 import type { WorldAssetProfile } from '../core/asset-profile';
 
 const PROJECTION_SCHEMA_VERSION = '1.0.0' as const;
@@ -107,9 +116,32 @@ export interface ProductionCharacterProfileProjection {
 }
 
 interface ProjectedFrame {
-  readonly pose: ProductionArtPoseMapping;
+  readonly pose: CharacterProjectionPose;
   readonly rgba: Uint8Array;
 }
+
+type CharacterProjectionPose =
+  | ProductionArtPoseMapping
+  | ProductionArtPoseMappingV1_1;
+
+type CharacterProjectionTask = Readonly<{
+  task_id: string;
+  kind: 'character-animation-sheet';
+  target: ProductionArtTask['target'];
+  pivot: ProductionArtTask['pivot'];
+  pose_mappings: readonly CharacterProjectionPose[];
+}>;
+
+type CharacterProjectionNormalized = Readonly<{
+  output: Readonly<{
+    profile: WorldAssetProfile;
+    source_reference_ids: readonly string[];
+  }>;
+  normalized: Readonly<{
+    byteLength: number;
+    readBytes(): Uint8Array;
+  }>;
+}>;
 
 function fail(
   code: ProductionCharacterProfileProjectionErrorCode,
@@ -145,7 +177,7 @@ export async function deriveCharacterIdentityDigestSha256(
 
 function assertOptions(
   options: ProductionCharacterProfileProjectionOptions,
-  normalized: NormalizedProductionArtResult,
+  normalized: CharacterProjectionNormalized,
 ): void {
   if (!SAFE_ID.test(options.characterId)
     || options.characterId.length > 48
@@ -191,9 +223,7 @@ function assertOptions(
 function assertProjectionTask(
   plan: ProductionArtPlan,
   normalized: NormalizedProductionArtResult,
-): ProductionArtTask & {
-  readonly pose_mappings: readonly ProductionArtPoseMapping[];
-} {
+): CharacterProjectionTask {
   assertValidProductionArtOutput(normalized.output, plan);
   const task = plan.tasks.find(({ task_id: taskId }) => taskId === normalized.output.task_id);
   if (
@@ -210,16 +240,14 @@ function assertProjectionTask(
       'The portable character profile projector accepts only canonical player animation tasks.',
     );
   }
-  return task as ProductionArtTask & {
-    readonly pose_mappings: readonly ProductionArtPoseMapping[];
-  };
+  return task as CharacterProjectionTask;
 }
 
 function extractFrame(
   sourceWidth: number,
   sourceRgba: Uint8Array,
-  task: ProductionArtTask,
-  pose: ProductionArtPoseMapping,
+  task: CharacterProjectionTask,
+  pose: CharacterProjectionPose,
 ): Uint8Array {
   const frameWidth = task.target.cell_width;
   const frameHeight = task.target.cell_height;
@@ -238,9 +266,7 @@ function extractFrame(
 
 function assertUnusedCellsTransparent(
   sourceRgba: Uint8Array,
-  task: ProductionArtTask & {
-    readonly pose_mappings: readonly ProductionArtPoseMapping[];
-  },
+  task: CharacterProjectionTask,
 ): void {
   const columns = task.target.width / task.target.cell_width;
   const rows = task.target.height / task.target.cell_height;
@@ -271,7 +297,7 @@ function assertUnusedCellsTransparent(
 
 function assertFrameGeometry(
   frame: ProjectedFrame,
-  task: ProductionArtTask,
+  task: CharacterProjectionTask,
   footAnchorRange: readonly [number, number],
 ): void {
   const frameWidth = task.target.cell_width;
@@ -332,7 +358,7 @@ function mirrorFrameHorizontally(
 
 async function assertDistinctFrames(
   frames: readonly ProjectedFrame[],
-  task: ProductionArtTask,
+  task: CharacterProjectionTask,
 ): Promise<void> {
   const seenHashes = new Set<string>();
   for (const frame of frames) {
@@ -361,12 +387,12 @@ function loopForAction(action: string): boolean {
 
 function clipsFor(
   profile: WorldAssetProfile,
-  poses: readonly ProductionArtPoseMapping[],
+  poses: readonly CharacterProjectionPose[],
 ): CharacterProfileRevision['clips'] {
   return Object.freeze(requiredCharacterProfileClips(profile).map((clipId) => {
     const separator = clipId.indexOf('.');
-    const action = clipId.slice(0, separator) as ProductionArtPoseMapping['action'];
-    const direction = clipId.slice(separator + 1) as ProductionArtPoseMapping['direction'];
+    const action = clipId.slice(0, separator) as CharacterProjectionPose['action'];
+    const direction = clipId.slice(separator + 1) as CharacterProjectionPose['direction'];
     const frames = poses
       .filter((pose) => pose.action === action && pose.direction === direction)
       .sort((left, right) => left.frame_index - right.frame_index);
@@ -392,34 +418,19 @@ function clipsFor(
   }));
 }
 
-/**
- * Converts one normalized player animation sheet into a source-free,
- * profile-specific CharacterProfileRevision. Source pixels are preserved
- * exactly; all semantic pose, identity, integrity and rights checks run before
- * the revision can be bound to a neutral runtime character slot.
- */
-export async function projectProductionCharacterProfile(
-  plan: ProductionArtPlan,
-  normalized: NormalizedProductionArtResult,
+async function projectValidatedCharacterProfile(
+  plan: Pick<ProductionArtPlan, 'plan_id' | 'profile' | 'rights'>,
+  normalized: CharacterProjectionNormalized,
+  task: CharacterProjectionTask,
   options: ProductionCharacterProfileProjectionOptions,
 ): Promise<ProductionCharacterProfileProjection> {
-  const task = assertProjectionTask(plan, normalized);
   assertOptions(options, normalized);
   const normalizedBytes = normalized.normalized.readBytes();
   const normalizedSha256 = await sha256(normalizedBytes);
   if (
     normalized.normalized.byteLength !== normalizedBytes.byteLength
-    || normalized.output.bytes !== normalizedBytes.byteLength
-    || normalized.output.sha256 !== normalizedSha256
-    || normalized.evidence.plan_id !== plan.plan_id
-    || normalized.evidence.profile !== plan.profile
-    || normalized.evidence.task_id !== task.task_id
-    || normalized.evidence.normalized.bytes !== normalizedBytes.byteLength
-    || normalized.evidence.normalized.sha256 !== normalizedSha256
-    || normalized.evidence.normalized.width !== task.target.width
-    || normalized.evidence.normalized.height !== task.target.height
   ) {
-    fail('projection.integrity', 'Normalized character bytes and generation evidence must match exactly.');
+    fail('projection.integrity', 'Normalized character bytes must match their declared length.');
   }
   const decoded = await decodeReferenceImageRgba(normalizedBytes, 'image/png');
   if (decoded.width !== task.target.width || decoded.height !== task.target.height) {
@@ -560,4 +571,118 @@ export async function projectProductionCharacterProfile(
       readBytes: () => Uint8Array.from(snapshot),
     }),
   });
+}
+
+/**
+ * Converts one normalized legacy player animation sheet into a source-free,
+ * profile-specific CharacterProfileRevision. Source pixels are preserved
+ * exactly; all semantic pose, identity, integrity and rights checks run before
+ * the revision can be bound to a neutral runtime character slot.
+ */
+export async function projectProductionCharacterProfile(
+  plan: ProductionArtPlan,
+  normalized: NormalizedProductionArtResult,
+  options: ProductionCharacterProfileProjectionOptions,
+): Promise<ProductionCharacterProfileProjection> {
+  const task = assertProjectionTask(plan, normalized);
+  const normalizedBytes = normalized.normalized.readBytes();
+  const normalizedSha256 = await sha256(normalizedBytes);
+  if (
+    normalized.normalized.byteLength !== normalizedBytes.byteLength
+    || normalized.output.bytes !== normalizedBytes.byteLength
+    || normalized.output.sha256 !== normalizedSha256
+    || normalized.evidence.plan_id !== plan.plan_id
+    || normalized.evidence.profile !== plan.profile
+    || normalized.evidence.task_id !== task.task_id
+    || normalized.evidence.normalized.bytes !== normalizedBytes.byteLength
+    || normalized.evidence.normalized.sha256 !== normalizedSha256
+    || normalized.evidence.normalized.width !== task.target.width
+    || normalized.evidence.normalized.height !== task.target.height
+  ) {
+    fail(
+      'projection.integrity',
+      'Normalized character bytes and generation evidence must match exactly.',
+    );
+  }
+  return projectValidatedCharacterProfile(plan, normalized, task, options);
+}
+
+/**
+ * Bridges the requirements-driven 1.1 production path into the same portable
+ * character revision used by the runtime. The plan, requirements, output,
+ * evidence and exact normalized PNG are all rebound before projection.
+ */
+export async function projectProductionCharacterProfileV1_1(
+  planValue: ProductionArtPlanV1_1,
+  requirementsValue: AssetRequirementsV1_1,
+  normalized: NormalizedProductionArtResultV1_1,
+  options: ProductionCharacterProfileProjectionOptions,
+): Promise<ProductionCharacterProfileProjection> {
+  const plan = await materializeProductionArtPlanV1_1(
+    planValue,
+    requirementsValue,
+  );
+  const task = plan.tasks.find(({ task_id: taskId }) =>
+    taskId === normalized.output.task_id);
+  if (
+    task?.kind !== 'character-animation-sheet'
+    || task.slot_mappings.length !== 1
+    || task.slot_mappings[0].role !== 'character.player.atlas'
+    || !task.pose_mappings
+    || task.pose_mappings.length < 1
+    || normalized.output.roles.length !== 1
+    || normalized.output.roles[0] !== 'character.player.atlas'
+  ) {
+    fail(
+      'projection.unsupported-task',
+      'The 1.1 portable character projector accepts only one canonical player animation slot.',
+    );
+  }
+  const normalizedBytes = normalized.normalized.readBytes();
+  const normalizedSha256 = await sha256(normalizedBytes);
+  const planSha256 = await fingerprintProductionArtPlanV1_1(
+    plan,
+    requirementsValue,
+  );
+  const evidence = normalized.evidence;
+  if (
+    normalized.normalized.byteLength !== normalizedBytes.byteLength
+    || normalized.output.plan_id !== plan.plan_id
+    || normalized.output.profile !== plan.profile
+    || normalized.output.task_id !== task.task_id
+    || normalized.output.bytes !== normalizedBytes.byteLength
+    || normalized.output.sha256 !== normalizedSha256
+    || normalized.output.width !== task.target.width
+    || normalized.output.height !== task.target.height
+    || normalized.output.pivot.x !== task.pivot.x
+    || normalized.output.pivot.y !== task.pivot.y
+    || normalized.output.pivot.unit !== task.pivot.unit
+    || normalized.output.source.plan_sha256 !== planSha256
+    || normalized.output.source.requirements_sha256
+      !== plan.source.requirements_sha256
+    || evidence.plan_id !== plan.plan_id
+    || evidence.profile !== plan.profile
+    || evidence.task_id !== task.task_id
+    || evidence.source_binding.plan_sha256 !== planSha256
+    || evidence.source_binding.requirements_sha256
+      !== plan.source.requirements_sha256
+    || evidence.normalized_png.bytes !== normalizedBytes.byteLength
+    || evidence.normalized_png.sha256 !== normalizedSha256
+    || evidence.normalized_png.width !== task.target.width
+    || evidence.normalized_png.height !== task.target.height
+    || evidence.slots.length !== 1
+    || evidence.slots[0].slot_id !== task.slot_mappings[0].slot_id
+    || evidence.slots[0].role !== 'character.player.atlas'
+  ) {
+    fail(
+      'projection.integrity',
+      'The 1.1 character plan, requirements, output, evidence and normalized PNG must match exactly.',
+    );
+  }
+  return projectValidatedCharacterProfile(
+    plan,
+    normalized,
+    task as CharacterProjectionTask,
+    options,
+  );
 }

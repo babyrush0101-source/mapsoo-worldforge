@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-reviewed-character-profile-family-1.0.schema.json",
+  "title": "Mapsoo Reviewed Character Profile Family 1.0",
+  "description": "Source-free release-candidate binding of one human-reviewed character identity to exact runtime atlases for all four world profiles.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "family_id",
+    "character_id",
+    "character_identity_sha256",
+    "rights",
+    "profiles",
+    "privacy",
+    "review",
+    "status"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "reviewed-character-profile-family" },
+    "family_id": { "$ref": "#/$defs/id" },
+    "character_id": { "$ref": "#/$defs/id" },
+    "character_identity_sha256": { "$ref": "#/$defs/sha256" },
+    "rights": { "$ref": "#/$defs/rights" },
+    "profiles": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "$ref": "#/$defs/sideProfile" },
+        { "$ref": "#/$defs/isometricProfile" },
+        { "$ref": "#/$defs/topdownProfile" },
+        { "$ref": "#/$defs/layeredProfile" }
+      ],
+      "items": false
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_images_included",
+        "source_paths_included",
+        "raw_prompts_included",
+        "provider_credentials_included"
+      ],
+      "properties": {
+        "source_images_included": { "const": false },
+        "source_paths_included": { "const": false },
+        "raw_prompts_included": { "const": false },
+        "provider_credentials_included": { "const": false }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "technical_world_review",
+        "human_art_review",
+        "exact_profile_count",
+        "godot_family_runtime",
+        "raspberry_pi"
+      ],
+      "properties": {
+        "technical_world_review": { "const": "passed" },
+        "human_art_review": { "const": "passed" },
+        "exact_profile_count": { "const": 4 },
+        "godot_family_runtime": { "const": "pending" },
+        "raspberry_pi": { "const": "pending" }
+      }
+    },
+    "status": { "const": "reviewed-release-candidate" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution", "license"],
+      "properties": {
+        "distribution": { "enum": ["private", "public"] },
+        "license": {
+          "enum": [
+            "CC0-1.0",
+            "CC-BY-4.0",
+            "CC-BY-SA-4.0",
+            "LicenseRef-Proprietary"
+          ]
+        },
+        "attribution": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "properties": { "distribution": { "const": "private" } },
+            "required": ["distribution"]
+          },
+          "then": {
+            "type": "object",
+            "properties": { "license": { "const": "LicenseRef-Proprietary" } }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "distribution": { "const": "public" } },
+            "required": ["distribution"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "license": {
+                "enum": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "reviewedSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_profile_revision_id",
+        "source_profile_revision_sha256",
+        "production_character_projection_sha256",
+        "runtime_overlay_sha256",
+        "runtime_projection_sha256",
+        "human_review_receipt_sha256",
+        "approved_world_review_sha256"
+      ],
+      "properties": {
+        "source_profile_revision_id": { "$ref": "#/$defs/id" },
+        "source_profile_revision_sha256": { "$ref": "#/$defs/sha256" },
+        "production_character_projection_sha256": { "$ref": "#/$defs/sha256" },
+        "runtime_overlay_sha256": { "$ref": "#/$defs/sha256" },
+        "runtime_projection_sha256": { "$ref": "#/$defs/sha256" },
+        "human_review_receipt_sha256": { "$ref": "#/$defs/sha256" },
+        "approved_world_review_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "profile_revision_id",
+        "revision_path",
+        "revision_sha256",
+        "atlas_path",
+        "atlas_sha256",
+        "clip_count",
+        "reviewed_source"
+      ],
+      "properties": {
+        "profile": {
+          "enum": [
+            "side-platformer",
+            "isometric-action",
+            "topdown-farm",
+            "layered-depth-2d"
+          ]
+        },
+        "profile_revision_id": { "$ref": "#/$defs/id" },
+        "revision_path": { "$ref": "#/$defs/safePath" },
+        "revision_sha256": { "$ref": "#/$defs/sha256" },
+        "atlas_path": { "$ref": "#/$defs/safePath" },
+        "atlas_sha256": { "$ref": "#/$defs/sha256" },
+        "clip_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "reviewed_source": { "$ref": "#/$defs/reviewedSource" }
+      }
+    },
+    "sideProfile": {
+      "allOf": [
+        { "$ref": "#/$defs/member" },
+        {
+          "type": "object",
+          "properties": {
+            "profile": { "const": "side-platformer" },
+            "revision_path": { "const": "profiles/side-platformer/character-profile-revision.json" },
+            "atlas_path": { "const": "profiles/side-platformer/character-profile-atlas.png" }
+          }
+        }
+      ]
+    },
+    "isometricProfile": {
+      "allOf": [
+        { "$ref": "#/$defs/member" },
+        {
+          "type": "object",
+          "properties": {
+            "profile": { "const": "isometric-action" },
+            "revision_path": { "const": "profiles/isometric-action/character-profile-revision.json" },
+            "atlas_path": { "const": "profiles/isometric-action/character-profile-atlas.png" }
+          }
+        }
+      ]
+    },
+    "topdownProfile": {
+      "allOf": [
+        { "$ref": "#/$defs/member" },
+        {
+          "type": "object",
+          "properties": {
+            "profile": { "const": "topdown-farm" },
+            "revision_path": { "const": "profiles/topdown-farm/character-profile-revision.json" },
+            "atlas_path": { "const": "profiles/topdown-farm/character-profile-atlas.png" }
+          }
+        }
+      ]
+    },
+    "layeredProfile": {
+      "allOf": [
+        { "$ref": "#/$defs/member" },
+        {
+          "type": "object",
+          "properties": {
+            "profile": { "const": "layered-depth-2d" },
+            "revision_path": { "const": "profiles/layered-depth-2d/character-profile-revision.json" },
+            "atlas_path": { "const": "profiles/layered-depth-2d/character-profile-atlas.png" }
+          }
+        }
+      ]
+    }
+  }
+}

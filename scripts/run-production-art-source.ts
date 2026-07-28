@@ -13,8 +13,8 @@ import {
 } from '../src/adapters/normalize-production-art-png-v1-1';
 import {
   ProductionCharacterProfileProjectionError,
-  deriveCharacterIdentityDigestSha256,
   projectProductionCharacterProfile,
+  projectProductionCharacterProfileV1_1,
   type ProductionCharacterProfileProjection,
 } from '../src/adapters/project-production-character-profile';
 import {
@@ -771,26 +771,50 @@ async function main(): Promise<void> {
   let characterProfileProjection: ProductionCharacterProfileProjection | undefined;
   let characterProfileProjectionErrorCode: string | undefined;
   const isPlayerTask = isPlayerCharacterTask(task);
-  if (isPlayerTask && !requirements) {
+  if (isPlayerTask) {
     const characterReference = references.find(({ descriptor }) =>
       descriptor.role === 'character');
-    if (!characterReference || !args.characterId) {
-      throw new Error('Player projection requires the validated character reference and character id.');
-    }
-    const identityDigestSha256 = args.characterIdentityDigestSha256
-      ?? await deriveCharacterIdentityDigestSha256(
-        characterReference.descriptor.sha256,
+    if (!characterReference || !args.characterId || !characterIdentitySemantics) {
+      throw new Error(
+        'Player projection requires the validated character reference, character id, and human-confirmed identity semantics.',
       );
+    }
+    if (
+      characterIdentitySemantics.character_id !== args.characterId
+      || characterIdentitySemantics.source_identity.source_reference_id
+        !== characterReference.descriptor.id
+      || (
+        args.characterIdentityDigestSha256 !== undefined
+        && args.characterIdentityDigestSha256
+          !== characterIdentitySemantics.source_identity.identity_digest_sha256
+      )
+    ) {
+      throw new Error(
+        'Player projection character id, reference id, and identity digest must match the human-confirmed identity semantics.',
+      );
+    }
+    const identityDigestSha256 =
+      characterIdentitySemantics.source_identity.identity_digest_sha256;
     try {
-      characterProfileProjection = await projectProductionCharacterProfile(
-        plan as ProductionArtPlan,
-        normalized as Awaited<ReturnType<typeof normalizeProductionArtPng>>,
-        {
+      const options = {
         characterId: args.characterId,
         identityDigestSha256,
-        characterReferenceIds: [characterReference.descriptor.id],
-        },
-      );
+        characterReferenceIds: requirements
+          ? ['character-reference'] as const
+          : [characterReference.descriptor.id],
+      };
+      characterProfileProjection = requirements
+        ? await projectProductionCharacterProfileV1_1(
+          plan as ProductionArtPlanV1_1,
+          requirements,
+          normalized as Awaited<ReturnType<typeof normalizeProductionArtPngV1_1>>,
+          options,
+        )
+        : await projectProductionCharacterProfile(
+          plan as ProductionArtPlan,
+          normalized as Awaited<ReturnType<typeof normalizeProductionArtPng>>,
+          options,
+        );
     } catch (error) {
       characterProfileProjectionErrorCode =
         error instanceof ProductionCharacterProfileProjectionError

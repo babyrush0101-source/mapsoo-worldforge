@@ -114,6 +114,7 @@
     "character:fixture:verify": "vite-node scripts/build-character-reference-conformance-fixture.ts",
     "character-family:build": "vite-node scripts/build-character-profile-family.ts",
     "character-family:verify": "vite-node scripts/verify-character-profile-family-cli.ts",
+    "character-family:reviewed:assemble": "vite-node scripts/assemble-reviewed-character-profile-family.ts",
     "character-family:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-character-profile-family-godot.ps1",
     "character:runtime:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-character-profile-runtime-godot.ps1",
     "npc:interaction:godot": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-npc-interaction-controller-godot.ps1",
