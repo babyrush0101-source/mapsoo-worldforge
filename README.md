@@ -214,6 +214,15 @@ names, or raw digests. Concurrent imports use per-reference locks and atomic
 publication; invalid or stale cache data fails without a silent paid retry.
 No live SpriteCook request or account connection is claimed.
 
+Reviewed 1.1 outputs can now be compiled into a complete, provider-free
+`WorldArtRuntimeProjection`, packaged as a deterministic
+`WorldArtRuntimeOverlay`, and loaded by one shared trusted Godot module. The
+loader rechecks the exact JSON/PNG inventory, bytes, hashes, decoded geometry,
+reviewed cell pixels, rights, profile and layout binding before attaching
+lossless textures to a scene. Godot 4.3 and 4.7 save/reload tests cover all
+four profiles. This is the persistent runtime catalog boundary; terrain,
+landmark, hazard and character visual application is still pending.
+
 A separately labelled **synthetic technical fixture** now exercises that full
 path without a model call. Its deterministic candidate passed real headless
 imports on local Godot 4.3 and 4.7 with 8 planes, 7 atlases, 36 roles, 2

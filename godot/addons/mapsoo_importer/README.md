@@ -77,6 +77,39 @@ role, crops the corresponding atlas region, creates a deterministic Godot
 yet provide auto-terrain transitions or visual variants. Packs without the
 optional bindings retain their existing import behavior and bytes.
 
+## Reviewed runtime art overlays
+
+The trusted addon also includes a shared `WorldArtRuntimeOverlay 1.0` loader.
+It is separate from the historical Pack schema parsers: one extracted art
+overlay can be validated against any already materialized scene from the same
+profile and exact layout SHA-256.
+
+```gdscript
+const RuntimeOverlay = preload(
+  "res://addons/mapsoo_importer/mapsoo_world_art_runtime_overlay.gd"
+)
+
+var loaded := RuntimeOverlay.load_extracted(
+  "/local/path/world-art-runtime-overlay.json",
+  str(world.get_meta("mapsoo_layout_plan_sha256"))
+)
+if loaded.ok:
+  var bound := RuntimeOverlay.bind_scene(world, loaded.overlay)
+```
+
+The loader verifies canonical IDs, rights, review state, file paths, byte
+lengths, SHA-256 values, decoded PNG dimensions, projected regions, reviewed
+RGBA cell digests, and catalog bindings before scene mutation. Private or
+internal-review overlays require a trusted local grant bound to the exact
+overlay ID and distribution, following the Pack 1.0 authorization boundary.
+Portable lossless textures and the complete catalog survive `PackedScene`
+save/reload on Godot 4.3 and 4.7.
+
+This stage persists reviewed pixels but does not yet make them visible.
+Terrain, landmarks, hazards, and character animations are applied by the next
+runtime layer. The overlay remains data-only and cannot supply scripts,
+shaders, URLs, or executable Godot resources.
+
 ## Safe re-import contract (`alpha.7`)
 
 Each managed output directory contains exactly three files:
