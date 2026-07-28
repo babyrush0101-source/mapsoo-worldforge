@@ -132,7 +132,9 @@ redistributable.
 
 1. Generate the internal-review candidate through an explicitly authorized
    provider or the offline baseline.
-2. Import the exact runtime overlay in Godot and capture the review evidence.
+2. Import the exact runtime overlay in Godot, capture the review evidence, and
+   build the blocked technical workspace with
+   [`production-art:technical-review`](66_PRODUCTION_WORLD_TECHNICAL_REVIEW.md).
 3. Run the CLI `template` command with opaque reviewer and review IDs; it
    verifies the artifacts and calls `createHumanArtReviewTemplate()`.
 4. Inspect the atlases at 1x and nearest-neighbour 4x, every character action,
