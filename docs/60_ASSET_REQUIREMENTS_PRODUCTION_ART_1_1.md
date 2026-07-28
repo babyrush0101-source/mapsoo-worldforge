@@ -283,10 +283,13 @@ load/persistence now have explicit versioned branches. The loaded catalog is
 applied to logical terrain TileSets, landmark scene nodes, and deterministic
 hazard `Area2D` nodes. Reviewed player pose regions reuse the portable
 character-profile runtime rather than introducing a parallel animation path.
+The reviewed-candidate command and strict workspace loader are documented in
+[`71_REVIEWED_WORLD_ART_RUNTIME_CANDIDATE.md`](71_REVIEWED_WORLD_ART_RUNTIME_CANDIDATE.md).
 
 A 1.1 plan alone is planning and review evidence only. A
 `WorldArtVariantMap` is a validated runtime binding contract. A persisted
-runtime overlay plus a passing applier receipt proves that its selected terrain
+runtime overlay plus a passing applier receipt proves that its human-approved
+atlas slots and selected terrain
 and landmark pixels are visible and that its reviewed hazards trigger trusted
 controller respawn. It also proves the reviewed player atlas drives complete
 profile animations through the existing runtime. It does not yet prove final
@@ -304,8 +307,11 @@ persistence.
 
 ## Next vertical slices
 
-1. Run one opt-in remote task only after explicit user authorization.
-2. Complete human art review and assemble the reviewed 1.1 runtime overlay.
-3. Run a physical Raspberry Pi 4B smoke test.
+1. Run an opt-in complete-world execution session only after explicit user
+   authorization and separate scene-direction approval.
+2. Review every real generated atlas slot and build the hash-bound runtime
+   candidate with the implemented private-workspace command.
+3. Run the Godot composition/capture gate and final holistic human review.
+4. Build the World Runner PCK and run a physical Raspberry Pi 4B smoke test.
 
 No live provider request is authorized or claimed by this core revision.

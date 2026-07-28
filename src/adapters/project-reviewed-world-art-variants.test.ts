@@ -2,6 +2,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
 
 import schema from '../../schemas/mapsoo-world-art-runtime-projection-1.0.schema.json';
+import candidateReceiptSchema from '../../schemas/mapsoo-world-art-runtime-candidate-receipt-1.0.schema.json';
 import { encodeRgbaPng } from './canvas/encode-png';
 import {
   normalizeProductionArtPngV1_1,
@@ -12,6 +13,8 @@ import {
   projectReviewedWorldArtVariants,
   type ProjectReviewedWorldArtVariantsInput,
 } from './project-reviewed-world-art-variants';
+import { readWorldArtRuntimeOverlayArchive } from './read-world-art-runtime-overlay';
+import { buildWorldArtRuntimeCandidate } from '../app/world-art-runtime-candidate';
 import type { WorldAssetProfile } from '../core/asset-profile';
 import { buildAssetRequirementsV1_1 } from '../core/asset-requirements-v1-1';
 import {
@@ -36,6 +39,9 @@ import {
   type WorldLayoutConstraintIntent,
 } from '../core/world-layout-constraints';
 import { solveWorldLayoutPlanFromConstraints } from '../core/world-layout-plan';
+import {
+  buildPendingWorldArtSelectionReview,
+} from '../core/world-art-selection-review';
 
 const PRIVATE_MARKER = 'PRIVATE_RUNTIME_PROJECTION_LABEL';
 const FACTS: ConfirmedWorldFacts = Object.freeze({
@@ -499,5 +505,92 @@ describe('projectReviewedWorldArtVariants', () => {
     }
     expect(result.images.every(({ path }) =>
       path.startsWith('production-art/layered-depth-2d/'))).toBe(true);
+  }, PROJECTION_TEST_TIMEOUT_MS);
+});
+
+describe('buildWorldArtRuntimeCandidate', () => {
+  it.each([
+    'side-platformer',
+    'topdown-farm',
+    'isometric-action',
+    'layered-depth-2d',
+  ] as const)('builds a human-approved, source-free %s Godot overlay candidate', async (
+    profile,
+  ) => {
+    const base = await fixture(profile);
+    const reviewInput = {
+      layout_plan: base.layout,
+      asset_requirements: base.requirements,
+      production_art_plan: base.plan,
+      production_art_run_set: base.runSet,
+    };
+    const review = mutable(await buildPendingWorldArtSelectionReview(reviewInput));
+    review.review_status = 'pass';
+    review.declarations = {
+      visual_quality_approved: true,
+      atlas_integrity_approved: true,
+      rights_and_redistribution_approved: true,
+    };
+    for (const task of review.tasks) {
+      for (const slot of task.slots) slot.decision = 'approved';
+    }
+    const candidate = await buildWorldArtRuntimeCandidate({
+      ...reviewInput,
+      selection_review: review,
+      normalized_results: base.normalizedResults,
+    });
+    const archive = await readWorldArtRuntimeOverlayArchive(candidate.overlay.readBytes());
+    const validateReceipt = new Ajv2020({ strict: true, allErrors: true })
+      .compile(candidateReceiptSchema);
+
+    expect(
+      validateReceipt(candidate.receipt),
+      JSON.stringify(validateReceipt.errors),
+    ).toBe(true);
+    expect(candidate.receipt.profile).toBe(profile);
+    expect(candidate.receipt.review).toEqual({
+      human_art: 'pass',
+      runtime: 'pending',
+      raspberry_pi: 'pending',
+    });
+    expect(candidate.receipt.remote_request_count).toBe(0);
+    expect(candidate.receipt.production_ready).toBe(false);
+    expect(candidate.files.map(({ path }) => path)).toEqual([
+      'reviewed-world-art-slot-inventory.json',
+      'runtime-candidate-receipt.json',
+      candidate.overlay.filename,
+      'world-art-runtime-projection.json',
+      'world-art-selection-review.json',
+      'world-art-variant-map.json',
+      'world-art-variant-selections.json',
+    ]);
+    expect(archive.manifest.profile).toBe(profile);
+    expect(archive.manifest.review).toEqual({
+      human_art: 'pass',
+      runtime: 'pending',
+      raspberry_pi: 'pending',
+    });
+    for (const file of candidate.files.filter(({ media_type }) =>
+      media_type === 'application/json')) {
+      expect(new TextDecoder().decode(file.readBytes())).not.toContain(PRIVATE_MARKER);
+    }
+  }, PROJECTION_TEST_TIMEOUT_MS);
+
+  it('does not build an overlay from a pending or partial review', async () => {
+    const base = await fixture('topdown-farm');
+    const reviewInput = {
+      layout_plan: base.layout,
+      asset_requirements: base.requirements,
+      production_art_plan: base.plan,
+      production_art_run_set: base.runSet,
+    };
+    const review = await buildPendingWorldArtSelectionReview(reviewInput);
+    await expect(buildWorldArtRuntimeCandidate({
+      ...reviewInput,
+      selection_review: review,
+      normalized_results: base.normalizedResults,
+    })).rejects.toMatchObject({
+      code: 'world-art-selection-review.invalid-review',
+    });
   }, PROJECTION_TEST_TIMEOUT_MS);
 });
