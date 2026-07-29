@@ -1,0 +1,43 @@
+{
+  "schema": "mapsoo-readme-showcase-1.0",
+  "status": "documentation-display-approved",
+  "contains_generative_ai": true,
+  "godot_versions": [
+    "4.3",
+    "4.7"
+  ],
+  "cross_version_result": "byte-identical",
+  "asset_pack_distribution": "internal-review",
+  "asset_pack_redistribution_approved": false,
+  "physical_raspberry_pi_4b_tested": false,
+  "files": [
+    {
+      "profile": "side-platformer",
+      "path": "docs/visual-qa/production-art/side-platformer-production-godot-4.3-v1.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "17035a97e0c6a2f14bbc8ea8b3e8890de04fd24a0ee025149b26c2133ff5df31"
+    },
+    {
+      "profile": "topdown-farm",
+      "path": "docs/visual-qa/production-art/topdown-farm-production-godot-4.3-v1.png",
+      "width": 640,
+      "height": 480,
+      "sha256": "7a697e0e3d110c505cd76f84f7d21282c066c5f0155a96deb2eee0172440ba41"
+    },
+    {
+      "profile": "isometric-action",
+      "path": "docs/visual-qa/production-art/isometric-action-production-godot-4.3-v1.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "982e0249e2f039b33fcc45a5564e0ea654e299bc6d073e427f44f8f486280c8e"
+    },
+    {
+      "profile": "layered-depth-2d",
+      "path": "docs/visual-qa/production-art/layered-depth-2d-production-godot-4.3-v1.png",
+      "width": 640,
+      "height": 360,
+      "sha256": "546eae7995a3c589e8c02c672edc1149edc21a782937d7fb164d3ff565811121"
+    }
+  ]
+}

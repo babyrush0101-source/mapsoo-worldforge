@@ -16,6 +16,26 @@ Renaming that identity in place would break existing pack verification. New
 product-facing surfaces use WorldForge; the legacy identity changes only
 through a future schema version with an explicit compatibility path.
 
+## Generated world showcase
+
+These are **real Godot 4.3 runtime captures assembled from the generated
+atlases and layers**, not flattened concept images or procedural placeholder
+previews. The same bound candidates rendered byte-identically in Godot 4.7.
+The maintainer has approved these exact captures for public documentation
+display. The downloadable production-art pack remains `internal-review`;
+asset-pack redistribution approval and physical Raspberry Pi 4B acceptance
+are still separate pending gates.
+
+| Side platformer | Top-down farm |
+| --- | --- |
+| ![Generated side-platformer assets rendered in Godot](docs/visual-qa/production-art/side-platformer-production-godot-4.3-v1.png) | ![Generated top-down farm assets rendered in Godot](docs/visual-qa/production-art/topdown-farm-production-godot-4.3-v1.png) |
+| Isometric action | Layered-depth 2D |
+| ![Generated isometric-action assets rendered in Godot](docs/visual-qa/production-art/isometric-action-production-godot-4.3-v1.png) | ![Generated layered-depth assets rendered in Godot](docs/visual-qa/production-art/layered-depth-2d-production-godot-4.3-v1.png) |
+
+The exact image hashes, cross-version render results, limitations, and required
+revisions are recorded in the
+[AI-assisted art pre-review](docs/visual-qa/production-art/ai-assisted-art-review-v1.md).
+
 The **published v0.1.0-alpha.9 prerelease** is the immutable compatibility baseline. It accepts one environment image, one character image, and a short description, then builds a complete `topdown-farm` Pack Schema 0.6.0 ZIP. The exact published pack passed Linux/Windows with Godot 4.3/4.7 and remains pinned at SHA-256 `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`.
 
 The current **unpublished Alpha12 development candidate** expands that workflow into a guided four-round conversation and four complete original world grammars:
@@ -293,7 +313,7 @@ model, ARM64, exact PCK and character binding, then records bounded startup,
 FPS, P95 frame time, memory and temperature evidence without device identity
 or network details.
 
-Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The current provider is procedural and truthfully records `contains_generative_ai: false`; that statement does not apply to future model providers. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.
+Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The published Alpha.9 browser provider is procedural and truthfully records `contains_generative_ai: false`; the development production-art candidates above use AI-assisted source assets and carry separate internal-review evidence. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.
 
 ## Project status
 
@@ -315,8 +335,8 @@ The current public starter input is [`examples/sunny-meadow-v0.3.world.json`](ex
 
 Local World Spec and External Host Asset Request imports share the same 128 KiB cap, strict UTF-8 decoding, duplicate-key detection, bounded JSON depth/complexity, safe-number checks, forbidden prototype-key checks, and strict schema/runtime validation. An External Host request is first projected to a World Spec with a canonical SHA-256 binding; initial generation, editor generation, and both import paths then run through the same validated provider runner. A newer user action aborts and supersedes older work, so a failed or stale request never replaces the last successful world.
 
-![Actual Sunny Meadow alpha.7 preview](examples/packs/sunny-meadow-v0.1.0-alpha.7/previews/map-preview.png)
-
+The historical published compatibility preview remains available as
+[Sunny Meadow Alpha.7](examples/packs/sunny-meadow-v0.1.0-alpha.7/previews/map-preview.png).
 The committed Alpha.7 fixtures for [Sunny Meadow](examples/packs/sunny-meadow-v0.1.0-alpha.7/), [Dustwind Outpost](examples/packs/dustwind-outpost-v0.1.0-alpha.7/), and [Frostwatch Vale](examples/packs/frostwatch-vale-v0.1.0-alpha.7/) were captured from one real browser export run. Each has 18 files and 17 manifest payload records.
 
 The older published Alpha.1–Alpha.5 fixtures and hashes remain immutable. A pinned pure-JavaScript PNG encoder removes browser-native PNG compression drift, and CI runs the real browser exporter before passing the byte-identical canonical ZIP to the Godot matrix.
