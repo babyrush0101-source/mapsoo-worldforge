@@ -258,6 +258,13 @@ jobs:
       - name: Print Godot version
         run: '"$GODOT_BIN" --version'
 
+      - name: Run the runtime-candidate Overlay 1.1 end-to-end technical review
+        env:
+          MAPSOO_RUN_RUNTIME_CANDIDATE_E2E: "1"
+        run: >-
+          pnpm exec vitest run
+          src/adapters/runtime-candidate-technical-review.e2e.test.ts
+
       - name: Check GDScript syntax
         shell: bash
         run: |
@@ -794,6 +801,8 @@ jobs:
             'res://addons/mapsoo_importer/mapsoo_world_terrain_autotile_attachment.gd',
             'res://addons/mapsoo_importer/mapsoo_world_art_runtime_overlay.gd',
             'res://addons/mapsoo_importer/mapsoo_world_art_runtime_overlay_applier.gd',
+            'res://addons/mapsoo_importer/mapsoo_world_visual_placement_applier.gd',
+            'res://addons/mapsoo_importer/mapsoo_world_art_runtime_overlay_v1_1.gd',
             'res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd',
             'res://addons/mapsoo_importer/runtime/mapsoo_isometric_player_controller.gd',
             'res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_player_controller.gd',
@@ -819,6 +828,11 @@ jobs:
             'res://tests/world_terrain_autotile_smoke.gd',
             'res://tests/world_art_runtime_overlay_smoke.gd',
             'res://tests/world_art_runtime_overlay_applier_smoke.gd',
+            'res://tests/world_visual_placement_applier_smoke.gd',
+            'res://tests/world_art_runtime_overlay_v1_1_smoke.gd',
+            'res://tests/world_art_runtime_overlay_v1_1_combined_smoke.gd',
+            'res://tests/capture_world_art_runtime_overlay_v1_1.gd',
+            'res://tests/world_art_runtime_overlay_v1_1_capture_smoke.gd',
             'res://tests/character_profile_test_fixture.gd',
             'res://tests/runtime_shell_smoke.gd',
             'res://tests/character_profile_runtime_smoke.gd',
@@ -1119,6 +1133,34 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           & scripts/verify-world-art-runtime-overlay-capture-godot.ps1 `
+            -GodotConsoles $env:GODOT_BIN
+
+      - name: Apply reviewed visual placements across all world types on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & scripts/verify-world-visual-placement-applier-godot.ps1 `
+            -GodotConsoles $env:GODOT_BIN
+
+      - name: Load and persist runtime overlay 1.1 across all world types on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & scripts/verify-world-art-runtime-overlay-v1-1-godot.ps1 `
+            -GodotConsoles $env:GODOT_BIN
+
+      - name: Apply combined runtime overlay 1.1 across all world types on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & scripts/verify-world-art-runtime-overlay-v1-1-combined-godot.ps1 `
+            -GodotConsoles $env:GODOT_BIN
+
+      - name: Capture combined runtime overlay 1.1 evidence across all world types on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & scripts/verify-world-art-runtime-overlay-v1-1-capture-godot.ps1 `
             -GodotConsoles $env:GODOT_BIN
 
       - name: Run generated-world runtime shell contract on Windows

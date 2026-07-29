@@ -11,7 +11,9 @@ small, human-readable delivery envelope.
 
 The builder accepts only:
 
-- an exact, CRC-valid `WorldArtRuntimeOverlay 1.0` archive;
+- an exact, CRC-valid `WorldArtRuntimeOverlay 1.0` archive, or an exact
+  `WorldArtRuntimeOverlay 1.1` archive together with its separately supplied
+  canonical trusted `WorldLayoutPlan`;
 - an approved `ProductionWorldReview 1.0`;
 - the canonical `HumanArtReviewReceipt 1.0` bytes;
 - the exact preview, render, collision and traversal evidence referenced by
@@ -23,6 +25,11 @@ Every input is re-read and re-hashed. The receipt must bind the same profile,
 preview, Godot capture, runtime projection and complete overlay ZIP. The
 overlay rights, human-approved rights and final delivery rights must be
 identical.
+
+Overlay 1.0 produces the frozen `WorldArtDeliveryKit 1.0` contract. Overlay
+1.1 produces the separate `WorldArtDeliveryKit 1.1` contract and declares
+`world-art-runtime-overlay-1.1`; it does not reinterpret or widen the 1.0
+schema. A 1.1 overlay without the exact layout fails closed.
 
 ## Archive layout
 
@@ -55,6 +62,13 @@ The nested overlay is intentional. It remains the single runtime source of
 truth and can be imported without teaching Godot about an itch.io-specific
 format. The surrounding kit supplies the storefront-facing documentation,
 preview and licensing evidence.
+
+The trusted layout is not copied into a 1.1 delivery ZIP. This preserves the
+privacy boundary for consumer-owned world descriptions, landmark labels, and
+seed. A receiving runtime must already own the exact canonical layout. A
+publicly redistributed 1.1 kit is therefore appropriate only when its matching
+layout is distributed separately through a privacy-reviewed channel; use the
+layout-independent 1.0 art delivery when that handoff is unavailable.
 
 ## Private versus public
 
@@ -93,7 +107,11 @@ builder never logs in to itch.io or grants upload permission.
 
 The semantic manifest lives in
 [`src/core/world-art-delivery-kit.ts`](../src/core/world-art-delivery-kit.ts),
-its JSON Schema in
+with the independent 1.1 extension in
+[`src/core/world-art-delivery-kit-v1-1.ts`](../src/core/world-art-delivery-kit-v1-1.ts).
+The JSON Schemas are
 [`schemas/mapsoo-world-art-delivery-kit-1.0.schema.json`](../schemas/mapsoo-world-art-delivery-kit-1.0.schema.json),
+and
+[`schemas/mapsoo-world-art-delivery-kit-1.1.schema.json`](../schemas/mapsoo-world-art-delivery-kit-1.1.schema.json),
 and the ZIP adapter in
 [`src/adapters/build-approved-world-art-delivery-kit.ts`](../src/adapters/build-approved-world-art-delivery-kit.ts).

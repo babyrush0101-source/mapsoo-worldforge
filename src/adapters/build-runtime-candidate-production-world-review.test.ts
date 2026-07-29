@@ -2,7 +2,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
 
 import captureReceiptSchema
-  from '../../schemas/mapsoo-godot-runtime-capture-receipt-1.0.schema.json';
+  from '../../schemas/mapsoo-godot-runtime-capture-receipt-1.1.schema.json';
 import { encodeRgbaPng } from './canvas/encode-png';
 import {
   BuildRuntimeCandidateProductionWorldReviewError,
@@ -97,6 +97,9 @@ function candidate(): LoadedWorldArtRuntimeCandidateWorkspace {
     runtime_projection: {
       profile: 'topdown-farm',
       projection_id: 'world-art-runtime-projection-0123456789abcdef',
+      source: {
+        layout_plan_sha256: LAYOUT_SHA,
+      },
       assets,
       bindings,
       hazards: [{ hazard_id: 'hazard-1' }],
@@ -111,11 +114,51 @@ function candidate(): LoadedWorldArtRuntimeCandidateWorkspace {
           projection_sha256: PROJECTION_SHA,
         },
       },
+      placement_plan: {
+        profile: 'topdown-farm',
+        plan_id: 'world-visual-placement-plan-0123456789abcdef',
+        source: { layout_plan_sha256: LAYOUT_SHA },
+        placements: [
+          {
+            placement_id: 'background-far',
+            kind: 'depth-plane',
+            role: 'background.far',
+          },
+          {
+            placement_id: 'prop-decorative',
+            kind: 'sprite',
+            role: 'prop.decorative',
+          },
+        ],
+      },
+      placement_map: {
+        profile: 'topdown-farm',
+        source: {
+          layout_plan_sha256: LAYOUT_SHA,
+          placement_plan_id: 'world-visual-placement-plan-0123456789abcdef',
+        },
+        bindings: [
+          {
+            placement_id: 'background-far',
+            task_id: 'task-5',
+            slot_id: 'background-slot',
+            role: 'background.far',
+            variant_id: 'canonical',
+          },
+          {
+            placement_id: 'prop-decorative',
+            task_id: 'task-6',
+            slot_id: 'prop-slot',
+            role: 'prop.decorative',
+            variant_id: 'canonical',
+          },
+        ],
+      },
     },
   } as unknown as LoadedWorldArtRuntimeCandidateWorkspace;
 }
 
-function input() {
+async function input() {
   return {
     candidate: candidate(),
     layoutPlanSha256: LAYOUT_SHA,
@@ -127,7 +170,21 @@ function input() {
       visible_landmarks: 1,
       visible_hazards: 1,
       visible_characters: 1,
+      applied_background_layers: 1,
+      applied_prop_instances: 1,
+      applied_structure_instances: 0,
+      applied_effect_bindings: 0,
+      applied_depth_planes: 0,
       route_reached: true as const,
+      catalog_assets: 6,
+      bound_catalog_assets: 6,
+      runtime_bindings: 6,
+      applied_runtime_bindings: 6,
+      catalog_only_assets: 0,
+      bindings_sha256:
+        'a3c5193fa771364d10657378fd51d0a61413c5a9b9c659098b393cb1e25201a0',
+      applied_bindings_sha256:
+        'a3c5193fa771364d10657378fd51d0a61413c5a9b9c659098b393cb1e25201a0',
     },
     renderedWorldCapture: source(png(30, 40, 50)),
     rolePlacementOverlay: source(png(60, 70, 80)),
@@ -139,7 +196,7 @@ function input() {
 
 describe('buildRuntimeCandidateProductionWorldReview', () => {
   it('binds exact candidate coverage and five captures into the existing review', async () => {
-    const built = await buildRuntimeCandidateProductionWorldReview(input());
+    const built = await buildRuntimeCandidateProductionWorldReview(await input());
     const validate = new Ajv2020({ strict: true }).compile(captureReceiptSchema);
 
     expect(validate(built.captureReceipt), JSON.stringify(validate.errors))
@@ -149,10 +206,19 @@ describe('buildRuntimeCandidateProductionWorldReview', () => {
       visible_landmarks: 1,
       visible_hazards: 1,
       visible_characters: 1,
+      applied_background_layers: 1,
+      applied_prop_instances: 1,
+      applied_structure_instances: 0,
+      applied_effect_bindings: 0,
+      applied_depth_planes: 0,
       route_reached: true,
       catalog_assets: 6,
-      runtime_bindings: 4,
-      catalog_only_assets: 2,
+      bound_catalog_assets: 6,
+      runtime_bindings: 6,
+      applied_runtime_bindings: 6,
+      catalog_only_assets: 0,
+      bindings_sha256:
+        'a3c5193fa771364d10657378fd51d0a61413c5a9b9c659098b393cb1e25201a0',
       all_required_bindings_applied: true,
     });
     expect(built.review.evidence.at(-1)).toMatchObject({
@@ -175,14 +241,28 @@ describe('buildRuntimeCandidateProductionWorldReview', () => {
   });
 
   it('rejects a sentinel count that differs from the exact projection', async () => {
+    const candidateInput = await input();
     await expect(buildRuntimeCandidateProductionWorldReview({
-      ...input(),
+      ...candidateInput,
       captureMetrics: {
-        ...input().captureMetrics,
+        ...candidateInput.captureMetrics,
         visible_landmarks: 2,
       },
     })).rejects.toBeInstanceOf(
       BuildRuntimeCandidateProductionWorldReviewError,
     );
+  });
+
+  it('rejects a same-count sentinel whose applied binding digest changed', async () => {
+    const candidateInput = await input();
+    await expect(buildRuntimeCandidateProductionWorldReview({
+      ...candidateInput,
+      captureMetrics: {
+        ...candidateInput.captureMetrics,
+        applied_bindings_sha256: 'f'.repeat(64),
+      },
+    })).rejects.toMatchObject({
+      code: 'runtime-candidate-technical-review.invalid-capture',
+    });
   });
 });

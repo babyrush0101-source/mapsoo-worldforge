@@ -16,8 +16,14 @@ import {
   type WorldArtRuntimeOverlayManifest,
 } from '../core/world-art-runtime-overlay';
 import {
-  readWorldArtRuntimeOverlayArchive,
-} from './read-world-art-runtime-overlay';
+  materializeWorldArtRuntimeOverlayV1_1,
+  serializeCanonicalWorldArtRuntimeOverlayV1_1,
+  type WorldArtRuntimeOverlayV1_1Manifest,
+} from '../core/world-art-runtime-overlay-v1-1';
+import {
+  readVersionedWorldArtRuntimeOverlayArchive,
+  type VerifiedVersionedWorldArtRuntimeOverlayArchive,
+} from './read-world-art-runtime-overlay-versioned';
 import {
   WORLD_ART_DELIVERY_MANIFEST_PATH,
   buildWorldArtDeliveryKitManifest,
@@ -25,6 +31,11 @@ import {
   type WorldArtDeliveryFile,
   type WorldArtDeliveryKitManifest,
 } from '../core/world-art-delivery-kit';
+import {
+  buildWorldArtDeliveryKitManifestV1_1,
+  serializeCanonicalWorldArtDeliveryKitV1_1,
+  type WorldArtDeliveryKitV1_1Manifest,
+} from '../core/world-art-delivery-kit-v1-1';
 
 // @ts-expect-error The public privacy helper is intentionally plain ESM.
 import { containsPrivateConsumerToken } from '../../scripts/lib/private-consumer-boundary.mjs';
@@ -32,7 +43,10 @@ import { containsPrivateConsumerToken } from '../../scripts/lib/private-consumer
 export interface ApprovedWorldArtRuntimeOverlayArtifact {
   readonly filename: string;
   readonly bytes: number;
-  readonly manifest: WorldArtRuntimeOverlayManifest;
+  readonly manifest:
+    | WorldArtRuntimeOverlayManifest
+    | WorldArtRuntimeOverlayV1_1Manifest;
+  readonly layoutPlan?: unknown;
   readBytes(): Uint8Array;
 }
 
@@ -59,7 +73,9 @@ export interface BuildApprovedWorldArtDeliveryKitOptions {
 export interface BuiltApprovedWorldArtDeliveryKit {
   readonly filename: string;
   readonly bytes: number;
-  readonly manifest: WorldArtDeliveryKitManifest;
+  readonly manifest:
+    | WorldArtDeliveryKitManifest
+    | WorldArtDeliveryKitV1_1Manifest;
   readBytes(): Uint8Array;
 }
 
@@ -157,11 +173,7 @@ function assertOptions(options: BuildApprovedWorldArtDeliveryKitOptions): void {
 
 async function verifyOverlay(
   artifact: ApprovedWorldArtRuntimeOverlayArtifact,
-): Promise<Readonly<{
-  bytes: Uint8Array;
-  sha256: string;
-  manifest: WorldArtRuntimeOverlayManifest;
-}>> {
+): Promise<VerifiedVersionedWorldArtRuntimeOverlayArchive> {
   if (
     !Number.isSafeInteger(artifact.bytes)
     || artifact.bytes < 1
@@ -181,16 +193,25 @@ async function verifyOverlay(
   let verified;
   let claimedManifestBytes: Uint8Array;
   try {
-    verified = await readWorldArtRuntimeOverlayArchive(read);
-    claimedManifestBytes = await serializeCanonicalWorldArtRuntimeOverlay(
-      await materializeWorldArtRuntimeOverlay(artifact.manifest),
+    verified = await readVersionedWorldArtRuntimeOverlayArchive(
+      read,
+      artifact.layoutPlan === undefined
+        ? {}
+        : { layout_plan: artifact.layoutPlan },
     );
+    claimedManifestBytes = artifact.manifest.schema_version === '1.1.0'
+      ? await serializeCanonicalWorldArtRuntimeOverlayV1_1(
+        await materializeWorldArtRuntimeOverlayV1_1(artifact.manifest),
+      )
+      : await serializeCanonicalWorldArtRuntimeOverlay(
+        await materializeWorldArtRuntimeOverlay(artifact.manifest),
+      );
   } catch {
     return fail('world-art-delivery-build.overlay', 'Runtime overlay ZIP is invalid.');
   }
-  const verifiedManifestBytes = await serializeCanonicalWorldArtRuntimeOverlay(
-    verified.manifest,
-  );
+  const verifiedManifestBytes = verified.manifest.schema_version === '1.1.0'
+    ? await serializeCanonicalWorldArtRuntimeOverlayV1_1(verified.manifest)
+    : await serializeCanonicalWorldArtRuntimeOverlay(verified.manifest);
   if (
     artifact.filename !== `${verified.manifest.overlay_id}.zip`
     || !equalBytes(claimedManifestBytes, verifiedManifestBytes)
@@ -295,7 +316,7 @@ async function verifyReviewFiles(
 }
 
 function rightsMatch(
-  overlay: WorldArtRuntimeOverlayManifest,
+  overlay: WorldArtRuntimeOverlayManifest | WorldArtRuntimeOverlayV1_1Manifest,
   receipt: HumanArtReviewReceipt,
 ): boolean {
   return overlay.rights.distribution === receipt.rights.distribution
@@ -505,9 +526,7 @@ export async function buildApprovedWorldArtDeliveryKit(
     fail('world-art-delivery-build.inventory', 'Delivery payload paths conflict.');
   }
   assertTextPrivacy(payloads);
-  const manifest = await buildWorldArtDeliveryKitManifest({
-    schema_version: '1.0.0',
-    document_type: 'world-art-delivery-kit',
+  const manifestPayload = {
     pack: Object.freeze({
       id: options.packId,
       title: options.title,
@@ -545,12 +564,6 @@ export async function buildApprovedWorldArtDeliveryKit(
         height: approval.review.world_preview.height,
       }),
     }),
-    compatibility: Object.freeze({
-      engine: 'godot',
-      tested_versions: Object.freeze(['4.3', '4.7'] as const),
-      importer: 'mapsoo-importer',
-      asset_contract: 'world-art-runtime-overlay-1.0',
-    }),
     ai_disclosure: Object.freeze({
       contains_generative_ai: options.containsGenerativeAi,
       human_curated: true,
@@ -562,8 +575,33 @@ export async function buildApprovedWorldArtDeliveryKit(
       bytes: file.bytes.byteLength,
       sha256: file.sha256,
     }))),
-  });
-  const manifestBytes = await serializeCanonicalWorldArtDeliveryKit(manifest);
+  };
+  const manifest = overlay.manifest.schema_version === '1.1.0'
+    ? await buildWorldArtDeliveryKitManifestV1_1({
+      ...manifestPayload,
+      schema_version: '1.1.0',
+      document_type: 'world-art-delivery-kit',
+      compatibility: Object.freeze({
+        engine: 'godot',
+        tested_versions: Object.freeze(['4.3', '4.7'] as const),
+        importer: 'mapsoo-importer',
+        asset_contract: 'world-art-runtime-overlay-1.1',
+      }),
+    })
+    : await buildWorldArtDeliveryKitManifest({
+      ...manifestPayload,
+      schema_version: '1.0.0',
+      document_type: 'world-art-delivery-kit',
+      compatibility: Object.freeze({
+        engine: 'godot',
+        tested_versions: Object.freeze(['4.3', '4.7'] as const),
+        importer: 'mapsoo-importer',
+        asset_contract: 'world-art-runtime-overlay-1.0',
+      }),
+    });
+  const manifestBytes = manifest.schema_version === '1.1.0'
+    ? await serializeCanonicalWorldArtDeliveryKitV1_1(manifest)
+    : await serializeCanonicalWorldArtDeliveryKit(manifest);
   const root = `${options.packId}-v${options.version}`;
   const archive = new JSZip();
   for (const entry of [

@@ -53,11 +53,14 @@ confirmed dialogue
   -> normalized reviewed slot inventory (next integration slice)
   -> WorldArtVariantMap 1.0             (implemented contract)
   -> WorldArtRuntimeProjection 1.0      (implemented byte-bound adapter)
-  -> WorldArtRuntimeOverlay 1.0         (implemented reproducible ZIP)
-  -> shared Godot overlay loader        (implemented persistent catalog)
+  -> WorldVisualPlacementPlan 1.0       (implemented trusted-layout sidecar)
+  -> WorldArtPlacementMap 1.0           (implemented reviewed slot binding)
+  -> WorldArtRuntimeOverlay 1.1         (implemented; 1.0 remains readable)
+  -> shared versioned Godot loader      (1.1 requires trusted layout)
   -> terrain + landmark apply           (implemented shared scene applier)
   -> hazard apply                       (implemented shared gameplay applier)
   -> character apply                    (implemented existing-runtime adapter)
+  -> GodotCaptureReceipt 1.1            (exact applied-binding evidence)
 ```
 
 Only the first four stages are core domain logic. Image generation, animation,
@@ -191,25 +194,51 @@ IDs, credentials, and private world labels are excluded.
 
 ## Runtime overlay
 
-`WorldArtRuntimeOverlay 1.0` packages the complete runtime projection and every
-PNG it references without rebuilding an existing world Pack. It is a small,
-version-neutral layer that a runner can apply to an already loaded world.
-This keeps the public contract independent of the four historical Alpha Pack
-exporters and avoids copying four profile-specific delivery paths.
+`WorldArtRuntimeOverlay 1.0` remains the compatible projection-plus-PNG format.
+The versioned reader continues to accept it without changing its bytes or
+meaning.
+
+`WorldArtRuntimeOverlay 1.1` is the current runtime-candidate format. It adds a
+canonical `WorldVisualPlacementPlan 1.0` and `WorldArtPlacementMap 1.0`:
+
+- the placement plan derives bounded sprite, depth-plane, effect, and actor
+  anchors from one canonical `WorldLayoutPlan`, with deterministic render
+  order, controllers, and triggers;
+- the placement map binds every placement, in exact plan order, to one
+  reviewed task, atlas slot, role, variant, portable PNG path, and cell;
+- the manifest binds the projection, trusted layout identity, placement plan,
+  placement map, review record, rights, and exact JSON/PNG inventory.
+
+The layout itself is not packaged. Reading and applying a 1.1 archive requires
+the separately supplied canonical trusted `WorldLayoutPlan`; a missing or
+different layout fails closed. The placement documents retain only stable
+layout references and one-way hashes. They do not package private world
+descriptions, landmark labels, or the seed.
 
 Implemented by:
 
 - `src/core/world-art-runtime-overlay.ts`;
 - `schemas/mapsoo-world-art-runtime-overlay-1.0.schema.json`;
-- `src/adapters/build-world-art-runtime-overlay.ts`.
+- `src/adapters/build-world-art-runtime-overlay.ts`;
+- `src/core/world-visual-placement-plan.ts`;
+- `schemas/mapsoo-world-visual-placement-plan-1.0.schema.json`;
+- `src/core/world-art-placement-map.ts`;
+- `schemas/mapsoo-world-art-placement-map-1.0.schema.json`;
+- `src/core/world-art-runtime-overlay-v1-1.ts`;
+- `schemas/mapsoo-world-art-runtime-overlay-1.1.schema.json`;
+- `src/adapters/build-world-art-runtime-overlay-v1-1.ts`;
+- `src/adapters/read-world-art-runtime-overlay-versioned.ts`;
+- `src/core/godot-runtime-capture-receipt-v1-1.ts`;
+- `schemas/mapsoo-godot-runtime-capture-receipt-1.1.schema.json`.
 
-The builder rematerializes the projection, verifies every path, byte count,
-SHA-256, and referenced image, rejects extra files, then emits a deterministic
-single-root ZIP. The manifest binds the source projection, layout, review
-record, rights, and review gates. It excludes original references, raw prompts,
-provider metadata, account data, and credentials. Proprietary assets may be
-used for private or internal review, but cannot be marked for public
-distribution.
+Both builders rematerialize their semantic inputs, verify every path, byte
+count, SHA-256, and referenced image, reject extra files, then emit a
+deterministic single-root ZIP. The 1.1 builder additionally proves that the
+placement plan and map cover each other exactly and that every placement maps
+to the matching reviewed runtime-catalog asset. Both formats exclude original
+references, raw prompts, provider metadata, account data, and credentials.
+Proprietary assets may be used for private or internal review, but cannot be
+marked for public distribution.
 
 The trusted Godot addon now has one shared loader for all four profiles:
 
@@ -282,10 +311,12 @@ approved-direction digest on the first attempt, journals request accounting,
 and dispatches each dynamic task through the same provider port used by 1.0.
 Provider execution, local PNG normalization, run-set assembly, reviewed selection, and
 Pack-facing runtime projection, overlay assembly, and shared Godot
-load/persistence now have explicit versioned branches. The loaded catalog is
-applied to logical terrain TileSets, landmark scene nodes, and deterministic
-hazard `Area2D` nodes. Reviewed player pose regions reuse the portable
-character-profile runtime rather than introducing a parallel animation path.
+load/persistence now have explicit versioned branches. Projection bindings
+apply terrain, landmarks, hazards, and the reviewed player. Overlay 1.1
+placement bindings additionally apply reviewed backgrounds, props, structures,
+effects, depth planes, and layout-derived actors. Reviewed player pose regions
+reuse the portable character-profile runtime rather than introducing a
+parallel animation path.
 The reviewed-candidate command and strict workspace loader are documented in
 [`71_REVIEWED_WORLD_ART_RUNTIME_CANDIDATE.md`](71_REVIEWED_WORLD_ART_RUNTIME_CANDIDATE.md).
 The separate source-bound local Godot capture and technical claim boundary are
@@ -293,16 +324,21 @@ documented in
 [`72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md`](72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md).
 
 A 1.1 plan alone is planning and review evidence only. A
-`WorldArtVariantMap` is a validated runtime binding contract. A persisted
-runtime overlay plus a passing applier receipt proves that its human-approved
-atlas slots and selected terrain
-and landmark pixels are visible and that its reviewed hazards trigger trusted
-controller respawn. It also proves the reviewed player atlas drives complete
-profile animations through the existing runtime. Here, human approval means
-per-slot review; it does not prove the whole composition passed holistic human
-inspection. The local Godot technical receipt remains
-`raspberry_pi: pending`, `production_ready: false`, and
-`remote_request_count: 0`; it does not prove physical-device performance.
+`WorldArtVariantMap` is a validated selection contract; the placement plan and
+map add the remaining layout-derived runtime instances. Capture Receipt 1.1
+derives one canonical expected binding-key inventory from both sources and
+requires Godot to report the identical applied inventory. The canonical receipt
+records equal `runtime_bindings` and `applied_runtime_bindings`, the canonical
+`bindings_sha256`, per-category applied counts, catalog/bound/catalog-only
+counts, and `all_required_bindings_applied: true`. Catalog-only assets are
+never promoted to applied evidence.
+
+This technical pass proves the exact selected and placed assets were applied in
+local Godot and that the declared route was reached. Here, human approval still
+means per-slot review; it does not prove the whole composition passed holistic
+human inspection. The receipt remains `raspberry_pi: pending`,
+`production_ready: false`, and `remote_request_count: 0`; it does not prove
+physical-device performance.
 
 Side-platformer and isometric-action layouts now materialize confirmed water as
 later-wins `water` terrain, include every water terrain ID in solid collision,

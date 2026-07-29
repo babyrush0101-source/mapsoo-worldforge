@@ -2,6 +2,9 @@ import type {
   LoadedWorldArtRuntimeCandidateWorkspace,
 } from './load-world-art-runtime-candidate-workspace';
 import {
+  deriveGodotRuntimeBindingInventoryV1_1,
+} from './derive-godot-runtime-binding-inventory-v1-1';
+import {
   buildProductionWorldReview,
   type BuiltProductionWorldReview,
   type ProductionWorldReviewFile,
@@ -13,25 +16,37 @@ import {
   type ProductionWorldReviewContract,
 } from '../core/production-world-review-contract';
 import {
-  buildGodotRuntimeCaptureReceipt,
-  serializeCanonicalGodotRuntimeCaptureReceipt,
-  type GodotRuntimeCaptureGodotVersion,
-  type GodotRuntimeCaptureReceipt,
-} from '../core/godot-runtime-capture-receipt';
+  buildGodotRuntimeCaptureReceiptV1_1,
+  serializeCanonicalGodotRuntimeCaptureReceiptV1_1,
+  type GodotRuntimeCaptureReceiptV1_1,
+  type GodotRuntimeCaptureV1_1GodotVersion,
+} from '../core/godot-runtime-capture-receipt-v1-1';
 
 export interface RuntimeCandidateCaptureMetrics {
   readonly visible_terrain_materials: number;
   readonly visible_landmarks: number;
   readonly visible_hazards: number;
   readonly visible_characters: number;
+  readonly applied_background_layers: number;
+  readonly applied_prop_instances: number;
+  readonly applied_structure_instances: number;
+  readonly applied_effect_bindings: number;
+  readonly applied_depth_planes: number;
   readonly route_reached: true;
+  readonly catalog_assets: number;
+  readonly bound_catalog_assets: number;
+  readonly runtime_bindings: number;
+  readonly applied_runtime_bindings: number;
+  readonly catalog_only_assets: number;
+  readonly bindings_sha256: string;
+  readonly applied_bindings_sha256: string;
 }
 
 export interface BuildRuntimeCandidateProductionWorldReviewInput {
   readonly candidate: LoadedWorldArtRuntimeCandidateWorkspace;
   readonly layoutPlanSha256: string;
   readonly reviewId: string;
-  readonly godotVersion: GodotRuntimeCaptureGodotVersion;
+  readonly godotVersion: GodotRuntimeCaptureV1_1GodotVersion;
   readonly godotExecutableSha256: string;
   readonly captureMetrics: RuntimeCandidateCaptureMetrics;
   readonly renderedWorldCapture: ProductionWorldReviewSourceFile;
@@ -43,7 +58,7 @@ export interface BuildRuntimeCandidateProductionWorldReviewInput {
 
 export interface BuiltRuntimeCandidateProductionWorldReview
   extends BuiltProductionWorldReview {
-  readonly captureReceipt: GodotRuntimeCaptureReceipt;
+  readonly captureReceipt: GodotRuntimeCaptureReceiptV1_1;
   readonly captureReceiptFile: ProductionWorldReviewFile;
 }
 
@@ -115,23 +130,40 @@ function evidence(
   return found;
 }
 
-function expectedVisibleCounts(
+async function expectedCaptureMetrics(
   candidate: LoadedWorldArtRuntimeCandidateWorkspace,
-): RuntimeCandidateCaptureMetrics {
-  const bindings = candidate.runtime_projection.bindings;
+): Promise<Readonly<{
+  metrics: RuntimeCandidateCaptureMetrics;
+  expected_bindings: Awaited<
+    ReturnType<typeof deriveGodotRuntimeBindingInventoryV1_1>
+  >['expected_bindings'];
+}>> {
+  const inventory = await deriveGodotRuntimeBindingInventoryV1_1({
+    projection: candidate.runtime_projection,
+    placement_plan: candidate.overlay.placement_plan,
+    placement_map: candidate.overlay.placement_map,
+  });
   return Object.freeze({
-    visible_terrain_materials: bindings.filter(
-      ({ usage_kind: kind }) => kind === 'terrain-material',
-    ).length,
-    visible_landmarks: bindings.filter(
-      ({ usage_kind: kind }) => kind === 'landmark',
-    ).length,
-    visible_hazards: candidate.runtime_projection.hazards.length,
-    visible_characters: bindings.some(
-      ({ usage_kind: kind, role }) =>
-        kind === 'character' && role === 'character.player.atlas',
-    ) ? 1 : 0,
-    route_reached: true,
+    metrics: Object.freeze({
+      visible_terrain_materials: inventory.visible_terrain_materials,
+      visible_landmarks: inventory.visible_landmarks,
+      visible_hazards: inventory.visible_hazards,
+      visible_characters: inventory.visible_characters,
+      applied_background_layers: inventory.applied_background_layers,
+      applied_prop_instances: inventory.applied_prop_instances,
+      applied_structure_instances: inventory.applied_structure_instances,
+      applied_effect_bindings: inventory.applied_effect_bindings,
+      applied_depth_planes: inventory.applied_depth_planes,
+      route_reached: true,
+      catalog_assets: inventory.catalog_assets,
+      bound_catalog_assets: inventory.bound_catalog_assets,
+      runtime_bindings: inventory.expected_bindings.length,
+      applied_runtime_bindings: inventory.expected_bindings.length,
+      catalog_only_assets: inventory.catalog_only_assets,
+      bindings_sha256: inventory.bindings_sha256,
+      applied_bindings_sha256: inventory.bindings_sha256,
+    }),
+    expected_bindings: inventory.expected_bindings,
   });
 }
 
@@ -144,21 +176,21 @@ function sameMetrics(
     && left.visible_landmarks === right.visible_landmarks
     && left.visible_hazards === right.visible_hazards
     && left.visible_characters === right.visible_characters
+    && left.applied_background_layers === right.applied_background_layers
+    && left.applied_prop_instances === right.applied_prop_instances
+    && left.applied_structure_instances === right.applied_structure_instances
+    && left.applied_effect_bindings === right.applied_effect_bindings
+    && left.applied_depth_planes === right.applied_depth_planes
+    && left.catalog_assets === right.catalog_assets
+    && left.bound_catalog_assets === right.bound_catalog_assets
+    && left.runtime_bindings === right.runtime_bindings
+    && left.applied_runtime_bindings === right.applied_runtime_bindings
+    && left.catalog_only_assets === right.catalog_only_assets
+    && left.bindings_sha256 === right.bindings_sha256
+    && left.applied_bindings_sha256 === right.applied_bindings_sha256
     && left.route_reached === true
     && right.route_reached === true
   );
-}
-
-function catalogOnlyCount(
-  candidate: LoadedWorldArtRuntimeCandidateWorkspace,
-): number {
-  const bound = new Set(candidate.runtime_projection.bindings.map(
-    ({ task_id: taskId, slot_id: slotId }) => `${taskId}\u0000${slotId}`,
-  ));
-  return candidate.runtime_projection.assets.filter(
-    ({ task_id: taskId, slot_id: slotId }) =>
-      !bound.has(`${taskId}\u0000${slotId}`),
-  ).length;
 }
 
 export async function buildRuntimeCandidateProductionWorldReview(
@@ -183,11 +215,11 @@ export async function buildRuntimeCandidateProductionWorldReview(
       'Candidate, layout, overlay, and runtime projection are not source-bound.',
     );
   }
-  const expectedMetrics = expectedVisibleCounts(input.candidate);
-  if (!sameMetrics(input.captureMetrics, expectedMetrics)) {
+  const expected = await expectedCaptureMetrics(input.candidate);
+  if (!sameMetrics(input.captureMetrics, expected.metrics)) {
     fail(
       'runtime-candidate-technical-review.invalid-capture',
-      'Godot capture counts differ from the exact runtime projection.',
+      'Godot capture coverage differs from the exact runtime binding inventory.',
     );
   }
   const base = await buildProductionWorldReview({
@@ -206,7 +238,7 @@ export async function buildRuntimeCandidateProductionWorldReview(
   const collisionEvidence = evidence(base.review, 'art-collision-overlay');
   const spawnEvidence = evidence(base.review, 'spawn-exit-traversal');
   const navigationEvidence = evidence(base.review, 'navigation-traversal');
-  const captureReceipt = await buildGodotRuntimeCaptureReceipt({
+  const captureReceipt = await buildGodotRuntimeCaptureReceiptV1_1({
     profile: input.candidate.receipt.profile,
     source: {
       candidate_id: input.candidate.receipt.candidate_id,
@@ -241,15 +273,26 @@ export async function buildRuntimeCandidateProductionWorldReview(
       sha256: record.sha256,
     })),
     runtime: {
-      ...input.captureMetrics,
-      catalog_assets: input.candidate.runtime_projection.assets.length,
-      runtime_bindings: input.candidate.runtime_projection.bindings.length,
-      catalog_only_assets: catalogOnlyCount(input.candidate),
-      all_required_bindings_applied: true,
+      visible_terrain_materials: input.captureMetrics.visible_terrain_materials,
+      visible_landmarks: input.captureMetrics.visible_landmarks,
+      visible_hazards: input.captureMetrics.visible_hazards,
+      visible_characters: input.captureMetrics.visible_characters,
+      applied_background_layers: input.captureMetrics.applied_background_layers,
+      applied_prop_instances: input.captureMetrics.applied_prop_instances,
+      applied_structure_instances:
+        input.captureMetrics.applied_structure_instances,
+      applied_effect_bindings: input.captureMetrics.applied_effect_bindings,
+      applied_depth_planes: input.captureMetrics.applied_depth_planes,
+      route_reached: true,
+      catalog_assets: input.captureMetrics.catalog_assets,
+      bound_catalog_assets: input.captureMetrics.bound_catalog_assets,
+      catalog_only_assets: input.captureMetrics.catalog_only_assets,
+      expected_bindings: expected.expected_bindings,
+      applied_bindings: expected.expected_bindings,
     },
   });
   const captureReceiptBytes =
-    await serializeCanonicalGodotRuntimeCaptureReceipt(captureReceipt);
+    await serializeCanonicalGodotRuntimeCaptureReceiptV1_1(captureReceipt);
   const captureReceiptFile = await file(
     CAPTURE_RECEIPT_PATH,
     'application/json',

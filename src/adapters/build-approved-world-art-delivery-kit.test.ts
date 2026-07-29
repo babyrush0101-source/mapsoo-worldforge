@@ -3,11 +3,16 @@ import { describe, expect, it } from 'vitest';
 import Ajv2020 from 'ajv/dist/2020.js';
 
 import deliverySchema from '../../schemas/mapsoo-world-art-delivery-kit-1.0.schema.json';
+import deliveryV1_1Schema
+  from '../../schemas/mapsoo-world-art-delivery-kit-1.1.schema.json';
 import {
   buildApprovedWorldArtDeliveryKit,
   type WorldArtDeliveryReviewFile,
 } from './build-approved-world-art-delivery-kit';
 import { buildWorldArtRuntimeOverlayZip } from './build-world-art-runtime-overlay';
+import {
+  buildWorldArtRuntimeOverlayV1_1Zip,
+} from './build-world-art-runtime-overlay-v1-1';
 import { encodeRgbaPng } from './canvas/encode-png';
 import type {
   ProjectedReviewedWorldArtImage,
@@ -27,6 +32,9 @@ import {
 } from '../core/production-world-review-contract';
 import type { ProductionArtRights } from '../core/production-art-contract';
 import { buildWorldArtRuntimeProjection } from '../core/world-art-runtime-projection';
+import {
+  buildWorldArtRuntimeOverlayV1_1TestFixture,
+} from './world-art-runtime-overlay-v1-1.test-fixture';
 
 async function sha256(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest(
@@ -137,10 +145,25 @@ async function reviewFile(
 
 async function approvedFixture(
   distribution: 'private' | 'public',
+  overlayVersion: '1.0.0' | '1.1.0' = '1.0.0',
 ) {
-  const overlay = await overlayFixture(distribution === 'private'
-    ? { distribution: 'private', license: 'LicenseRef-Proprietary' }
-    : { distribution: 'public', license: 'CC0-1.0' });
+  if (overlayVersion === '1.1.0' && distribution !== 'public') {
+    throw new Error('The shared Overlay 1.1 fixture is public-only.');
+  }
+  const v1_1Fixture = overlayVersion === '1.1.0'
+    ? await buildWorldArtRuntimeOverlayV1_1TestFixture('topdown-farm')
+    : undefined;
+  const builtOverlay = v1_1Fixture
+    ? await buildWorldArtRuntimeOverlayV1_1Zip(v1_1Fixture)
+    : await overlayFixture(distribution === 'private'
+      ? { distribution: 'private', license: 'LicenseRef-Proprietary' }
+      : { distribution: 'public', license: 'CC0-1.0' });
+  const overlay = Object.freeze({
+    ...builtOverlay,
+    ...(v1_1Fixture === undefined
+      ? {}
+      : { layoutPlan: v1_1Fixture.layout_plan }),
+  });
   const png = encodeRgbaPng(2, 2, Uint8Array.from([
     10, 20, 30, 255,
     40, 50, 60, 255,
@@ -315,6 +338,7 @@ describe('approved world-art itch-style delivery kit', () => {
     expect(first.readBytes()).toEqual(replay.readBytes());
     expect(first.filename).toBe('moonlit-meadow-art-v1.0.0.zip');
     expect(first.manifest).toMatchObject({
+      schema_version: '1.0.0',
       profile: 'topdown-farm',
       distribution: 'public',
       license: {
@@ -391,6 +415,55 @@ describe('approved world-art itch-style delivery kit', () => {
     )!.async('string');
     expect(license).toContain('Redistribution');
     expect(license).toContain('not granted');
+  });
+
+  it('builds a 1.1 delivery only with its explicit trusted layout', async () => {
+    const fixture = await approvedFixture('public', '1.1.0');
+    const options = {
+      packId: 'placed-meadow-art',
+      title: 'Placed Meadow World Art',
+      version: '1.1.0',
+      containsGenerativeAi: true,
+    };
+    const built = await buildApprovedWorldArtDeliveryKit(
+      fixture.overlay,
+      fixture.approval,
+      fixture.receipt,
+      fixture.receiptBytes,
+      fixture.files,
+      options,
+    );
+
+    expect(built.manifest.compatibility.asset_contract)
+      .toBe('world-art-runtime-overlay-1.1');
+    expect(built.manifest.schema_version).toBe('1.1.0');
+    const validate = new Ajv2020({ strict: true, allErrors: true })
+      .compile(deliveryV1_1Schema);
+    expect(validate(built.manifest), JSON.stringify(validate.errors)).toBe(true);
+
+    const archive = await JSZip.loadAsync(built.readBytes(), { checkCRC32: true });
+    const nested = await archive.file(
+      `placed-meadow-art-v1.1.0/${built.manifest.content.runtime_overlay.path}`,
+    )!.async('uint8array');
+    expect(nested).toEqual(fixture.overlay.readBytes());
+  });
+
+  it('rejects a 1.1 delivery when the trusted layout is omitted', async () => {
+    const fixture = await approvedFixture('public', '1.1.0');
+    const { layoutPlan: _layoutPlan, ...withoutLayout } = fixture.overlay;
+    await expect(buildApprovedWorldArtDeliveryKit(
+      withoutLayout,
+      fixture.approval,
+      fixture.receipt,
+      fixture.receiptBytes,
+      fixture.files,
+      {
+        packId: 'unbound-meadow-art',
+        title: 'Unbound Meadow World Art',
+        version: '1.1.0',
+        containsGenerativeAi: true,
+      },
+    )).rejects.toMatchObject({ code: 'world-art-delivery-build.overlay' });
   });
 
   it('rejects detached approval, changed evidence, changed overlay, and rights escalation', async () => {

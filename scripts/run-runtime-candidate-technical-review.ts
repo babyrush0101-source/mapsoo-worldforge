@@ -54,7 +54,7 @@ const ALL_FLAGS = new Set<string>([...FLAGS, ...OPTIONAL_FLAGS]);
 const SAFE_REVIEW_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SAFE_GRANT_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SHA256 = /^[a-f0-9]{64}$/;
-const SENTINEL_PREFIX = 'WORLD_ART_RUNTIME_OVERLAY_CAPTURE_OK ';
+const SENTINEL_PREFIX = 'WORLD_ART_RUNTIME_OVERLAY_V1_1_CAPTURE_OK ';
 const CAPTURE_MODES = Object.freeze([
   'normal',
   'role-overlay',
@@ -69,7 +69,7 @@ const MAX_PROCESS_OUTPUT = 1024 * 1024;
 const CAPTURE_TIMEOUT_MS = 180_000;
 const LAYOUT_FILENAME = 'world-layout-plan.json';
 const CAPTURE_SCRIPT =
-  'res://tests/capture_world_art_runtime_overlay.gd';
+  'res://tests/capture_world_art_runtime_overlay_v1_1.gd';
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const GODOT_PROJECT_ROOT = resolve(REPOSITORY_ROOT, 'godot');
 
@@ -95,12 +95,26 @@ export interface GodotCaptureSentinel {
   readonly mode: CaptureMode;
   readonly layout_sha256: string;
   readonly overlay_id: string;
+  readonly projection_id: string;
+  readonly placement_plan_id: string;
+  readonly placement_map_id: string;
   readonly render_sha256: string;
   readonly route_nodes: number;
   readonly terrain: number;
   readonly landmarks: number;
   readonly hazards: number;
   readonly characters: number;
+  readonly backgrounds: number;
+  readonly props: number;
+  readonly structures: number;
+  readonly effects: number;
+  readonly depth_planes: number;
+  readonly catalog_assets: number;
+  readonly bound_catalog_assets: number;
+  readonly runtime_bindings: number;
+  readonly applied_runtime_bindings: number;
+  readonly bindings_sha256: string;
+  readonly applied_bindings_sha256: string;
   readonly animation: string;
   readonly output: string;
 }
@@ -206,7 +220,7 @@ export function parseGodotCaptureSentinel(
   if (lines.length !== 1) {
     throw new Error('Godot capture must emit exactly one success sentinel.');
   }
-  const match = /^WORLD_ART_RUNTIME_OVERLAY_CAPTURE_OK profile=(side-platformer|topdown-farm|isometric-action|layered-depth-2d) mode=(normal|role-overlay|collision-overlay|spawn-exit|navigation) layout_sha256=([a-f0-9]{64}) overlay_id=(world-art-runtime-overlay-[a-f0-9]{16}) render_sha256=([a-f0-9]{64}) route_nodes=([0-9]+) terrain=([0-9]+) landmarks=([0-9]+) hazards=([0-9]+) characters=([0-9]+) animation=(\S+) output=(.+)$/u.exec(lines[0]!);
+  const match = /^WORLD_ART_RUNTIME_OVERLAY_V1_1_CAPTURE_OK profile=(side-platformer|topdown-farm|isometric-action|layered-depth-2d) mode=(normal|role-overlay|collision-overlay|spawn-exit|navigation) layout_sha256=([a-f0-9]{64}) overlay_id=(world-art-runtime-overlay-[a-f0-9]{16}) projection_id=(world-art-runtime-projection-[a-f0-9]{16}) placement_plan_id=(world-visual-placement-plan-[a-f0-9]{16}) placement_map_id=(world-art-placement-map-[a-f0-9]{16}) render_sha256=([a-f0-9]{64}) route_nodes=([0-9]+) terrain=([0-9]+) landmarks=([0-9]+) hazards=([0-9]+) characters=([0-9]+) backgrounds=([0-9]+) props=([0-9]+) structures=([0-9]+) effects=([0-9]+) depth_planes=([0-9]+) catalog_assets=([0-9]+) bound_catalog_assets=([0-9]+) runtime_bindings=([0-9]+) applied_runtime_bindings=([0-9]+) bindings_sha256=([a-f0-9]{64}) applied_bindings_sha256=([a-f0-9]{64}) animation=(\S+) output=(.+)$/u.exec(lines[0]!);
   if (!match) throw new Error('Godot capture sentinel is malformed.');
   if (expectedMode && match[2] !== expectedMode) {
     throw new Error('Godot capture sentinel mode differs from the requested mode.');
@@ -216,14 +230,28 @@ export function parseGodotCaptureSentinel(
     mode: match[2] as CaptureMode,
     layout_sha256: match[3]!,
     overlay_id: match[4]!,
-    render_sha256: match[5]!,
-    route_nodes: integer(match[6]!, 'route_nodes'),
-    terrain: integer(match[7]!, 'terrain'),
-    landmarks: integer(match[8]!, 'landmarks'),
-    hazards: integer(match[9]!, 'hazards'),
-    characters: integer(match[10]!, 'characters'),
-    animation: match[11]!,
-    output: match[12]!,
+    projection_id: match[5]!,
+    placement_plan_id: match[6]!,
+    placement_map_id: match[7]!,
+    render_sha256: match[8]!,
+    route_nodes: integer(match[9]!, 'route_nodes'),
+    terrain: integer(match[10]!, 'terrain'),
+    landmarks: integer(match[11]!, 'landmarks'),
+    hazards: integer(match[12]!, 'hazards'),
+    characters: integer(match[13]!, 'characters'),
+    backgrounds: integer(match[14]!, 'backgrounds'),
+    props: integer(match[15]!, 'props'),
+    structures: integer(match[16]!, 'structures'),
+    effects: integer(match[17]!, 'effects'),
+    depth_planes: integer(match[18]!, 'depth_planes'),
+    catalog_assets: integer(match[19]!, 'catalog_assets'),
+    bound_catalog_assets: integer(match[20]!, 'bound_catalog_assets'),
+    runtime_bindings: integer(match[21]!, 'runtime_bindings'),
+    applied_runtime_bindings: integer(match[22]!, 'applied_runtime_bindings'),
+    bindings_sha256: match[23]!,
+    applied_bindings_sha256: match[24]!,
+    animation: match[25]!,
+    output: match[26]!,
   });
 }
 
@@ -571,6 +599,9 @@ async function capture(
     profile: string;
     layoutSha256: string;
     overlayId: string;
+    projectionId: string;
+    placementPlanId: string;
+    placementMapId: string;
   }>,
 ): Promise<GodotCaptureSentinel> {
   const result = await runProcess(
@@ -593,6 +624,9 @@ async function capture(
     sentinel.profile !== expected.profile
     || sentinel.layout_sha256 !== expected.layoutSha256
     || sentinel.overlay_id !== expected.overlayId
+    || sentinel.projection_id !== expected.projectionId
+    || sentinel.placement_plan_id !== expected.placementPlanId
+    || sentinel.placement_map_id !== expected.placementMapId
     || sentinel.render_sha256 !== await sha256(actualOutput.bytes)
     || resolve(sentinel.output) !== resolve(input.outputPath)
   ) {
@@ -611,7 +645,21 @@ function sameCounts(
   return left.terrain === right.terrain
     && left.landmarks === right.landmarks
     && left.hazards === right.hazards
-    && left.characters === right.characters;
+    && left.characters === right.characters
+    && left.backgrounds === right.backgrounds
+    && left.props === right.props
+    && left.structures === right.structures
+    && left.effects === right.effects
+    && left.depth_planes === right.depth_planes
+    && left.catalog_assets === right.catalog_assets
+    && left.bound_catalog_assets === right.bound_catalog_assets
+    && left.runtime_bindings === right.runtime_bindings
+    && left.applied_runtime_bindings === right.applied_runtime_bindings
+    && left.bindings_sha256 === right.bindings_sha256
+    && left.applied_bindings_sha256 === right.applied_bindings_sha256
+    && left.projection_id === right.projection_id
+    && left.placement_plan_id === right.placement_plan_id
+    && left.placement_map_id === right.placement_map_id;
 }
 
 async function directorySnapshot(root: string): Promise<ReadonlyMap<string, Uint8Array>> {
@@ -675,10 +723,11 @@ export async function runRuntimeCandidateTechnicalReview(
   remote_requests: 0;
   published: false;
 }>> {
+  const layout = await canonicalLayout(input.layoutPath);
   const candidate = await loadWorldArtRuntimeCandidateWorkspace(
     input.candidateDirectory,
+    layout.plan,
   );
-  const layout = await canonicalLayout(input.layoutPath);
   if (
     layout.plan.profile !== candidate.receipt.profile
     || layout.semanticSha256 !== candidate.receipt.source.layout_plan_sha256
@@ -732,6 +781,9 @@ export async function runRuntimeCandidateTechnicalReview(
       profile: candidate.receipt.profile,
       layoutSha256: layout.semanticSha256,
       overlayId: candidate.overlay.manifest.overlay_id,
+      projectionId: candidate.runtime_projection.projection_id,
+      placementPlanId: candidate.overlay.placement_plan.plan_id,
+      placementMapId: candidate.overlay.placement_map.map_id,
     });
     const sentinels: GodotCaptureSentinel[] = [];
     for (const mode of CAPTURE_MODES) {
@@ -772,7 +824,20 @@ export async function runRuntimeCandidateTechnicalReview(
       visible_landmarks: baseline.landmarks,
       visible_hazards: baseline.hazards,
       visible_characters: baseline.characters,
+      applied_background_layers: baseline.backgrounds,
+      applied_prop_instances: baseline.props,
+      applied_structure_instances: baseline.structures,
+      applied_effect_bindings: baseline.effects,
+      applied_depth_planes: baseline.depth_planes,
       route_reached: true,
+      catalog_assets: baseline.catalog_assets,
+      bound_catalog_assets: baseline.bound_catalog_assets,
+      runtime_bindings: baseline.runtime_bindings,
+      applied_runtime_bindings: baseline.applied_runtime_bindings,
+      catalog_only_assets:
+        baseline.catalog_assets - baseline.bound_catalog_assets,
+      bindings_sha256: baseline.bindings_sha256,
+      applied_bindings_sha256: baseline.applied_bindings_sha256,
     });
     const built = await buildRuntimeCandidateProductionWorldReview({
       candidate,

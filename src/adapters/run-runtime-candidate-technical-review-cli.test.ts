@@ -20,11 +20,19 @@ function sentinel(
   output = 'C:/private capture/rendered-world.png',
 ): string {
   return [
-    `WORLD_ART_RUNTIME_OVERLAY_CAPTURE_OK profile=side-platformer mode=${mode}`,
+    `WORLD_ART_RUNTIME_OVERLAY_V1_1_CAPTURE_OK profile=side-platformer mode=${mode}`,
     `layout_sha256=${'a'.repeat(64)}`,
     'overlay_id=world-art-runtime-overlay-1234567890abcdef',
+    'projection_id=world-art-runtime-projection-1234567890abcdef',
+    'placement_plan_id=world-visual-placement-plan-1234567890abcdef',
+    'placement_map_id=world-art-placement-map-1234567890abcdef',
     `render_sha256=${'b'.repeat(64)}`,
     'route_nodes=7 terrain=4 landmarks=3 hazards=1 characters=1',
+    'backgrounds=2 props=5 structures=2 effects=1 depth_planes=1',
+    'catalog_assets=20 bound_catalog_assets=16',
+    'runtime_bindings=22 applied_runtime_bindings=22',
+    `bindings_sha256=${'c'.repeat(64)}`,
+    `applied_bindings_sha256=${'c'.repeat(64)}`,
     `animation=idle output=${output}`,
   ].join(' ');
 }
@@ -70,12 +78,26 @@ describe('runtime-candidate technical review CLI', () => {
       mode: 'normal',
       layout_sha256: 'a'.repeat(64),
       overlay_id: 'world-art-runtime-overlay-1234567890abcdef',
+      projection_id: 'world-art-runtime-projection-1234567890abcdef',
+      placement_plan_id: 'world-visual-placement-plan-1234567890abcdef',
+      placement_map_id: 'world-art-placement-map-1234567890abcdef',
       render_sha256: 'b'.repeat(64),
       route_nodes: 7,
       terrain: 4,
       landmarks: 3,
       hazards: 1,
       characters: 1,
+      backgrounds: 2,
+      props: 5,
+      structures: 2,
+      effects: 1,
+      depth_planes: 1,
+      catalog_assets: 20,
+      bound_catalog_assets: 16,
+      runtime_bindings: 22,
+      applied_runtime_bindings: 22,
+      bindings_sha256: 'c'.repeat(64),
+      applied_bindings_sha256: 'c'.repeat(64),
       animation: 'idle',
       output: 'C:/private capture/rendered-world.png',
     });
@@ -103,7 +125,7 @@ describe('runtime-candidate technical review CLI', () => {
     expect(image).toContain('--display-driver');
     expect(image).toContain('--audio-driver');
     expect(image).not.toContain('--headless');
-    expect(image).toContain('res://tests/capture_world_art_runtime_overlay.gd');
+    expect(image).toContain('res://tests/capture_world_art_runtime_overlay_v1_1.gd');
     expect(image).toContain('--evidence-mode=normal');
     expect(image).not.toContain('--write-movie');
 

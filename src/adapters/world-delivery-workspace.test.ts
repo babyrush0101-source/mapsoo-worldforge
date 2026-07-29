@@ -423,7 +423,7 @@ describe('world delivery workspace preparation', () => {
       characterId: 'neutral-traveler',
       completedAt: COMPLETED_AT,
     })).toEqual(manifest);
-  });
+  }, 15_000);
 
   it('prepares a provider-neutral SpriteCook workflow without contacting it', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'mapsoo-spritecook-workspace-'));

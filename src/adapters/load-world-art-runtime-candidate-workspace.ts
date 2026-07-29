@@ -14,9 +14,9 @@ import {
 
 import { parseStrictJsonDocument } from './import-world-spec';
 import {
-  readWorldArtRuntimeOverlayArchive,
-  type VerifiedWorldArtRuntimeOverlayArchive,
-} from './read-world-art-runtime-overlay';
+  readWorldArtRuntimeOverlayV1_1Archive,
+  type VerifiedWorldArtRuntimeOverlayV1_1Archive,
+} from './read-world-art-runtime-overlay-v1-1';
 import { isWorldAssetProfile } from '../core/asset-profile';
 import type { WorldAssetProfile } from '../core/asset-profile';
 import type { ProductionArtRights } from '../core/production-art-contract';
@@ -103,7 +103,13 @@ export interface LoadedWorldArtRuntimeCandidateArtifact
 export interface LoadedWorldArtRuntimeCandidateOverlay {
   readonly bytes: number;
   readonly sha256: string;
-  readonly manifest: VerifiedWorldArtRuntimeOverlayArchive['manifest'];
+  readonly manifest: VerifiedWorldArtRuntimeOverlayV1_1Archive['manifest'];
+  readonly placement_plan:
+    VerifiedWorldArtRuntimeOverlayV1_1Archive['placement_plan'];
+  readonly placement_map:
+    VerifiedWorldArtRuntimeOverlayV1_1Archive['placement_map'];
+  readonly runtime_bindings:
+    VerifiedWorldArtRuntimeOverlayV1_1Archive['runtime_bindings'];
   readBytes(): Uint8Array;
 }
 
@@ -869,8 +875,8 @@ async function exactInventory(root: string): Promise<readonly string[]> {
 interface ReadFileResult {
   readonly name: string;
   readonly bytes: Uint8Array;
-  readonly dev: number | bigint;
-  readonly ino: number | bigint;
+  readonly dev: bigint;
+  readonly ino: bigint;
 }
 
 async function readDirectFile(
@@ -882,7 +888,7 @@ async function readDirectFile(
   let metadata: Awaited<ReturnType<typeof lstat>>;
   let canonical: string;
   try {
-    metadata = await lstat(unresolved);
+    metadata = await lstat(unresolved, { bigint: true });
     canonical = await realpath(unresolved);
   } catch {
     fail('runtime-candidate-workspace.invalid-inventory', 'A candidate artifact is missing.');
@@ -898,13 +904,13 @@ async function readDirectFile(
       'Candidate artifacts must be direct regular files.',
     );
   }
-  if (metadata.size < 1 || metadata.size > maximum) {
+  if (metadata.size < 1n || metadata.size > BigInt(maximum)) {
     fail('runtime-candidate-workspace.file-size', 'A candidate artifact has an invalid size.');
   }
   const handle = await open(unresolved, 'r').catch(() =>
     fail('runtime-candidate-workspace.invalid-inventory', 'A candidate artifact cannot be opened.'));
   try {
-    const opened = await handle.stat();
+    const opened = await handle.stat({ bigint: true });
     if (
       !opened.isFile()
       || opened.size !== metadata.size
@@ -914,7 +920,7 @@ async function readDirectFile(
       fail('runtime-candidate-workspace.integrity', 'A candidate artifact changed while loading.');
     }
     const bytes = Uint8Array.from(await handle.readFile());
-    if (bytes.byteLength !== opened.size) {
+    if (BigInt(bytes.byteLength) !== opened.size) {
       fail('runtime-candidate-workspace.integrity', 'A candidate artifact changed while loading.');
     }
     return Object.freeze({
@@ -962,7 +968,7 @@ function assertCrossBindings(input: Readonly<{
   selections: readonly WorldArtVariantSelection[];
   map: WorldArtVariantMap;
   projection: WorldArtRuntimeProjection;
-  overlay: VerifiedWorldArtRuntimeOverlayArchive;
+  overlay: VerifiedWorldArtRuntimeOverlayV1_1Archive;
   reviewSha: string;
   inventorySha: string;
   mapSha: string;
@@ -1105,6 +1111,7 @@ function assertCrossBindings(input: Readonly<{
 
 export async function loadWorldArtRuntimeCandidateWorkspace(
   candidateDirectory: string,
+  layoutPlan: unknown,
 ): Promise<LoadedWorldArtRuntimeCandidateWorkspace> {
   const root = await candidateRoot(candidateDirectory);
   const inventoryNames = await exactInventory(root);
@@ -1164,7 +1171,7 @@ export async function loadWorldArtRuntimeCandidateWorkspace(
   );
   const variantMap = materializeVariantMap(parseCanonicalJson(mapBytes, 'Variant map'));
   let projection: WorldArtRuntimeProjection;
-  let overlay: VerifiedWorldArtRuntimeOverlayArchive;
+  let overlay: VerifiedWorldArtRuntimeOverlayV1_1Archive;
   try {
     projection = await materializeWorldArtRuntimeProjection(
       parseCanonicalJson(projectionBytes, 'Runtime projection'),
@@ -1176,7 +1183,10 @@ export async function loadWorldArtRuntimeCandidateWorkspace(
     );
   }
   try {
-    overlay = await readWorldArtRuntimeOverlayArchive(overlayBytes);
+    overlay = await readWorldArtRuntimeOverlayV1_1Archive(
+      overlayBytes,
+      layoutPlan,
+    );
   } catch {
     fail(
       'runtime-candidate-workspace.invalid-overlay',
@@ -1237,6 +1247,9 @@ export async function loadWorldArtRuntimeCandidateWorkspace(
     bytes: overlaySnapshot.byteLength,
     sha256: overlay.sha256,
     manifest: overlay.manifest,
+    placement_plan: overlay.placement_plan,
+    placement_map: overlay.placement_map,
+    runtime_bindings: overlay.runtime_bindings,
     readBytes: () => Uint8Array.from(overlaySnapshot),
   });
   return Object.freeze({

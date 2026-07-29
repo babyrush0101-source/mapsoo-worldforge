@@ -12,13 +12,14 @@ import {
   type ProductionWorldReviewContract,
 } from '../core/production-world-review-contract';
 import {
-  readWorldArtRuntimeOverlayArchive,
-  type VerifiedWorldArtRuntimeOverlayArchive,
-} from '../adapters/read-world-art-runtime-overlay';
+  readVersionedWorldArtRuntimeOverlayArchive,
+  type VerifiedVersionedWorldArtRuntimeOverlayArchive,
+} from '../adapters/read-world-art-runtime-overlay-versioned';
 
 export interface HumanArtReviewWorkspaceArtifacts {
   readonly review: ProductionWorldReviewContract;
   readonly runtimeOverlayBytes: Uint8Array;
+  readonly layoutPlan?: unknown;
   readonly godotCaptureEvidenceId: string;
   readonly characterIdentityBindingSha256: string;
 }
@@ -26,7 +27,7 @@ export interface HumanArtReviewWorkspaceArtifacts {
 export interface PreparedHumanArtReviewTemplate {
   readonly receipt: HumanArtReviewReceipt;
   readonly canonicalReceiptBytes: Uint8Array;
-  readonly overlay: VerifiedWorldArtRuntimeOverlayArchive;
+  readonly overlay: VerifiedVersionedWorldArtRuntimeOverlayArchive;
 }
 
 export interface ValidatedHumanArtReviewWorkspace
@@ -55,7 +56,7 @@ async function deriveBindings(
   artifacts: HumanArtReviewWorkspaceArtifacts,
 ): Promise<Readonly<{
   bindings: HumanArtReviewBindings;
-  overlay: VerifiedWorldArtRuntimeOverlayArchive;
+  overlay: VerifiedVersionedWorldArtRuntimeOverlayArchive;
 }>> {
   try {
     assertProductionWorldReview(artifacts.review);
@@ -76,8 +77,11 @@ async function deriveBindings(
       'Character identity binding must be one lowercase SHA-256 without private character data.',
     );
   }
-  const overlay = await readWorldArtRuntimeOverlayArchive(
+  const overlay = await readVersionedWorldArtRuntimeOverlayArchive(
     artifacts.runtimeOverlayBytes,
+    artifacts.layoutPlan === undefined
+      ? {}
+      : { layout_plan: artifacts.layoutPlan },
   );
   if (overlay.manifest.profile !== artifacts.review.profile) {
     throw new Error('Runtime overlay profile differs from the production review.');

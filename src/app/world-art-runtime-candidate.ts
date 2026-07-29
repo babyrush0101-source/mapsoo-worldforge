@@ -1,7 +1,10 @@
 import {
-  buildWorldArtRuntimeOverlayZip,
-  type BuiltWorldArtRuntimeOverlay,
-} from '../adapters/build-world-art-runtime-overlay';
+  buildWorldArtRuntimeOverlayV1_1Zip,
+  type BuiltWorldArtRuntimeOverlayV1_1,
+} from '../adapters/build-world-art-runtime-overlay-v1-1';
+import {
+  deriveWorldVisualPlacementPlan,
+} from '../adapters/derive-world-visual-placement-plan';
 import {
   projectReviewedWorldArtVariants,
   type ProjectedReviewedWorldArtVariants,
@@ -12,6 +15,10 @@ import type { ProductionArtRights } from '../core/production-art-contract';
 import {
   fingerprintProductionArtRunSetV1_1,
 } from '../core/production-art-run-set-v1-1';
+import {
+  buildWorldArtPlacementMap,
+  type WorldArtPlacementMap,
+} from '../core/world-art-placement-map';
 import {
   fingerprintWorldArtRuntimeProjection,
   serializeCanonicalWorldArtRuntimeProjection,
@@ -31,6 +38,9 @@ import {
   type WorldArtSelectionReview,
   type WorldArtSelectionReviewInput,
 } from '../core/world-art-selection-review';
+import type {
+  WorldVisualPlacementPlan,
+} from '../core/world-visual-placement-plan';
 
 export const WORLD_ART_RUNTIME_CANDIDATE_VERSION = '1.0.0' as const;
 
@@ -77,7 +87,9 @@ export interface BuiltWorldArtRuntimeCandidate {
   readonly selections: readonly WorldArtVariantSelection[];
   readonly variant_map: WorldArtVariantMap;
   readonly projected: ProjectedReviewedWorldArtVariants;
-  readonly overlay: BuiltWorldArtRuntimeOverlay;
+  readonly placement_plan: WorldVisualPlacementPlan;
+  readonly placement_map: WorldArtPlacementMap;
+  readonly overlay: BuiltWorldArtRuntimeOverlayV1_1;
   readonly files: readonly WorldArtRuntimeCandidateFile[];
 }
 
@@ -164,7 +176,23 @@ export async function buildWorldArtRuntimeCandidate(
     runSet: input.production_art_run_set,
     normalizedResults: input.normalized_results,
   });
-  const overlay = await buildWorldArtRuntimeOverlayZip(projected);
+  const placementPlan = await deriveWorldVisualPlacementPlan({
+    layout: input.layout_plan,
+    requirements: input.asset_requirements,
+  });
+  const placementMap = await buildWorldArtPlacementMap({
+    layout_plan: input.layout_plan,
+    placement_plan: placementPlan,
+    asset_requirements: input.asset_requirements,
+    production_art_plan: input.production_art_plan,
+    reviewed_slot_inventory: admitted.reviewed_slot_inventory,
+  });
+  const overlay = await buildWorldArtRuntimeOverlayV1_1Zip({
+    projected,
+    layout_plan: input.layout_plan,
+    placement_plan: placementPlan,
+    placement_map: placementMap,
+  });
   const [
     reviewBytes,
     variantMapBytes,
@@ -266,6 +294,8 @@ export async function buildWorldArtRuntimeCandidate(
     selections: admitted.selections,
     variant_map: variantMap,
     projected,
+    placement_plan: placementPlan,
+    placement_map: placementMap,
     overlay,
     files: Object.freeze([...files, receiptFile]
       .sort((left, right) => left.path.localeCompare(right.path, 'en'))),

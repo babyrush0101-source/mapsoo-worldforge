@@ -96,9 +96,17 @@ zero remote requests.
 
 For a source-free World Art Runtime Candidate, the stricter acceptance path
 also binds the exact candidate receipt, layout, overlay, projection, Godot
-executable, runtime-visible binding counts, and capture evidence. It treats
-catalog-only assets as packaged but not visibly applied, and a prior per-slot
-human pass does not satisfy the whole-composition human gate. See
+executable, visual placement plan/map, complete expected/applied binding
+fingerprint, per-category applied counts, and capture evidence. That current
+path emits Godot Runtime Capture Receipt 1.1 and requires Overlay 1.1 plus its
+separately supplied trusted layout. Existing Overlay and Capture Receipt 1.0
+contracts remain readable at their unchanged compatibility boundaries.
+
+The 1.1 receipt treats catalog-only assets as packaged but not visibly applied,
+requires every projection and placement binding to be applied, and keeps
+private world descriptions, landmark labels, and the seed outside the overlay.
+A prior per-slot human pass still does not satisfy the whole-composition human
+gate. See
 [`72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md`](72_RUNTIME_CANDIDATE_TECHNICAL_REVIEW.md).
 
 After capture, pass `review/production-world-review.json` and the exact

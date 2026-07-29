@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import schema from '../../schemas/mapsoo-world-art-runtime-projection-1.0.schema.json';
 import candidateReceiptSchema from '../../schemas/mapsoo-world-art-runtime-candidate-receipt-1.0.schema.json';
 import { encodeRgbaPng } from './canvas/encode-png';
+import { decodeReferenceImageRgba } from './decode-reference-image-rgba';
 import {
   normalizeProductionArtPngV1_1,
   type LocalProductionArtPngSourceV1_1,
@@ -13,7 +14,9 @@ import {
   projectReviewedWorldArtVariants,
   type ProjectReviewedWorldArtVariantsInput,
 } from './project-reviewed-world-art-variants';
-import { readWorldArtRuntimeOverlayArchive } from './read-world-art-runtime-overlay';
+import {
+  readWorldArtRuntimeOverlayV1_1Archive,
+} from './read-world-art-runtime-overlay-v1-1';
 import { buildWorldArtRuntimeCandidate } from '../app/world-art-runtime-candidate';
 import type { WorldAssetProfile } from '../core/asset-profile';
 import { buildAssetRequirementsV1_1 } from '../core/asset-requirements-v1-1';
@@ -286,6 +289,33 @@ function mutable<T>(value: T): any {
   return JSON.parse(JSON.stringify(value));
 }
 
+async function projectedRegionSha256(
+  pngBytes: Uint8Array,
+  region: Readonly<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>,
+): Promise<string> {
+  const decoded = await decodeReferenceImageRgba(pngBytes, 'image/png');
+  const regionBytes = new Uint8Array(region.width * region.height * 4);
+  let targetOffset = 0;
+  for (let y = 0; y < region.height; y += 1) {
+    const sourceOffset = ((region.y + y) * decoded.width + region.x) * 4;
+    const row = decoded.rgba.subarray(
+      sourceOffset,
+      sourceOffset + region.width * 4,
+    );
+    regionBytes.set(row, targetOffset);
+    targetOffset += row.byteLength;
+  }
+  const digest = await crypto.subtle.digest('SHA-256', regionBytes.buffer);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 const PROJECTION_TEST_TIMEOUT_MS = 30_000;
 
 describe('projectReviewedWorldArtVariants', () => {
@@ -373,6 +403,12 @@ describe('projectReviewedWorldArtVariants', () => {
         width: slot.grid_rect.column_span * task.target.cell_width,
         height: slot.grid_rect.row_span * task.target.cell_height,
       });
+      const projectedImage = left.images.find(({ task_id }) =>
+        task_id === asset.task_id)!;
+      expect(asset.cell_sha256).toBe(await projectedRegionSha256(
+        projectedImage.readBytes(),
+        asset.region,
+      ));
       if (asset.role.startsWith('character.')) {
         expect(asset.poses.length).toBeGreaterThan(0);
         expect(asset.poses).toHaveLength(
@@ -539,7 +575,10 @@ describe('buildWorldArtRuntimeCandidate', () => {
       selection_review: review,
       normalized_results: base.normalizedResults,
     });
-    const archive = await readWorldArtRuntimeOverlayArchive(candidate.overlay.readBytes());
+    const archive = await readWorldArtRuntimeOverlayV1_1Archive(
+      candidate.overlay.readBytes(),
+      base.layout,
+    );
     const validateReceipt = new Ajv2020({ strict: true, allErrors: true })
       .compile(candidateReceiptSchema);
 

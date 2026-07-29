@@ -194,6 +194,37 @@ function rgbaForCells(
   return output;
 }
 
+function rgbaForRegion(
+  task: ProductionArtTaskV1_1,
+  rgba: Uint8Array,
+  rect: ProductionArtTaskV1_1['slot_mappings'][number]['grid_rect'],
+): Uint8Array {
+  const {
+    width,
+    cell_width: cellWidth,
+    cell_height: cellHeight,
+  } = task.target;
+  const sourceX = rect.column * cellWidth;
+  const sourceY = rect.row * cellHeight;
+  const regionWidth = rect.column_span * cellWidth;
+  const regionHeight = rect.row_span * cellHeight;
+  const output = new Uint8Array(regionWidth * regionHeight * 4);
+  let targetOffset = 0;
+  for (let y = 0; y < regionHeight; y += 1) {
+    const sourceOffset = (
+      (sourceY + y) * width
+      + sourceX
+    ) * 4;
+    const sourceRow = rgba.subarray(
+      sourceOffset,
+      sourceOffset + regionWidth * 4,
+    );
+    output.set(sourceRow, targetOffset);
+    targetOffset += sourceRow.byteLength;
+  }
+  return output;
+}
+
 function resultTaskId(value: NormalizedProductionArtResultV1_1): string {
   if (
     !isRecord(value)
@@ -219,6 +250,7 @@ async function validateNormalizedResult(
   sha256: string;
   outputSha256: string;
   cellShaBySlot: ReadonlyMap<string, string>;
+  regionShaBySlot: ReadonlyMap<string, string>;
 }>> {
   const output = await materializeProductionArtOutputV1_1(
     result.output,
@@ -356,6 +388,7 @@ async function validateNormalizedResult(
     );
   }
   const cellShaBySlot = new Map<string, string>();
+  const regionShaBySlot = new Map<string, string>();
   for (const [index, slot] of task.slot_mappings.entries()) {
     const candidate = evidence.slots[index];
     if (!isRecord(candidate)) {
@@ -388,12 +421,17 @@ async function validateNormalizedResult(
       );
     }
     cellShaBySlot.set(slot.slot_id, cellSha);
+    regionShaBySlot.set(
+      slot.slot_id,
+      await sha256Bytes(rgbaForRegion(task, decoded.rgba, slot.grid_rect)),
+    );
   }
   return Object.freeze({
     bytes: Uint8Array.from(normalizedBytes),
     sha256: normalizedSha,
     outputSha256: outputSha,
     cellShaBySlot,
+    regionShaBySlot,
   });
 }
 
@@ -580,7 +618,11 @@ export async function projectReviewedWorldArtVariants(
           width: slot.grid_rect.column_span * task.target.cell_width,
           height: slot.grid_rect.row_span * task.target.cell_height,
         }),
-        cell_sha256: verified.cellShaBySlot.get(slot.slot_id)!,
+        // The frozen runtime projection field is named `cell_sha256`, but its
+        // loader contract hashes the exact rectangular `region` in row-major
+        // RGBA order. Human-review evidence remains independently verified
+        // above against the occupied production cells.
+        cell_sha256: verified.regionShaBySlot.get(slot.slot_id)!,
         poses: posesFor(task, slot.slot_id),
       }));
     }

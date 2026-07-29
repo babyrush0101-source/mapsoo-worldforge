@@ -4,9 +4,9 @@ Status: **implemented source-free candidate assembly after per-slot human
 review; local Godot technical review, holistic composition review, and physical
 Raspberry Pi acceptance remain separate**.
 
-This boundary turns a completed `ProductionArtRunSet 1.1` into a
-source-free Godot runtime overlay, but only after a human approves every
-generated atlas slot.
+This boundary turns a completed `ProductionArtRunSet 1.1` into a source-free
+Godot Runtime Overlay 1.1, but only after a human approves every generated
+atlas slot.
 
 It is the next local step after the complete-world execution session. It
 makes zero remote requests and supports all four profiles:
@@ -73,7 +73,9 @@ The output directory is transactional and idempotent. It contains:
 - the canonical passing selection review;
 - the reviewed slot inventory and selected variants;
 - the deterministic variant map and runtime projection;
-- a source-free `world-art-runtime-overlay-<digest>.zip`;
+- a source-free `world-art-runtime-overlay-<digest>.zip` containing the
+  canonical `WorldVisualPlacementPlan 1.0`, `WorldArtPlacementMap 1.0`,
+  runtime projection, and exact reviewed PNG inventory;
 - a hash-bound runtime-candidate receipt.
 
 Pending, rejected, partial, rights-drifted, path-escaped, aliased, or tampered
@@ -84,9 +86,27 @@ human inspection. It does not mean that the whole rendered composition passed
 human review.
 
 The runtime projection contains both a complete reviewed asset catalog and the
-bindings selected for this world. Only bound terrain, landmarks, hazards, and
-the player atlas are runtime-visible replacements at this stage. Assets that
-exist only in the catalog are not counted as visibly applied.
+selected terrain, landmark, hazard, and player bindings. The placement plan
+derives deterministic sprite, depth-plane, effect, and actor instances from the
+exact trusted layout supplied to the build. The placement map binds every one
+of those instances to a reviewed catalog slot in exact plan order.
+
+The complete runtime-visible set is therefore the projection bindings plus the
+placement-map bindings for backgrounds, props, structures, effects, depth
+planes, and layout-derived actors. Assets that exist only in the catalog are
+still `catalog-only` and are not counted as visibly applied.
+
+The trusted `WorldLayoutPlan` is not copied into the candidate or overlay.
+Only stable layout IDs and one-way hashes are retained. Private world
+descriptions, landmark labels, and the seed are not packaged.
+
+## Overlay compatibility
+
+Existing Runtime Overlay 1.0 archives remain valid through the versioned
+reader and keep their original projection-plus-PNG meaning. New runtime
+candidates emit Overlay 1.1. Its placement plan can be validated only against
+the separately supplied canonical trusted `WorldLayoutPlan`, so a 1.1 read or
+technical capture without that exact layout fails closed.
 
 ## Claim boundary
 

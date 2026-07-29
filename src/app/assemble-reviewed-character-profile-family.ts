@@ -2,8 +2,8 @@ import JSZip from 'jszip';
 
 import { parseStrictJsonDocument } from '../adapters/import-world-spec';
 import {
-  readWorldArtRuntimeOverlayArchive,
-} from '../adapters/read-world-art-runtime-overlay';
+  readVersionedWorldArtRuntimeOverlayArchive,
+} from '../adapters/read-world-art-runtime-overlay-versioned';
 import {
   assertHumanArtReviewReceipt,
   encodeHumanArtReviewReceipt,
@@ -43,6 +43,7 @@ export interface ReviewedCharacterProfileSource {
   readonly characterProfileRevisionBytes: Uint8Array;
   readonly characterProjectionRecordBytes: Uint8Array;
   readonly runtimeOverlayBytes: Uint8Array;
+  readonly layoutPlan?: unknown;
   readonly approvedWorldReviewBytes: Uint8Array;
   readonly humanArtReviewReceiptBytes: Uint8Array;
 }
@@ -556,7 +557,12 @@ async function verifyReviewedSource(
   ];
   abortIfNeeded(signal);
 
-  const overlay = await readWorldArtRuntimeOverlayArchive(source.runtimeOverlayBytes);
+  const overlay = await readVersionedWorldArtRuntimeOverlayArchive(
+    source.runtimeOverlayBytes,
+    source.layoutPlan === undefined
+      ? {}
+      : { layout_plan: source.layoutPlan },
+  );
   const projected = await overlayProjection(
     overlay.bytes,
     overlay.manifest.overlay_id,

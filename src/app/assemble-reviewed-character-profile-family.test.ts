@@ -5,6 +5,9 @@ import reviewedFamilySchema
   from '../../schemas/mapsoo-reviewed-character-profile-family-1.0.schema.json';
 
 import { buildWorldArtRuntimeOverlayZip } from '../adapters/build-world-art-runtime-overlay';
+import {
+  buildWorldArtRuntimeOverlayV1_1Zip,
+} from '../adapters/build-world-art-runtime-overlay-v1-1';
 import { encodeRgbaPng } from '../adapters/canvas/encode-png';
 import type {
   NormalizedProductionArtResult,
@@ -44,6 +47,19 @@ import {
   promoteHumanArtReviewWorkspace,
 } from './human-art-review-workspace';
 import {
+  buildWorldArtRuntimeOverlayV1_1TestFixture,
+} from '../adapters/world-art-runtime-overlay-v1-1.test-fixture';
+import {
+  materializeWorldArtPlacementMapEnvelope,
+} from '../core/world-art-placement-map';
+import {
+  buildWorldVisualPlacementPlan,
+  fingerprintWorldVisualPlacementPlan,
+} from '../core/world-visual-placement-plan';
+import {
+  materializeWorldLayoutPlan,
+} from '../core/world-layout-plan';
+import {
   assembleReviewedCharacterProfileFamily,
   type ReviewedCharacterProfileSources,
 } from './assemble-reviewed-character-profile-family';
@@ -59,6 +75,23 @@ async function sha256(bytes: Uint8Array): Promise<string> {
   return [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
+}
+
+function canonicalJson(value: unknown): string {
+  if (
+    value === null
+    || typeof value === 'string'
+    || typeof value === 'boolean'
+    || typeof value === 'number'
+  ) {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(',')}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) =>
+    `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(',')}}`;
 }
 
 function drawRect(
@@ -275,7 +308,10 @@ function approvePrivate(receipt: HumanArtReviewReceipt): HumanArtReviewReceipt {
   };
 }
 
-async function sourceFixture(profile: WorldAssetProfile) {
+async function sourceFixture(
+  profile: WorldAssetProfile,
+  overlayVersion: '1.0.0' | '1.1.0' = '1.0.0',
+) {
   const { plan, task, normalized } = await normalizedPlayer(profile);
   const projectedCharacter = await projectProductionCharacterProfile(
     plan,
@@ -321,6 +357,15 @@ async function sourceFixture(profile: WorldAssetProfile) {
     cell_sha256: '9'.repeat(64),
     poses,
   } as const;
+  const v1_1Fixture = overlayVersion === '1.1.0'
+    ? await buildWorldArtRuntimeOverlayV1_1TestFixture(profile)
+    : undefined;
+  const layoutPlan = v1_1Fixture === undefined
+    ? undefined
+    : await materializeWorldLayoutPlan(v1_1Fixture.layout_plan);
+  const layoutPlanSha256 = v1_1Fixture === undefined
+    ? '2'.repeat(64)
+    : v1_1Fixture.projected.projection.source.layout_plan_sha256;
   const runtimeProjection = await buildWorldArtRuntimeProjection({
     schema_version: '1.0.0',
     document_type: 'world-art-runtime-projection',
@@ -328,7 +373,7 @@ async function sourceFixture(profile: WorldAssetProfile) {
     source: {
       variant_map_id: 'variant-map-fixture',
       variant_map_sha256: '1'.repeat(64),
-      layout_plan_sha256: '2'.repeat(64),
+      layout_plan_sha256: layoutPlanSha256,
       production_art_plan_id: plan.plan_id,
       production_art_plan_sha256: '3'.repeat(64),
       requirements_sha256: '4'.repeat(64),
@@ -375,14 +420,89 @@ async function sourceFixture(profile: WorldAssetProfile) {
     sha256: atlasSha,
     readBytes: () => Uint8Array.from(atlas),
   };
-  const overlay = await buildWorldArtRuntimeOverlayZip({
-    projection: runtimeProjection,
-    images: [image],
-  });
+  let overlay;
+  if (layoutPlan === undefined) {
+    overlay = await buildWorldArtRuntimeOverlayZip({
+      projection: runtimeProjection,
+      images: [image],
+    });
+  } else {
+    const placementPlan = await buildWorldVisualPlacementPlan(layoutPlan, [{
+      placement_id: 'reviewed-player',
+      kind: 'actor',
+      role: 'character.player.atlas',
+      variant_id: 'canonical',
+      anchor: { kind: 'spawn' },
+      render: {
+        layer: 'actors',
+        order: 0,
+        y_sort: profile !== 'side-platformer',
+      },
+      controller: 'player',
+    }]);
+    const placementPlanSha256 = await fingerprintWorldVisualPlacementPlan(
+      placementPlan,
+      layoutPlan,
+    );
+    const placementMapSource = Object.freeze({
+      layout_plan_id: layoutPlan.plan_id,
+      layout_plan_sha256: layoutPlanSha256,
+      placement_plan_id: placementPlan.plan_id,
+      placement_plan_sha256: placementPlanSha256,
+      requirements_sha256: runtimeProjection.source.requirements_sha256,
+      production_art_plan_id: plan.plan_id,
+      production_art_plan_sha256:
+        runtimeProjection.source.production_art_plan_sha256,
+      reviewed_slot_inventory_sha256:
+        runtimeProjection.source.reviewed_slot_inventory_sha256,
+      review_record_sha256: runtimeProjection.source.review_record_sha256,
+    });
+    const placementBindings = Object.freeze([Object.freeze({
+      placement_id: 'reviewed-player',
+      task_id: task.task_id,
+      slot_id: common.slot_id,
+      requirement_id: 'character-player',
+      role: common.role,
+      variant_id: common.variant_id,
+      atlas_path: imagePath,
+      atlas_cell: Object.freeze({
+        column: 0,
+        row: 0,
+        column_span: projectedCharacter.revision.frame_geometry.columns,
+        row_span: projectedCharacter.revision.frame_geometry.rows,
+      }),
+    })]);
+    const placementMapIdentity = Object.freeze({
+      profile,
+      source: placementMapSource,
+      bindings: placementBindings,
+    });
+    const placementMapIdSha256 = await sha256(
+      encoder.encode(canonicalJson(placementMapIdentity)),
+    );
+    const placementMap = await materializeWorldArtPlacementMapEnvelope({
+      schema_version: '1.0.0',
+      document_type: 'world-art-placement-map',
+      map_id: `world-art-placement-map-${placementMapIdSha256.slice(0, 16)}`,
+      profile,
+      source: placementMapSource,
+      bindings: placementBindings,
+    });
+    overlay = await buildWorldArtRuntimeOverlayV1_1Zip({
+      projected: {
+        projection: runtimeProjection,
+        images: [image],
+      },
+      layout_plan: layoutPlan,
+      placement_plan: placementPlan,
+      placement_map: placementMap,
+    });
+  }
   const review = reviewFixture(profile);
   const prepared = await prepareHumanArtReviewTemplate({
     review,
     runtimeOverlayBytes: overlay.readBytes(),
+    ...(layoutPlan === undefined ? {} : { layoutPlan }),
     godotCaptureEvidenceId: 'godot-world-capture',
     characterIdentityBindingSha256: IDENTITY,
     reviewId: `${profile}-human-review`,
@@ -393,6 +513,7 @@ async function sourceFixture(profile: WorldAssetProfile) {
   const promoted = await promoteHumanArtReviewWorkspace({
     review,
     runtimeOverlayBytes: overlay.readBytes(),
+    ...(layoutPlan === undefined ? {} : { layoutPlan }),
     godotCaptureEvidenceId: 'godot-world-capture',
     characterIdentityBindingSha256: IDENTITY,
     receipt,
@@ -404,15 +525,18 @@ async function sourceFixture(profile: WorldAssetProfile) {
     characterProjectionRecordBytes:
       encoder.encode(JSON.stringify(projectedCharacter.record)),
     runtimeOverlayBytes: overlay.readBytes(),
+    ...(layoutPlan === undefined ? {} : { layoutPlan }),
     approvedWorldReviewBytes: encoder.encode(JSON.stringify(promoted.approval)),
     humanArtReviewReceiptBytes: encodeHumanArtReviewReceipt(receipt),
   };
 }
 
-async function sourcesFixture(): Promise<ReviewedCharacterProfileSources> {
+async function sourcesFixture(
+  overlayVersion: '1.0.0' | '1.1.0' = '1.0.0',
+): Promise<ReviewedCharacterProfileSources> {
   return Object.freeze(Object.fromEntries(await Promise.all(
     WORLD_ASSET_PROFILES.map(async (profile) =>
-      [profile, await sourceFixture(profile)] as const),
+      [profile, await sourceFixture(profile, overlayVersion)] as const),
   ))) as ReviewedCharacterProfileSources;
 }
 
@@ -454,5 +578,31 @@ describe('assembleReviewedCharacterProfileFamily', () => {
         },
       },
     })).rejects.toThrow('character atlas');
+  });
+
+  it('assembles four reviewed Overlay 1.1 profiles with explicit layouts', async () => {
+    const result = await assembleReviewedCharacterProfileFamily({
+      familyId: 'anonymous-traveler-reviewed-v1-1',
+      sources: await sourcesFixture('1.1.0'),
+    });
+
+    expect(result.family.profiles).toHaveLength(4);
+    expect(result.family.character_identity_sha256).toBe(IDENTITY);
+    expect(result.files).toHaveLength(10);
+  });
+
+  it('rejects an Overlay 1.1 profile when its trusted layout is omitted', async () => {
+    const sources = await sourcesFixture('1.1.0');
+    const { layoutPlan: _layoutPlan, ...withoutLayout } =
+      sources['topdown-farm'];
+    await expect(assembleReviewedCharacterProfileFamily({
+      familyId: 'anonymous-traveler-unbound-v1-1',
+      sources: {
+        ...sources,
+        'topdown-farm': withoutLayout,
+      },
+    })).rejects.toMatchObject({
+      code: 'world-art-runtime-overlay-versioned.layout-required',
+    });
   });
 });

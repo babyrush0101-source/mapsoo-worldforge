@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-art-runtime-overlay-1.1.schema.json",
+  "title": "Mapsoo World Art Runtime Overlay 1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "overlay_id",
+    "profile",
+    "source",
+    "rights",
+    "review",
+    "projection",
+    "visual_placement",
+    "files",
+    "reference_policy"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.1.0" },
+    "document_type": { "const": "world-art-runtime-overlay" },
+    "overlay_id": {
+      "type": "string",
+      "pattern": "^world-art-runtime-overlay-[a-f0-9]{16}$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projection_id",
+        "projection_sha256",
+        "layout_plan_id",
+        "layout_plan_sha256",
+        "placement_plan_id",
+        "placement_plan_sha256",
+        "placement_map_id",
+        "placement_map_sha256",
+        "review_record_sha256"
+      ],
+      "properties": {
+        "projection_id": { "$ref": "#/$defs/safeId" },
+        "projection_sha256": { "$ref": "#/$defs/sha256" },
+        "layout_plan_id": { "$ref": "#/$defs/safeId" },
+        "layout_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "placement_plan_id": { "$ref": "#/$defs/safeId" },
+        "placement_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "placement_map_id": { "$ref": "#/$defs/safeId" },
+        "placement_map_sha256": { "$ref": "#/$defs/sha256" },
+        "review_record_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "rights": { "$ref": "#/$defs/rights" },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["human_art", "runtime", "raspberry_pi"],
+      "properties": {
+        "human_art": { "const": "pass" },
+        "runtime": { "const": "pending" },
+        "raspberry_pi": { "const": "pending" }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "const": "world-art-runtime-projection.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "visual_placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan_path", "plan_sha256", "map_path", "map_sha256"],
+      "properties": {
+        "plan_path": { "const": "world-visual-placement-plan.json" },
+        "plan_sha256": { "$ref": "#/$defs/sha256" },
+        "map_path": { "const": "world-art-placement-map.json" },
+        "map_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 259,
+      "items": { "$ref": "#/$defs/file" }
+    },
+    "reference_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "embedded",
+        "original_references_excluded",
+        "raw_prompts_excluded",
+        "only_one_way_audit_hashes_retained"
+      ],
+      "properties": {
+        "embedded": { "const": false },
+        "original_references_excluded": { "const": true },
+        "raw_prompts_excluded": { "const": true },
+        "only_one_way_audit_hashes_retained": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution", "license"],
+      "properties": {
+        "distribution": { "enum": ["internal-review", "private", "public"] },
+        "license": {
+          "enum": [
+            "CC0-1.0",
+            "CC-BY-4.0",
+            "CC-BY-SA-4.0",
+            "MIT",
+            "Apache-2.0",
+            "LicenseRef-Proprietary"
+          ]
+        },
+        "attribution": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "media_type", "bytes", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240,
+          "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+        },
+        "media_type": { "enum": ["application/json", "image/png"] },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}
