@@ -233,6 +233,10 @@ export function ReferenceWorldGenerator({
             { descriptor: environment.descriptor, bytes: environment.bytes },
             { descriptor: character.descriptor, bytes: character.bytes },
           ],
+          {
+            layoutConstraints: confirmedGenerated.layoutConstraints,
+            layoutPlan: confirmedGenerated.layoutPlan,
+          },
         )
         : null;
       if (controller.signal.aborted || token !== generationRef.current) return;
@@ -434,7 +438,10 @@ export function ReferenceWorldGenerator({
           </button>
           {productionHandoff && (
             <p className="reference-generator-status">
-              Private handoff contains both original references. Keep it local; do not publish or commit it.
+              {productionHandoff.manifest.schema_version === '1.1.0'
+                ? `Private handoff freezes the confirmed layout, ${productionHandoff.manifest.planning.requirement_count} complete asset requirements, and ${productionHandoff.manifest.planning.task_count} maximum reviewed image requests. Generate one direction image first; the remaining tasks require its separate approval. `
+                : ''}
+              It contains both original references. Keep it local; do not publish or commit it.
             </p>
           )}
           {frozenLaunch && <p className="reference-generator-status">Godot scene after import: <code>{frozenLaunch.scene_path}</code></p>}

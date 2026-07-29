@@ -17,13 +17,22 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { encodeRgbaPng } from './canvas/encode-png';
 import handoffSchema
   from '../../schemas/mapsoo-private-production-handoff-1.0.schema.json';
+import handoffV1_1Schema
+  from '../../schemas/mapsoo-private-production-handoff-1.1.schema.json';
 import {
   buildPrivateProductionHandoff,
   readPrivateProductionHandoff,
 } from './private-production-handoff';
 import {
   createConfirmedWorldCreationIntake,
+  type ConfirmedWorldCreationIntake,
 } from '../core/confirmed-world-creation-intake';
+import {
+  createWorldLayoutConstraintsFromConfirmedIntake,
+} from '../core/world-layout-constraints';
+import {
+  solveWorldLayoutPlanFromConstraints,
+} from '../core/world-layout-plan';
 
 const roots: string[] = [];
 const execFileAsync = promisify(execFile);
@@ -110,6 +119,29 @@ async function fixture() {
   };
 }
 
+async function planningFixture(intake: ConfirmedWorldCreationIntake) {
+  const layoutConstraints =
+    await createWorldLayoutConstraintsFromConfirmedIntake(intake, {
+      route_shape: 'loop',
+      scale: 'extended',
+      verticality: 'high',
+      water: 'basin',
+      settlement_density: 'dense',
+      hazard_level: 'dangerous',
+      landmark_labels: [
+        'Spawn pier',
+        'Red market canopy',
+        'Leaning lighthouse',
+        'Luminous sea cave',
+      ],
+    });
+  const layoutPlan = await solveWorldLayoutPlanFromConstraints(
+    layoutConstraints,
+    intake,
+  );
+  return { layoutConstraints, layoutPlan };
+}
+
 describe('private production handoff archive', () => {
   it('builds a deterministic private archive and reads the exact intake and references', async () => {
     const input = await fixture();
@@ -150,6 +182,71 @@ describe('private production handoff archive', () => {
         sha256: input.environment.descriptor.sha256,
       },
     ]);
+  });
+
+  it('freezes the exact confirmed layout and complete production inventory in a 1.1 handoff', async () => {
+    const input = await fixture();
+    const planning = await planningFixture(input.intake);
+    const first = await buildPrivateProductionHandoff(
+      input.intake,
+      [input.environment, input.character],
+      planning,
+    );
+    const replay = await buildPrivateProductionHandoff(
+      input.intake,
+      [input.environment, input.character],
+      planning,
+    );
+    expect(first.readBytes()).toEqual(replay.readBytes());
+    expect(first.manifest).toMatchObject({
+      schema_version: '1.1.0',
+      profile: 'side-platformer',
+      planning: {
+        requirement_count: expect.any(Number),
+        task_count: expect.any(Number),
+        scene_direction_requests: 1,
+        approval_policy: 'scene-direction-then-complete-world',
+      },
+      privacy: {
+        contains_original_references: true,
+        contains_private_world_facts: true,
+        public_distribution_allowed: false,
+      },
+      remote_request_count: 0,
+    });
+    expect(new Ajv2020().compile(handoffV1_1Schema)(first.manifest))
+      .toBe(true);
+    if (first.manifest.schema_version !== '1.1.0') {
+      throw new Error('Expected a 1.1 handoff.');
+    }
+    expect(first.manifest.planning.maximum_remote_requests)
+      .toBe(first.manifest.planning.task_count);
+
+    const read = await readPrivateProductionHandoff(first.readBytes());
+    expect(read.planning).toBeDefined();
+    expect(read.planning?.layoutConstraints).toMatchObject({
+      origin: 'confirmed-intent',
+      route_shape: 'loop',
+      scale: 'extended',
+      verticality: 'high',
+      water: 'basin',
+      settlement_density: 'dense',
+      hazard_level: 'dangerous',
+    });
+    expect(read.planning?.layoutPlan).toEqual(planning.layoutPlan);
+    expect(read.planning?.assetRequirements.requirements)
+      .toHaveLength(first.manifest.planning.requirement_count);
+    expect(read.planning?.productionArtPlan.tasks)
+      .toHaveLength(first.manifest.planning.task_count);
+
+    const archive = await JSZip.loadAsync(first.readBytes());
+    expect(Object.keys(archive.files)).toHaveLength(9);
+    expect(Object.keys(archive.files)).toEqual(expect.arrayContaining([
+      'mist-harbor-private-production-handoff/world-layout-constraints.json',
+      'mist-harbor-private-production-handoff/world-layout-plan.json',
+      'mist-harbor-private-production-handoff/complete-art/asset-requirements-1.1.json',
+      'mist-harbor-private-production-handoff/complete-art/production-art-plan-1.1.json',
+    ]));
   });
 
   it('prepares the existing zero-request workspace directly from the handoff CLI', async () => {
@@ -206,6 +303,70 @@ describe('private production handoff archive', () => {
     });
   });
 
+  it('preserves 1.1 structured layout choices through the handoff CLI', async () => {
+    const input = await fixture();
+    const planning = await planningFixture(input.intake);
+    const handoff = await buildPrivateProductionHandoff(
+      input.intake,
+      [input.environment, input.character],
+      planning,
+    );
+    const root = await mkdtemp(resolve(tmpdir(), 'mapsoo-private-handoff-1-1-'));
+    roots.push(root);
+    const archivePath = resolve(root, handoff.filename);
+    const workspace = resolve(root, 'workspace');
+    await writeFile(archivePath, handoff.readBytes());
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      resolve(process.cwd(), 'node_modules/vite-node/vite-node.mjs'),
+      resolve(process.cwd(), 'scripts/run-world-delivery-workspace.ts'),
+      'prepare',
+      '--handoff',
+      archivePath,
+      '--workspace',
+      workspace,
+      '--character-id',
+      'harbor-traveler',
+      '--completed-at',
+      '2026-07-28T12:00:00.000Z',
+    ], {
+      cwd: process.cwd(),
+      windowsHide: true,
+      maxBuffer: 2 * 1024 * 1024,
+    });
+    const result = JSON.parse(stdout);
+    expect(result).toMatchObject({
+      profile: 'side-platformer',
+      remote_request_count: 0,
+      complete_art_plan: {
+        requirement_count:
+          handoff.manifest.schema_version === '1.1.0'
+            ? handoff.manifest.planning.requirement_count
+            : -1,
+        task_count:
+          handoff.manifest.schema_version === '1.1.0'
+            ? handoff.manifest.planning.task_count
+            : -1,
+      },
+    });
+    expect(JSON.parse(await readFile(
+      resolve(workspace, 'world-layout-constraints.json'),
+      'utf8',
+    ))).toMatchObject({
+      origin: 'confirmed-intent',
+      route_shape: 'loop',
+      scale: 'extended',
+      verticality: 'high',
+      water: 'basin',
+      settlement_density: 'dense',
+      hazard_level: 'dangerous',
+    });
+    expect(JSON.parse(await readFile(
+      resolve(workspace, 'world-layout-plan.json'),
+      'utf8',
+    ))).toEqual(planning.layoutPlan);
+  });
+
   it('rejects changed reference bytes and undeclared archive files', async () => {
     const input = await fixture();
     const built = await buildPrivateProductionHandoff(
@@ -243,6 +404,34 @@ describe('private production handoff archive', () => {
     await expect(readPrivateProductionHandoff(extraBytes))
       .rejects.toMatchObject({
         code: 'private-handoff-archive.invalid-inventory',
+      });
+  });
+
+  it('rejects changed 1.1 planning bytes before workspace preparation', async () => {
+    const input = await fixture();
+    const planning = await planningFixture(input.intake);
+    const built = await buildPrivateProductionHandoff(
+      input.intake,
+      [input.environment, input.character],
+      planning,
+    );
+    const archive = await JSZip.loadAsync(built.readBytes());
+    const planPath = Object.keys(archive.files).find((path) =>
+      path.endsWith('/complete-art/production-art-plan-1.1.json'));
+    expect(planPath).toBeDefined();
+    archive.file(planPath!, `${JSON.stringify({
+      changed: true,
+    })}\n`, { createFolders: false });
+    const changedBytes = Uint8Array.from(await archive.generateAsync({
+      type: 'uint8array',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 },
+      platform: 'UNIX',
+      streamFiles: false,
+    }));
+    await expect(readPrivateProductionHandoff(changedBytes))
+      .rejects.toMatchObject({
+        code: 'private-handoff-archive.integrity',
       });
   });
 

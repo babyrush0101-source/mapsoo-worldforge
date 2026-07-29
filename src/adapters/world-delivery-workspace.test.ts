@@ -235,6 +235,7 @@ describe('world delivery workspace preparation', () => {
       'references/environment.png',
       'references/character.png',
       'style-bible.txt',
+      'world-layout-constraints.json',
       'world-layout-plan.json',
       'world-brief.txt',
     ]));

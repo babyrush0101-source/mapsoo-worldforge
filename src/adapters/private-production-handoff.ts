@@ -11,6 +11,27 @@ import {
   type ReferenceImageDescriptor,
 } from '../core/reference-image';
 import {
+  buildAssetRequirementsV1_1,
+  materializeAssetRequirementsV1_1,
+  serializeCanonicalAssetRequirementsV1_1,
+  type AssetRequirementsV1_1,
+} from '../core/asset-requirements-v1-1';
+import {
+  buildProductionArtPlanV1_1,
+  materializeProductionArtPlanV1_1,
+  serializeCanonicalProductionArtPlanV1_1,
+  type ProductionArtPlanV1_1,
+} from '../core/production-art-contract-v1-1';
+import {
+  materializeWorldLayoutConstraints,
+  type WorldLayoutConstraints,
+} from '../core/world-layout-constraints';
+import {
+  materializeWorldLayoutPlan,
+  serializeCanonicalWorldLayoutPlan,
+  type WorldLayoutPlan,
+} from '../core/world-layout-plan';
+import {
   PRIVATE_PRODUCTION_HANDOFF_INTAKE_PATH,
   PRIVATE_PRODUCTION_HANDOFF_MANIFEST_PATH,
   PRIVATE_PRODUCTION_HANDOFF_README_PATH,
@@ -18,6 +39,15 @@ import {
   materializePrivateProductionHandoffManifest,
   type PrivateProductionHandoffManifest,
 } from '../core/private-production-handoff';
+import {
+  PRIVATE_PRODUCTION_HANDOFF_ASSET_REQUIREMENTS_PATH,
+  PRIVATE_PRODUCTION_HANDOFF_LAYOUT_CONSTRAINTS_PATH,
+  PRIVATE_PRODUCTION_HANDOFF_LAYOUT_PLAN_PATH,
+  PRIVATE_PRODUCTION_HANDOFF_PRODUCTION_ART_PLAN_PATH,
+  encodePrivateProductionHandoffManifestV1_1,
+  materializePrivateProductionHandoffManifestV1_1,
+  type PrivateProductionHandoffManifestV1_1,
+} from '../core/private-production-handoff-v1-1';
 
 export interface PrivateProductionHandoffReferenceInput {
   readonly descriptor: ReferenceImageDescriptor;
@@ -27,17 +57,32 @@ export interface PrivateProductionHandoffReferenceInput {
 export interface BuiltPrivateProductionHandoff {
   readonly filename: string;
   readonly bytes: number;
-  readonly manifest: PrivateProductionHandoffManifest;
+  readonly manifest:
+    | PrivateProductionHandoffManifest
+    | PrivateProductionHandoffManifestV1_1;
   readBytes(): Uint8Array;
 }
 
 export interface ReadPrivateProductionHandoff {
-  readonly manifest: PrivateProductionHandoffManifest;
+  readonly manifest:
+    | PrivateProductionHandoffManifest
+    | PrivateProductionHandoffManifestV1_1;
   readonly intake: ConfirmedWorldCreationIntake;
   readonly references: readonly [
     PrivateProductionHandoffReferenceInput,
     PrivateProductionHandoffReferenceInput,
   ];
+  readonly planning?: Readonly<{
+    layoutConstraints: WorldLayoutConstraints;
+    layoutPlan: WorldLayoutPlan;
+    assetRequirements: AssetRequirementsV1_1;
+    productionArtPlan: ProductionArtPlanV1_1;
+  }>;
+}
+
+export interface PrivateProductionHandoffPlanningInput {
+  readonly layoutConstraints: unknown;
+  readonly layoutPlan: unknown;
 }
 
 export type PrivateProductionHandoffArchiveErrorCode =
@@ -81,7 +126,18 @@ function jsonBytes(value: unknown): Uint8Array {
   return new TextEncoder().encode(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-function readme(intakeId: string): Uint8Array {
+function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.byteLength === right.byteLength
+    && left.every((byte, index) => byte === right[index]);
+}
+
+function readme(
+  intakeId: string,
+  planning?: Readonly<{
+    requirementCount: number;
+    taskCount: number;
+  }>,
+): Uint8Array {
   return new TextEncoder().encode([
     '# Private production handoff',
     '',
@@ -89,6 +145,13 @@ function readme(intakeId: string): Uint8Array {
     '',
     'This local archive contains the original environment and character references.',
     'Do not publish it, attach it to an issue, or commit it to a public repository.',
+    ...(planning
+      ? [
+        '',
+        `The confirmed layout is frozen with ${planning.requirementCount} complete asset requirements and at most ${planning.taskCount} reviewed image requests.`,
+        'Generate and approve the one scene-direction request before authorizing the remaining world tasks.',
+      ]
+      : []),
     '',
     'Prepare the existing production workflow without a remote request:',
     '',
@@ -135,6 +198,7 @@ function archiveRoot(intakeId: string): string {
 export async function buildPrivateProductionHandoff(
   intakeValue: unknown,
   referenceInputs: readonly PrivateProductionHandoffReferenceInput[],
+  planningInput?: PrivateProductionHandoffPlanningInput,
 ): Promise<BuiltPrivateProductionHandoff> {
   const intake = await materializeConfirmedWorldCreationIntake(intakeValue);
   if (referenceInputs.length !== 2) {
@@ -176,9 +240,54 @@ export async function buildPrivateProductionHandoff(
     );
   }
   const intakeBytes = jsonBytes(intake);
-  const instructions = readme(intake.intake_id);
-  const manifest = materializePrivateProductionHandoffManifest({
-    schema_version: '1.0.0',
+  const planning = planningInput === undefined
+    ? undefined
+    : await (async () => {
+      const layoutConstraints = await materializeWorldLayoutConstraints(
+        planningInput.layoutConstraints,
+        intake,
+      );
+      const layoutPlan = await materializeWorldLayoutPlan(
+        planningInput.layoutPlan,
+        intake,
+      );
+      const assetRequirements = await buildAssetRequirementsV1_1(
+        layoutConstraints,
+        layoutPlan,
+      );
+      const productionArtPlan = await buildProductionArtPlanV1_1(
+        assetRequirements,
+        {
+          distribution: 'internal-review',
+          license: 'LicenseRef-Proprietary',
+        },
+      );
+      return Object.freeze({
+        layoutConstraints,
+        layoutPlan,
+        assetRequirements,
+        productionArtPlan,
+        layoutConstraintsBytes: jsonBytes(layoutConstraints),
+        layoutPlanBytes: await serializeCanonicalWorldLayoutPlan(layoutPlan),
+        assetRequirementsBytes:
+          await serializeCanonicalAssetRequirementsV1_1(assetRequirements),
+        productionArtPlanBytes:
+          await serializeCanonicalProductionArtPlanV1_1(
+            productionArtPlan,
+            assetRequirements,
+        ),
+      });
+    })();
+  const instructions = readme(
+    intake.intake_id,
+    planning
+      ? {
+        requirementCount: planning.assetRequirements.requirements.length,
+        taskCount: planning.productionArtPlan.tasks.length,
+      }
+      : undefined,
+  );
+  const commonManifest = {
     document_type: 'private-production-handoff',
     intake_id: intake.intake_id,
     intake_sha256: await fingerprintConfirmedWorldCreationIntake(intake),
@@ -202,13 +311,56 @@ export async function buildPrivateProductionHandoff(
       bytes: instructions.byteLength,
       sha256: await sha256(instructions),
     },
+    remote_request_count: 0,
+  } as const;
+  const manifest = planning === undefined
+    ? materializePrivateProductionHandoffManifest({
+    schema_version: '1.0.0',
+    ...commonManifest,
     privacy: {
       contains_original_references: true,
       public_distribution_allowed: false,
     },
-    remote_request_count: 0,
-  });
-  const manifestBytes = encodePrivateProductionHandoffManifest(manifest);
+  })
+    : materializePrivateProductionHandoffManifestV1_1({
+      schema_version: '1.1.0',
+      ...commonManifest,
+      planning: {
+        layout_constraints: {
+          path: PRIVATE_PRODUCTION_HANDOFF_LAYOUT_CONSTRAINTS_PATH,
+          bytes: planning.layoutConstraintsBytes.byteLength,
+          sha256: await sha256(planning.layoutConstraintsBytes),
+        },
+        layout_plan: {
+          path: PRIVATE_PRODUCTION_HANDOFF_LAYOUT_PLAN_PATH,
+          bytes: planning.layoutPlanBytes.byteLength,
+          sha256: await sha256(planning.layoutPlanBytes),
+        },
+        asset_requirements: {
+          path: PRIVATE_PRODUCTION_HANDOFF_ASSET_REQUIREMENTS_PATH,
+          bytes: planning.assetRequirementsBytes.byteLength,
+          sha256: await sha256(planning.assetRequirementsBytes),
+        },
+        production_art_plan: {
+          path: PRIVATE_PRODUCTION_HANDOFF_PRODUCTION_ART_PLAN_PATH,
+          bytes: planning.productionArtPlanBytes.byteLength,
+          sha256: await sha256(planning.productionArtPlanBytes),
+        },
+        requirement_count: planning.assetRequirements.requirements.length,
+        task_count: planning.productionArtPlan.tasks.length,
+        maximum_remote_requests: planning.productionArtPlan.tasks.length,
+        scene_direction_requests: 1,
+        approval_policy: 'scene-direction-then-complete-world',
+      },
+      privacy: {
+        contains_original_references: true,
+        contains_private_world_facts: true,
+        public_distribution_allowed: false,
+      },
+    });
+  const manifestBytes = manifest.schema_version === '1.1.0'
+    ? encodePrivateProductionHandoffManifestV1_1(manifest)
+    : encodePrivateProductionHandoffManifest(manifest);
   const root = archiveRoot(intake.intake_id);
   const archive = new JSZip();
   const files = [
@@ -216,6 +368,26 @@ export async function buildPrivateProductionHandoff(
     [PRIVATE_PRODUCTION_HANDOFF_INTAKE_PATH, intakeBytes],
     [PRIVATE_PRODUCTION_HANDOFF_README_PATH, instructions],
     ...references.map(({ descriptor, bytes }) => [descriptor.path, bytes] as const),
+    ...(planning === undefined
+      ? []
+      : [
+        [
+          PRIVATE_PRODUCTION_HANDOFF_LAYOUT_CONSTRAINTS_PATH,
+          planning.layoutConstraintsBytes,
+        ],
+        [
+          PRIVATE_PRODUCTION_HANDOFF_LAYOUT_PLAN_PATH,
+          planning.layoutPlanBytes,
+        ],
+        [
+          PRIVATE_PRODUCTION_HANDOFF_ASSET_REQUIREMENTS_PATH,
+          planning.assetRequirementsBytes,
+        ],
+        [
+          PRIVATE_PRODUCTION_HANDOFF_PRODUCTION_ART_PLAN_PATH,
+          planning.productionArtPlanBytes,
+        ],
+      ] as const),
   ] as const;
   for (const [path, bytes] of [...files].sort(([left], [right]) =>
     left.localeCompare(right, 'en'))) {
@@ -310,8 +482,7 @@ export async function readPrivateProductionHandoff(
   }
   const names = Object.keys(archive.files);
   if (
-    names.length !== 5
-    || names.some((name) =>
+    names.some((name) =>
       name.includes('\\')
       || name.startsWith('/')
       || name.endsWith('/')
@@ -347,11 +518,23 @@ export async function readPrivateProductionHandoff(
       'Private production handoff manifest size is invalid.',
     );
   }
-  let manifest: PrivateProductionHandoffManifest;
+  const rawManifest = strictJson(
+    manifestBytes,
+    'Private production handoff manifest',
+  );
+  let manifest:
+    | PrivateProductionHandoffManifest
+    | PrivateProductionHandoffManifestV1_1;
   try {
-    manifest = materializePrivateProductionHandoffManifest(
-      strictJson(manifestBytes, 'Private production handoff manifest'),
-    );
+    manifest = (
+      typeof rawManifest === 'object'
+      && rawManifest !== null
+      && !Array.isArray(rawManifest)
+      && 'schema_version' in rawManifest
+      && rawManifest.schema_version === '1.1.0'
+    )
+      ? materializePrivateProductionHandoffManifestV1_1(rawManifest)
+      : materializePrivateProductionHandoffManifest(rawManifest);
   } catch (error) {
     if (error instanceof PrivateProductionHandoffArchiveError) throw error;
     return fail(
@@ -371,9 +554,18 @@ export async function readPrivateProductionHandoff(
     `${root}/${manifest.intake.path}`,
     `${root}/${manifest.instructions.path}`,
     ...manifest.references.map(({ path }) => `${root}/${path}`),
+    ...(manifest.schema_version === '1.1.0'
+      ? [
+        `${root}/${manifest.planning.layout_constraints.path}`,
+        `${root}/${manifest.planning.layout_plan.path}`,
+        `${root}/${manifest.planning.asset_requirements.path}`,
+        `${root}/${manifest.planning.production_art_plan.path}`,
+      ]
+      : []),
   ]);
   if (
-    expectedNames.size !== 5
+    expectedNames.size !== (manifest.schema_version === '1.1.0' ? 9 : 5)
+    || names.length !== expectedNames.size
     || names.some((name) => !expectedNames.has(name))
   ) {
     fail(
@@ -451,5 +643,92 @@ export async function readPrivateProductionHandoff(
       return Object.freeze({ descriptor, bytes });
     }),
   )) as ReadPrivateProductionHandoff['references'];
-  return Object.freeze({ manifest, intake, references });
+  if (manifest.schema_version === '1.0.0') {
+    return Object.freeze({ manifest, intake, references });
+  }
+  let planning: NonNullable<ReadPrivateProductionHandoff['planning']>;
+  try {
+    const constraintsBytes = await readEntry(
+      archive,
+      `${root}/${manifest.planning.layout_constraints.path}`,
+      manifest.planning.layout_constraints.bytes,
+      manifest.planning.layout_constraints.sha256,
+    );
+    const layoutPlanBytes = await readEntry(
+      archive,
+      `${root}/${manifest.planning.layout_plan.path}`,
+      manifest.planning.layout_plan.bytes,
+      manifest.planning.layout_plan.sha256,
+    );
+    const assetRequirementsBytes = await readEntry(
+      archive,
+      `${root}/${manifest.planning.asset_requirements.path}`,
+      manifest.planning.asset_requirements.bytes,
+      manifest.planning.asset_requirements.sha256,
+    );
+    const productionArtPlanBytes = await readEntry(
+      archive,
+      `${root}/${manifest.planning.production_art_plan.path}`,
+      manifest.planning.production_art_plan.bytes,
+      manifest.planning.production_art_plan.sha256,
+    );
+    const layoutConstraints = await materializeWorldLayoutConstraints(
+      strictJson(constraintsBytes, 'World layout constraints'),
+      intake,
+    );
+    const layoutPlan = await materializeWorldLayoutPlan(
+      strictJson(layoutPlanBytes, 'World layout plan'),
+      intake,
+    );
+    const assetRequirements = await materializeAssetRequirementsV1_1(
+      strictJson(assetRequirementsBytes, 'Asset requirements'),
+      {
+        constraints: layoutConstraints,
+        plan: layoutPlan,
+      },
+    );
+    const productionArtPlan = await materializeProductionArtPlanV1_1(
+      strictJson(productionArtPlanBytes, 'Production art plan'),
+      assetRequirements,
+    );
+    if (
+      !equalBytes(constraintsBytes, jsonBytes(layoutConstraints))
+      || !equalBytes(
+        layoutPlanBytes,
+        await serializeCanonicalWorldLayoutPlan(layoutPlan),
+      )
+      || !equalBytes(
+        assetRequirementsBytes,
+        await serializeCanonicalAssetRequirementsV1_1(assetRequirements),
+      )
+      || !equalBytes(
+        productionArtPlanBytes,
+        await serializeCanonicalProductionArtPlanV1_1(
+          productionArtPlan,
+          assetRequirements,
+        ),
+      )
+      || assetRequirements.requirements.length
+        !== manifest.planning.requirement_count
+      || productionArtPlan.tasks.length !== manifest.planning.task_count
+    ) {
+      fail(
+        'private-handoff-archive.integrity',
+        'Private production planning is not canonical or count-complete.',
+      );
+    }
+    planning = Object.freeze({
+      layoutConstraints,
+      layoutPlan,
+      assetRequirements,
+      productionArtPlan,
+    });
+  } catch (error) {
+    if (error instanceof PrivateProductionHandoffArchiveError) throw error;
+    return fail(
+      'private-handoff-archive.integrity',
+      'Private production planning binding is invalid.',
+    );
+  }
+  return Object.freeze({ manifest, intake, references, planning });
 }

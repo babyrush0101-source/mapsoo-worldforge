@@ -14,14 +14,20 @@ references, layout, requirements, character identity, provider adapter and
 review gates. Previously, an operator had to copy the intake JSON and both
 reference files into a separate private directory by hand.
 
-`PrivateProductionHandoff 1.0` closes only that gap. It does not add a second
-generator, a provider-specific core, or a publishing client.
+`PrivateProductionHandoff 1.1` also closes a more important fidelity gap:
+the browser now freezes the exact structured layout choices and the complete
+production task inventory instead of asking the CLI to infer layout choices
+again from prose. It does not add a second generator, a provider-specific
+core, or a publishing client. The 1.0 reader remains supported for existing
+five-file archives.
 
 ```text
 confirmed browser dialogue
   + exact environment reference
   + exact character reference
   + approved procedural preview
+  + exact confirmed layout constraints and plan
+  + complete AssetRequirements 1.1 and ProductionArtPlan 1.1
   -> deterministic private handoff ZIP
   -> existing world-delivery workspace preparation
   -> existing resumable production-art workflow
@@ -41,26 +47,34 @@ Standalone generation without the confirmed four-stage dialogue does not
 produce a private handoff. Changing the profile, facts, references, seed or
 approved preview invalidates the previous handoff.
 
-## Archive contract
+## Archive contract 1.1
 
-The ZIP has one canonical root and exactly five files:
+The current browser ZIP has one canonical root and exactly nine files:
 
 ```text
 <intake-id>-private-production-handoff/
   handoff.json
   confirmed-intake.json
   README.md
+  world-layout-constraints.json
+  world-layout-plan.json
+  complete-art/asset-requirements-1.1.json
+  complete-art/production-art-plan-1.1.json
   references/environment.png|jpg
   references/character.png|jpg
 ```
 
 `handoff.json` conforms to
-`schemas/mapsoo-private-production-handoff-1.0.schema.json` and binds:
+`schemas/mapsoo-private-production-handoff-1.1.schema.json` and binds:
 
 - the exact confirmed-intake fingerprint and bytes;
 - profile and runtime target;
 - both canonical reference IDs, roles, paths, media types, byte counts and
   SHA-256 values;
+- the exact structured layout constraints and solved map;
+- every complete world-art requirement, atlas slot and production task;
+- the exact requirement count, maximum reviewed image-request count, and
+  `scene-direction-then-complete-world` approval policy;
 - an explicit declaration that original references are present and public
   distribution is forbidden;
 - `remote_request_count: 0`.
@@ -71,8 +85,14 @@ bytes.
 
 The reader rejects CRC failures, non-canonical roots, path traversal, directory
 entries, extra files, duplicate roles, malformed JSON, changed intake bytes,
-changed reference bytes, descriptor drift and any attempt to declare the
-archive public.
+changed reference bytes, descriptor drift, layout/intake drift,
+requirements/plan drift, non-canonical planning bytes, count mismatches and
+any attempt to declare the archive public.
+
+Legacy 1.0 archives keep their original five-file meaning. Because they do not
+contain structured planning, workspace preparation uses the documented
+compatibility derivation from confirmed prose. New browser handoffs always use
+1.1.
 
 ## CLI fast path
 
@@ -93,9 +113,11 @@ This command:
 - reads and verifies the archive in memory;
 - feeds its exact intake and reference bytes into the existing workspace
   preparation function;
-- creates the deterministic layout, the compatibility provider job, the
-  complete `AssetRequirements 1.1` and `ProductionArtPlan 1.1` blueprint, and
-  the playable procedural baseline;
+- revalidates and preserves the exact confirmed layout, complete
+  `AssetRequirements 1.1` and `ProductionArtPlan 1.1` bytes from a 1.1
+  handoff;
+- creates the compatibility provider job and playable procedural baseline
+  from that same layout;
 - makes zero remote requests.
 
 The complete blueprint is written beside, not over, the existing compatibility

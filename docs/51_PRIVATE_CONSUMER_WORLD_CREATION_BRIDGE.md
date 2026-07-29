@@ -42,7 +42,9 @@ know a consumer product name, account, daemon route, internal character record,
 NPC record, or launch transport.
 
 The confirmed public browser flow can first create one deterministic private
-handoff archive containing the exact intake and both original references.
+handoff archive containing the exact intake, both original references, the
+confirmed structured layout, complete asset requirements and production task
+plan.
 Prepare directly from that archive:
 
 ```bash
@@ -53,9 +55,12 @@ pnpm world-delivery:workspace -- prepare \
   --completed-at <canonical-UTC-ISO>
 ```
 
-The archive is local-only and must not be committed or published. Its reader
-rejects added files, changed references, changed intake bytes, unsafe paths and
-public-distribution claims before workspace preparation.
+The archive is local-only and must not be committed or published. Its 1.1
+reader rejects added files, changed references, changed intake bytes, unsafe
+paths, layout drift, requirements/plan drift, task-count drift and
+public-distribution claims before workspace preparation. Legacy 1.0 archives
+remain readable but cannot carry the structured layout choices introduced by
+1.1.
 
 For a consumer that already stores the intake and references separately, the
 original form remains available:
@@ -81,8 +86,9 @@ This command:
 - writes the baseline ZIP, exact exported preview, world-asset revision and
   review evidence under `baseline/`, with every byte in the workspace hash
   inventory;
-- derives the canonical four-profile production task inventory and exact
-  default request budget;
+- preserves the exact structured layout and canonical four-profile production
+  task inventory carried by a 1.1 handoff, including its maximum request
+  count and separate scene-direction approval gate;
 - writes the confirmed intake, projection, world brief, style bible, copied
   references, production-art job, and a hash inventory atomically;
 - configures workflow state and generated candidates in a sibling private

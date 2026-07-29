@@ -247,6 +247,9 @@ async function prepare(argv: readonly string[]): Promise<void> {
           'Reference root',
         ),
       }),
+    ...(handoff?.planning
+      ? { confirmedPlanning: handoff.planning }
+      : {}),
     workspace: privateWorkspacePath(required(values, '--workspace')),
     characterId: required(values, '--character-id'),
     ...(values.has('--character-identity-semantics')

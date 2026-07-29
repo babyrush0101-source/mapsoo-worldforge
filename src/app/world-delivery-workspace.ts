@@ -43,19 +43,23 @@ import {
 import {
   buildAssetRequirementsV1_1,
   fingerprintAssetRequirementsV1_1,
+  materializeAssetRequirementsV1_1,
   serializeCanonicalAssetRequirementsV1_1,
 } from '../core/asset-requirements-v1-1';
 import {
   buildProductionArtPlanV1_1,
   fingerprintProductionArtPlanV1_1,
+  materializeProductionArtPlanV1_1,
   serializeCanonicalProductionArtPlanV1_1,
 } from '../core/production-art-contract-v1-1';
 import {
   deriveWorldLayoutConstraintsFromConfirmedIntake,
+  materializeWorldLayoutConstraints,
 } from '../core/world-layout-constraints';
 import {
   buildWorldLayoutPlanFromConfirmedIntake,
   fingerprintWorldLayoutPlan,
+  materializeWorldLayoutPlan,
   serializeCanonicalWorldLayoutPlan,
   type WorldLayoutPlan,
 } from '../core/world-layout-plan';
@@ -167,6 +171,12 @@ interface PrepareWorldDeliveryWorkspaceCommonInput {
   readonly quality?: 'low' | 'medium' | 'high';
   readonly requestBudget?: number;
   readonly characterIdentitySemantics?: unknown;
+  readonly confirmedPlanning?: Readonly<{
+    readonly layoutConstraints: unknown;
+    readonly layoutPlan: unknown;
+    readonly assetRequirements: unknown;
+    readonly productionArtPlan: unknown;
+  }>;
 }
 
 export type PrepareWorldDeliveryWorkspaceInput =
@@ -443,32 +453,63 @@ export async function prepareWorldDeliveryWorkspace(
 ): Promise<PreparedWorldDeliveryWorkspace> {
   const intake = await materializeConfirmedWorldCreationIntake(input.intake);
   const projection = await projectConfirmedWorldCreationIntake(intake);
-  const layoutConstraints =
-    await deriveWorldLayoutConstraintsFromConfirmedIntake(intake);
-  const layoutPlan = await buildWorldLayoutPlanFromConfirmedIntake(intake);
+  const layoutConstraints = input.confirmedPlanning
+    ? await materializeWorldLayoutConstraints(
+      input.confirmedPlanning.layoutConstraints,
+      intake,
+    )
+    : await deriveWorldLayoutConstraintsFromConfirmedIntake(intake);
+  const layoutPlan = input.confirmedPlanning
+    ? await materializeWorldLayoutPlan(
+      input.confirmedPlanning.layoutPlan,
+      intake,
+    )
+    : await buildWorldLayoutPlanFromConfirmedIntake(intake);
   const layoutPlanSha256 = await fingerprintWorldLayoutPlan(layoutPlan);
   const layoutPlanBytes = await serializeCanonicalWorldLayoutPlan(layoutPlan);
+  const layoutConstraintsBytes = jsonBytes(layoutConstraints);
   const assetRequirements = await buildAssetRequirements(
     layoutConstraints,
     layoutPlan,
   );
   const assetRequirementsBytes =
     await serializeCanonicalAssetRequirements(assetRequirements);
-  const completeAssetRequirements = await buildAssetRequirementsV1_1(
-    layoutConstraints,
-    layoutPlan,
-  );
+  const completeAssetRequirements = input.confirmedPlanning
+    ? await materializeAssetRequirementsV1_1(
+      input.confirmedPlanning.assetRequirements,
+      {
+        constraints: layoutConstraints,
+        plan: layoutPlan,
+      },
+    )
+    : await buildAssetRequirementsV1_1(
+      layoutConstraints,
+      layoutPlan,
+    );
   const completeAssetRequirementsBytes =
     await serializeCanonicalAssetRequirementsV1_1(completeAssetRequirements);
   const completeAssetRequirementsSha256 =
     await fingerprintAssetRequirementsV1_1(completeAssetRequirements);
-  const completeProductionArtPlan = await buildProductionArtPlanV1_1(
-    completeAssetRequirements,
-    {
-      distribution: 'internal-review',
-      license: 'LicenseRef-Proprietary',
-    },
-  );
+  const completeProductionArtPlan = input.confirmedPlanning
+    ? await materializeProductionArtPlanV1_1(
+      input.confirmedPlanning.productionArtPlan,
+      completeAssetRequirements,
+    )
+    : await buildProductionArtPlanV1_1(
+      completeAssetRequirements,
+      {
+        distribution: 'internal-review',
+        license: 'LicenseRef-Proprietary',
+      },
+    );
+  if (
+    completeProductionArtPlan.rights.distribution !== 'internal-review'
+    || completeProductionArtPlan.rights.license !== 'LicenseRef-Proprietary'
+  ) {
+    throw new Error(
+      'Confirmed private planning must use internal-review proprietary rights.',
+    );
+  }
   const completeProductionArtPlanBytes =
     await serializeCanonicalProductionArtPlanV1_1(
       completeProductionArtPlan,
@@ -702,6 +743,7 @@ export async function prepareWorldDeliveryWorkspace(
   const sourceFiles = new Map<string, Uint8Array>([
     ['confirmed-intake.json', jsonBytes(intake)],
     ['confirmed-intake-projection.json', jsonBytes(projection)],
+    ['world-layout-constraints.json', layoutConstraintsBytes],
     ['world-layout-plan.json', layoutPlanBytes],
     ['asset-requirements.json', assetRequirementsBytes],
     [
