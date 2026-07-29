@@ -94,10 +94,11 @@ try {
     name === 'Run the runtime-candidate Overlay 1.1 end-to-end technical review');
   if (
     typeof e2eStep?.run !== 'string'
-    || !e2eStep.run.includes('pnpm exec vitest run')
+    || !e2eStep.run.includes('xvfb-run -a pnpm exec vitest run')
     || !e2eStep.run.includes(
       'src/adapters/runtime-candidate-technical-review.e2e.test.ts',
     )
+    || e2eStep.env?.LIBGL_ALWAYS_SOFTWARE !== '1'
     || e2eStep.env?.MAPSOO_RUN_RUNTIME_CANDIDATE_E2E !== '1'
   ) {
     throw new Error(
