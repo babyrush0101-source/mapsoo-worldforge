@@ -89,7 +89,10 @@ interface CandidateReport {
     readonly alpha_policy: 'opaque' | 'straight-alpha';
   };
   readonly normalization: {
-    readonly mode: 'proportional-grid' | 'component-reading-order';
+    readonly mode:
+      | 'proportional-grid'
+      | 'component-reading-order'
+      | 'cover-crop';
     readonly mapped_cells_checked: true;
     readonly unmapped_cells_transparent: true;
     readonly transparent_rgb_zeroed: true;

@@ -82,6 +82,62 @@ async function run(args) {
 }
 
 try {
+  const directionSource = rgba(1600, 900);
+  fillRect(
+    directionSource,
+    0,
+    0,
+    directionSource.width,
+    directionSource.height,
+    Uint8Array.from([45, 90, 135, 255]),
+  );
+  fillRect(
+    directionSource,
+    125,
+    420,
+    1350,
+    260,
+    Uint8Array.from([70, 120, 80, 255]),
+  );
+  const directionSourcePath = join(root, 'private-operator-direction.png');
+  const directionOutputPath = join(root, 'direction-candidate.png');
+  const directionReportPath = join(root, 'direction-candidate.json');
+  await writeFile(
+    directionSourcePath,
+    encodeRgbaPng(
+      directionSource.width,
+      directionSource.height,
+      directionSource.rgba,
+    ),
+  );
+  const direction = await run([
+    '--profile', 'side-platformer',
+    '--task', 'scene-direction',
+    '--source', directionSourcePath,
+    '--mode', 'cover-crop',
+    '--out', directionOutputPath,
+    '--report', directionReportPath,
+  ]);
+  if (direction.exitCode !== 0) {
+    throw new Error(`Direction cover crop failed: ${direction.stderr}`);
+  }
+  const directionReportText = await readFile(directionReportPath, 'utf8');
+  const directionReport = JSON.parse(directionReportText);
+  const directionPng = decodeRgbaPng(await readFile(directionOutputPath));
+  if (
+    directionPng.width !== 1536
+    || directionPng.height !== 1024
+    || directionReport.normalization.mode !== 'cover-crop'
+    || directionReport.normalization.crop_bounds.x !== 125
+    || directionReport.normalization.crop_bounds.y !== 0
+    || directionReport.normalization.crop_bounds.width !== 1350
+    || directionReport.normalization.crop_bounds.height !== 900
+    || directionReport.role_bindings.length !== 1
+    || directionReportText.includes(directionSourcePath)
+  ) {
+    throw new Error('Direction cover crop did not preserve the safe canonical contract.');
+  }
+
   const terrainSource = rgba(800, 400);
   const terrainRects = [
     [25, 120, 110, 170],
@@ -286,9 +342,34 @@ try {
     throw new Error('Unexpected component count did not fail closed.');
   }
 
+  const invalidCoverCropOutputPath = join(
+    root,
+    `must-not-cover-crop-${randomBytes(4).toString('hex')}.png`,
+  );
+  const invalidCoverCropReportPath = join(
+    root,
+    `must-not-cover-crop-${randomBytes(4).toString('hex')}.json`,
+  );
+  const invalidCoverCrop = await run([
+    '--profile', 'side-platformer',
+    '--task', 'prop-sheet',
+    '--source', propSourcePath,
+    '--mode', 'cover-crop',
+    '--out', invalidCoverCropOutputPath,
+    '--report', invalidCoverCropReportPath,
+  ]);
+  if (
+    invalidCoverCrop.exitCode === 0
+    || !invalidCoverCrop.stderr.includes(
+      'limited to scene-direction and background-layer tasks',
+    )
+  ) {
+    throw new Error('Cover crop did not reject a grid-bound task.');
+  }
+
   console.log(
     'MAPSOO_OPERATOR_PRODUCTION_ART_CANDIDATE_OK '
-    + 'component_reflow=6 proportional_roles=14 character_poses=28 '
+    + 'cover_crop=1 component_reflow=6 proportional_roles=14 character_poses=28 '
     + 'binary_alpha=true transparent_rgb_zeroed=true '
     + 'path_privacy=true fail_closed=true',
   );

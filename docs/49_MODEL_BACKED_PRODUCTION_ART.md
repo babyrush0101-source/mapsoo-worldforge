@@ -745,6 +745,10 @@ canonical task and resizes it with nearest-neighbor sampling.
 `component-reading-order` detects significant isolated subjects, requires the
 exact canonical subject count, orders them by visual row and column, and
 re-packs them into the declared terrain, prop, effect, or character cells.
+`cover-crop` accepts a wider or taller scene-direction/background source,
+records one deterministic centered crop, and resizes only that crop to the
+canonical task canvas. It is rejected for terrain, prop, effect, and character
+grids, where cropping could silently discard roles or pose cells.
 Unexpected subject counts, empty mapped cells, populated undeclared cells and
 padding violations fail before output is written.
 

@@ -19,6 +19,7 @@ import {
 const MODES = Object.freeze([
   'proportional-grid',
   'component-reading-order',
+  'cover-crop',
 ] as const);
 type MaterializationMode = typeof MODES[number];
 
@@ -72,7 +73,7 @@ function usage(): string {
     'Usage:',
     '  pnpm production-art:operator-import -- \\',
     '    --profile <profile> --task <task-id> --source <rgba.png> \\',
-    '    --mode <proportional-grid|component-reading-order> \\',
+    '    --mode <proportional-grid|component-reading-order|cover-crop> \\',
     '    --out <candidate.png> --report <candidate.json>',
     '',
     'This command imports already-generated local PNG bytes. It does not call a',
@@ -161,6 +162,52 @@ function resizeNearest(image: Raster, width: number, height: number): Raster {
     }
   }
   return { width, height, rgba };
+}
+
+function coverCrop(
+  image: Raster,
+  task: ProductionArtTask,
+): { readonly raster: Raster; readonly bounds: Bounds } {
+  if (
+    task.kind !== 'scene-direction'
+    && task.kind !== 'background-layer'
+  ) {
+    throw new Error(
+      'Cover crop is limited to scene-direction and background-layer tasks.',
+    );
+  }
+  const sourceAspect = image.width / image.height;
+  const targetAspect = task.target.width / task.target.height;
+  let width = image.width;
+  let height = image.height;
+  if (sourceAspect > targetAspect) {
+    width = Math.max(1, Math.floor(image.height * targetAspect));
+  } else if (sourceAspect < targetAspect) {
+    height = Math.max(1, Math.floor(image.width / targetAspect));
+  }
+  const bounds = {
+    x: Math.floor((image.width - width) / 2),
+    y: Math.floor((image.height - height) / 2),
+    width,
+    height,
+  };
+  const raster: Raster = {
+    width: task.target.width,
+    height: task.target.height,
+    rgba: new Uint8Array(task.target.width * task.target.height * 4),
+  };
+  copyScaled(
+    image,
+    bounds,
+    raster,
+    {
+      x: 0,
+      y: 0,
+      width: raster.width,
+      height: raster.height,
+    },
+  );
+  return { raster, bounds };
 }
 
 function aspectDifference(image: Raster, task: ProductionArtTask): number {
@@ -515,6 +562,7 @@ async function run(): Promise<void> {
   let components: readonly Component[] = [];
   let ignoredComponentPixels = 0;
   let componentThreshold = 0;
+  let cropBounds: Bounds | null = null;
   if (args.mode === 'proportional-grid') {
     if (aspectDifference(source, task) > 0.002) {
       throw new Error(
@@ -522,6 +570,10 @@ async function run(): Promise<void> {
       );
     }
     materialized = resizeNearest(source, task.target.width, task.target.height);
+  } else if (args.mode === 'cover-crop') {
+    const cropped = coverCrop(source, task);
+    materialized = cropped.raster;
+    cropBounds = cropped.bounds;
   } else {
     const reflowed = componentReflow(source, task);
     materialized = reflowed.raster;
@@ -572,6 +624,7 @@ async function run(): Promise<void> {
       significant_components: components.length,
       component_threshold_pixels: componentThreshold,
       ignored_component_pixels: ignoredComponentPixels,
+      crop_bounds: cropBounds,
     },
     role_bindings: roleBindings,
     source_components: components,
