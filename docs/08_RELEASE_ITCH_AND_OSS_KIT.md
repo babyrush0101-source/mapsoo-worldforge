@@ -619,7 +619,7 @@ API credits would support maintainer automation for schema and manifest compatib
 **Anything else we should know?（399 characters）**
 
 ```text
-I am the primary maintainer responsible for roadmap, releases, issue triage, and compatibility. External Host is the planned first real consumer and is not counted as external adoption. Mapsoo works without an account, backend, or paid API and is built as reusable open-source infrastructure rather than External Host-only code. Public release, demo, CI, video, feedback intake, and an explicitly empty community evidence ledger are linked from the repository.
+I am the primary maintainer responsible for roadmap, releases, issue triage, and compatibility. External Host is the planned first real consumer and is not counted as external adoption. Mapsoo works without an account, backend, or paid API and is built as reusable open-source infrastructure rather than External-Host-only code. Public release, demo, CI, video, feedback intake, and an explicitly empty community evidence ledger are linked from the repository.
 ```
 
 ### 6.4 推荐勾选策略

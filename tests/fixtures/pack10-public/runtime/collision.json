@@ -1,0 +1,27 @@
+{
+  "schema_version": "mapsoo-public-fixture-collision/1.0",
+  "fixture_id": "pack10-public-fixture",
+  "synthetic": true,
+  "bounds": {
+    "x": 0,
+    "y": 0,
+    "width": 320,
+    "height": 180
+  },
+  "solids": [
+    {
+      "id": "ground",
+      "x": 0,
+      "y": 148,
+      "width": 320,
+      "height": 32
+    },
+    {
+      "id": "marker-block",
+      "x": 152,
+      "y": 128,
+      "width": 16,
+      "height": 20
+    }
+  ]
+}

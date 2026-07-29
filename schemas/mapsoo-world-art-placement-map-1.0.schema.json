@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-art-placement-map-1.0.schema.json",
+  "title": "Mapsoo World Art Placement Map 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "map_id",
+    "profile",
+    "source",
+    "bindings"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "world-art-placement-map" },
+    "map_id": {
+      "type": "string",
+      "pattern": "^world-art-placement-map-[a-f0-9]{16}$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layout_plan_id",
+        "layout_plan_sha256",
+        "placement_plan_id",
+        "placement_plan_sha256",
+        "requirements_sha256",
+        "production_art_plan_id",
+        "production_art_plan_sha256",
+        "reviewed_slot_inventory_sha256",
+        "review_record_sha256"
+      ],
+      "properties": {
+        "layout_plan_id": { "$ref": "#/$defs/safeId" },
+        "layout_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "placement_plan_id": { "$ref": "#/$defs/safeId" },
+        "placement_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "requirements_sha256": { "$ref": "#/$defs/sha256" },
+        "production_art_plan_id": { "$ref": "#/$defs/safeId" },
+        "production_art_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "reviewed_slot_inventory_sha256": { "$ref": "#/$defs/sha256" },
+        "review_record_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": { "$ref": "#/$defs/binding" }
+    }
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "role": {
+      "type": "string",
+      "maxLength": 120,
+      "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["column", "row", "column_span", "row_span"],
+      "properties": {
+        "column": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "row": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "column_span": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "row_span": { "type": "integer", "minimum": 1, "maximum": 256 }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "placement_id",
+        "task_id",
+        "slot_id",
+        "requirement_id",
+        "role",
+        "variant_id",
+        "atlas_path",
+        "atlas_cell"
+      ],
+      "properties": {
+        "placement_id": { "$ref": "#/$defs/safeId" },
+        "task_id": { "$ref": "#/$defs/safeId" },
+        "slot_id": { "$ref": "#/$defs/safeId" },
+        "requirement_id": { "$ref": "#/$defs/safeId" },
+        "role": { "$ref": "#/$defs/role" },
+        "variant_id": { "$ref": "#/$defs/safeId" },
+        "atlas_path": { "$ref": "#/$defs/path" },
+        "atlas_cell": { "$ref": "#/$defs/cell" }
+      }
+    }
+  }
+}

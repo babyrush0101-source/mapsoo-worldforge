@@ -1,6 +1,6 @@
 # External Host integration contract
 
-This directory defines the public, privacy-minimized boundary between an External Host world/scene request and Mapsoo Worldsmith. It is an integration example, not a private External Host SDK and not evidence that External Host production adoption is complete.
+This directory defines the public, privacy-minimized boundary between an External Host world/scene request and Mapsoo WorldForge. It is an integration example, not a private External Host SDK and not evidence that External Host production adoption is complete.
 
 ## Contract files
 

@@ -4,7 +4,7 @@ config_version=5
 
 [application]
 
-config/name="Mapsoo Worldsmith Godot Importer"
+config/name="Mapsoo WorldForge Godot Importer"
 run/main_scene="res://example/main.tscn"
 
 [display]

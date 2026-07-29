@@ -6,9 +6,16 @@ coverage
 !.env.example
 .DS_Store
 ._*
+.codex_tmp/
 .godot/
 godot/tests/.generated/
 godot/mapsoo_imports/
 *.import
 *.zip
 *.tsbuildinfo
+
+# Production-art candidates remain local until human review records a public
+# redistribution license. Approved previews and release assets must be added
+# deliberately after their manifests are converted out of UNRELEASED status.
+docs/visual-qa/production-art/
+tests/fixtures/layered-depth-2d-production-pack09-candidate-v1/

@@ -1,4 +1,8 @@
 import { fingerprintGenerationRequestV2, type GenerationRequestV2 } from './generation-request-v2';
+import {
+  materializeConfirmedGenerationBinding,
+  type ConfirmedGenerationBinding,
+} from './confirmed-generation-binding';
 import { SIDE_PLATFORMER_COMPLETENESS_POLICY } from './side-platformer-asset-bundle';
 import {
   assertTrustedWorldAssetGeneration,
@@ -20,6 +24,7 @@ export interface SidePlatformerWorldAssetReceipt {
       readonly license: 'LicenseRef-User-Owned';
       readonly permits_cc0_dedication: true;
     }[];
+    readonly dialogue_binding?: ConfirmedGenerationBinding;
   };
   readonly provider: {
     readonly id: string;
@@ -50,6 +55,7 @@ export async function projectSidePlatformerWorldAssetReceipt(
   run: WorldAssetGenerationResult,
   request: GenerationRequestV2,
   completedAt: string,
+  confirmationBinding?: ConfirmedGenerationBinding,
 ): Promise<SidePlatformerWorldAssetReceipt> {
   assertTrustedWorldAssetGeneration(run);
   if (
@@ -77,6 +83,9 @@ export async function projectSidePlatformerWorldAssetReceipt(
   if (fingerprint !== run.requestFingerprintSha256) {
     throw new Error('Alpha10 receipt request fingerprint does not match the trusted run.');
   }
+  const confirmed = confirmationBinding
+    ? await materializeConfirmedGenerationBinding(confirmationBinding, request)
+    : undefined;
   return Object.freeze({
     schema_version: WORLD_ASSET_RECEIPT_ALPHA10_SCHEMA_VERSION,
     completed_at: canonicalTimestamp(completedAt),
@@ -90,6 +99,7 @@ export async function projectSidePlatformerWorldAssetReceipt(
         license: 'LicenseRef-User-Owned' as const,
         permits_cc0_dedication: true as const,
       }))),
+      ...(confirmed ? { dialogue_binding: confirmed } : {}),
     }),
     provider: Object.freeze({
       id: run.provider.id,
@@ -111,7 +121,9 @@ export async function projectSidePlatformerWorldAssetReceipt(
     disclosures: Object.freeze([
       'Reference images are not embedded in this pack.',
       'Reference paths, original image digests, attribution text, and the source description are omitted from public fields.',
-      'The request fingerprint is a one-way binding for local audit comparison.',
+      confirmed
+        ? 'The dialogue binding one-way binds four confirmed checkpoints to the exact generation request.'
+        : 'The request fingerprint is a one-way binding for local audit comparison; no confirmed dialogue binding was supplied.',
     ]),
   });
 }

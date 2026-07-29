@@ -1,0 +1,137 @@
+{
+  "schema_version": "0.4.0",
+  "completed_at": "2026-07-26T09:00:00.000Z",
+  "request": {
+    "fingerprint_sha256": "774129dbcc04f05ea0882326f6f9654eaecfc3fae2ca60fa50859f218176c410",
+    "profile": "layered-depth-2d",
+    "seed": "alpha12-godot-smoke-001",
+    "reference_rights": [
+      {
+        "role": "environment-style",
+        "basis": "owned",
+        "license": "LicenseRef-User-Owned",
+        "permits_cc0_dedication": true
+      },
+      {
+        "role": "character",
+        "basis": "owned",
+        "license": "LicenseRef-User-Owned",
+        "permits_cc0_dedication": true
+      }
+    ]
+  },
+  "provider": {
+    "id": "mapsoo-procedural-layered-depth",
+    "version": "0.1.0",
+    "execution": "local",
+    "determinism": "seeded",
+    "output_provenance": "procedural"
+  },
+  "output": {
+    "bundle_schema_version": "0.4.0",
+    "completeness_policy": "layered-depth-2d-complete-v1",
+    "license": "CC0-1.0",
+    "files": [
+      {
+        "path": "atlases/collectibles.png",
+        "bytes": 212,
+        "sha256": "6a92ec07477b2f79f66b72efb98c8e385d594dd0f09f1b602d9adbeb2cf9d4d8"
+      },
+      {
+        "path": "atlases/effects.png",
+        "bytes": 744,
+        "sha256": "97c54a82fcf8a0d857b717ef0ada802aaaa1c1821896e5b837b894a4637687e5"
+      },
+      {
+        "path": "atlases/npc.png",
+        "bytes": 753,
+        "sha256": "727755b054e17f438e72c4b4bad6a5d2cfb303cb48249f5aa2a239590c947c8f"
+      },
+      {
+        "path": "atlases/player.png",
+        "bytes": 1152,
+        "sha256": "c7353abe07ee7658b390a15442a94463cdc644a242e7759f035189ab85dc8b55"
+      },
+      {
+        "path": "atlases/props.png",
+        "bytes": 1015,
+        "sha256": "a25a8409796bb16e42c6b229da1548ebb6a383edb61658d6aa4bfb6709cd83f7"
+      },
+      {
+        "path": "atlases/structures.png",
+        "bytes": 652,
+        "sha256": "d2780a95e9005f969b37dc688e483f53bffa7977cf7438d1eb5fad9d083cd08e"
+      },
+      {
+        "path": "atlases/terrain.png",
+        "bytes": 626,
+        "sha256": "1ab4c42f29656ec9020e39595ba78146e08b67cacd7d288e40ddd489ae21c385"
+      },
+      {
+        "path": "layers/background-depth-fog.png",
+        "bytes": 417,
+        "sha256": "b6dac8e9aa7270bbae1ef2b2d38fe838dcb13513055687884a15a7da6498051a"
+      },
+      {
+        "path": "layers/background-far.png",
+        "bytes": 1645,
+        "sha256": "757b1e867c7f4df97f96bd099ad5f6ccaa2c915c249c9327a428fd137b1c96c2"
+      },
+      {
+        "path": "layers/background-mid.png",
+        "bytes": 988,
+        "sha256": "d3a77c931766c7817f152c85e763c87ade1e28c12d88486b35d0b47c16b34727"
+      },
+      {
+        "path": "layers/background-sky.png",
+        "bytes": 892,
+        "sha256": "73519e454f477891adb2094e82a5af79e37963f0bdd4b11f724c77dcca19d21d"
+      },
+      {
+        "path": "layers/foreground-overlay.png",
+        "bytes": 1311,
+        "sha256": "b3d93c6cf6613d3cfccae771b9acdb70d9096eaa2ad12ec8e8f2ed73827457b6"
+      },
+      {
+        "path": "layers/lighting-ambient.png",
+        "bytes": 541,
+        "sha256": "fdb7b28fe3c010bc488ac34f993a3f8320499fb99c40d4750fcc26cf837d2863"
+      },
+      {
+        "path": "layers/lighting-local.png",
+        "bytes": 743,
+        "sha256": "5f54ae80c5691e73e4accd415de42fb06fafc1f3f7b3db530745ee06822ecc43"
+      },
+      {
+        "path": "layers/near-overlay.png",
+        "bytes": 1159,
+        "sha256": "19eef350e6aef8f443c68ff83a39f956ee543560932831d2594c1355153021b8"
+      },
+      {
+        "path": "previews/world.png",
+        "bytes": 5918,
+        "sha256": "ee90dbabb47fe66a01714c0df208089b6f82d985dab2d7614c58db6075278ffe"
+      },
+      {
+        "path": "runtime/collision.json",
+        "bytes": 707,
+        "sha256": "be1eb803c0d57a5bec4f018970587cf8ec7a508e8a4c6c0216cbd11ed8efacdf"
+      },
+      {
+        "path": "runtime/navigation.json",
+        "bytes": 867,
+        "sha256": "7dea3665571b617064720c24a6d75599476a19f56e073ec624c702aac91f11d7"
+      },
+      {
+        "path": "runtime/scene.json",
+        "bytes": 2134,
+        "sha256": "b85e1eaf108f22eadbf593da5586fabc9dcb9309d30d1a0e6bc942508022d879"
+      }
+    ]
+  },
+  "disclosures": [
+    "Reference images and the extracted local character identity signature are not embedded in this pack.",
+    "Reference paths, original image digests, source description and raw dialogue answers are omitted.",
+    "The request fingerprint is a one-way local audit binding; no dialogue binding was supplied."
+  ]
+}

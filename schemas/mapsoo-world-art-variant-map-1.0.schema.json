@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-art-variant-map-1.0.schema.json",
+  "title": "Mapsoo WorldArtVariantMap 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "map_id",
+    "profile",
+    "source",
+    "bindings"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "world-art-variant-map" },
+    "map_id": {
+      "type": "string",
+      "pattern": "^world-art-variant-map-[a-f0-9]{16}$"
+    },
+    "profile": { "$ref": "#/$defs/profile" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layout_plan_id",
+        "layout_plan_sha256",
+        "production_art_plan_id",
+        "production_art_plan_sha256",
+        "reviewed_slot_inventory_sha256",
+        "review_record_sha256"
+      ],
+      "properties": {
+        "layout_plan_id": { "$ref": "#/$defs/safeId100" },
+        "layout_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "production_art_plan_id": { "$ref": "#/$defs/safeId100" },
+        "production_art_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "reviewed_slot_inventory_sha256": { "$ref": "#/$defs/sha256" },
+        "review_record_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": { "$ref": "#/$defs/binding" }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "safeId100": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "safeId160": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 160
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 100
+    },
+    "atlasPath": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*\\.png$"
+    },
+    "atlasCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["column", "row", "column_span", "row_span"],
+      "properties": {
+        "column": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "row": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "column_span": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "row_span": { "type": "integer", "minimum": 1, "maximum": 256 }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "usage_kind",
+        "usage_id",
+        "slot_id",
+        "role",
+        "variant_id",
+        "atlas_path",
+        "atlas_cell"
+      ],
+      "properties": {
+        "usage_kind": {
+          "enum": ["terrain-material", "landmark", "hazard", "character"]
+        },
+        "usage_id": { "$ref": "#/$defs/safeId160" },
+        "slot_id": { "$ref": "#/$defs/safeId160" },
+        "role": { "$ref": "#/$defs/role" },
+        "variant_id": { "$ref": "#/$defs/safeId160" },
+        "atlas_path": { "$ref": "#/$defs/atlasPath" },
+        "atlas_cell": { "$ref": "#/$defs/atlasCell" }
+      }
+    }
+  }
+}

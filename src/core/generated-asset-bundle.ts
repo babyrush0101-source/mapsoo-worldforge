@@ -2,9 +2,13 @@ import type { WorldAssetProfile } from './asset-profile';
 
 export const GENERATED_ASSET_BUNDLE_SCHEMA_VERSION = '0.1.0' as const;
 export const SIDE_PLATFORMER_ASSET_BUNDLE_SCHEMA_VERSION = '0.2.0' as const;
+export const ISOMETRIC_ACTION_ASSET_BUNDLE_SCHEMA_VERSION = '0.3.0' as const;
+export const LAYERED_DEPTH_ASSET_BUNDLE_SCHEMA_VERSION = '0.4.0' as const;
 export type GeneratedAssetBundleSchemaVersion =
   | typeof GENERATED_ASSET_BUNDLE_SCHEMA_VERSION
-  | typeof SIDE_PLATFORMER_ASSET_BUNDLE_SCHEMA_VERSION;
+  | typeof SIDE_PLATFORMER_ASSET_BUNDLE_SCHEMA_VERSION
+  | typeof ISOMETRIC_ACTION_ASSET_BUNDLE_SCHEMA_VERSION
+  | typeof LAYERED_DEPTH_ASSET_BUNDLE_SCHEMA_VERSION;
 export const TOPDOWN_FARM_COMPLETENESS_POLICY = 'topdown-farm-complete-v1' as const;
 
 export const GENERATED_ASSET_KINDS = Object.freeze([
@@ -22,6 +26,8 @@ export const GENERATED_ASSET_KINDS = Object.freeze([
   'collectible-atlas',
   'background-layer',
   'foreground-layer',
+  'effect-atlas',
+  'lighting-layer',
 ] as const);
 export type GeneratedAssetKind = typeof GENERATED_ASSET_KINDS[number];
 
@@ -50,8 +56,13 @@ export const TOPDOWN_FARM_REQUIRED_ROLES = Object.freeze([
 ] as const);
 
 export type TopdownFarmAssetRole = typeof TOPDOWN_FARM_REQUIRED_ROLES[number];
-export type CharacterDirection = 'north' | 'east' | 'south' | 'west' | 'left' | 'right';
-export type CharacterAction = 'idle' | 'walk' | 'run' | 'jump' | 'fall' | 'land' | 'hurt';
+export type CharacterDirection =
+  | 'north' | 'north-east' | 'east' | 'south-east'
+  | 'south' | 'south-west' | 'west' | 'north-west'
+  | 'left' | 'right' | 'near' | 'far';
+export type CharacterAction =
+  | 'idle' | 'walk' | 'move' | 'run' | 'jump' | 'fall' | 'land' | 'hurt'
+  | 'attack' | 'attack-primary' | 'dash' | 'defeat' | 'interact' | 'talk';
 
 export interface GeneratedAssetRecord {
   readonly id: string;

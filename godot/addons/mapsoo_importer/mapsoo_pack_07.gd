@@ -3,6 +3,10 @@ extends RefCounted
 
 const PACK_VERSION := "0.1.0-alpha.10"
 const SCHEMA_VERSION := "0.7.0"
+const PlayerController = preload("res://addons/mapsoo_importer/runtime/mapsoo_player_controller.gd")
+const NpcInteractionController = preload(
+	"res://addons/mapsoo_importer/runtime/mapsoo_npc_interaction_controller.gd"
+)
 const RUNTIME_VERSION := "0.2.0"
 const POLICY := "side-platformer-complete-v1"
 const LAYERS := ["background-far", "background-mid", "background-near", "world", "foreground"]
@@ -38,7 +42,11 @@ const PNG_SIZES := {
 
 static func validate_and_prepare(manifest: Dictionary, pack_root: String, prepared: Dictionary, file_index: Dictionary) -> Dictionary:
 	var errors: Array[String] = prepared.errors
-	_require_keys(manifest, ["schema_version", "pack", "profile", "completeness_policy", "compatibility", "layers", "atlases", "roles", "character", "runtime", "files", "license", "provenance"], "Pack 0.7 manifest", errors)
+	var manifest_keys := ["schema_version", "pack", "profile", "completeness_policy", "compatibility", "layers", "atlases", "roles", "character", "runtime", "files", "license", "provenance"]
+	if manifest.has("layout"): manifest_keys.append("layout")
+	if manifest.has("material_palette"): manifest_keys.append("material_palette")
+	if manifest.has("terrain_autotiles"): manifest_keys.append("terrain_autotiles")
+	_require_keys(manifest, manifest_keys, "Pack 0.7 manifest", errors)
 	var pack := _dict(manifest.get("pack"), "pack", errors)
 	var compatibility := _dict(manifest.get("compatibility"), "compatibility", errors)
 	var importer := _dict(compatibility.get("importer"), "compatibility.importer", errors)
@@ -61,14 +69,18 @@ static func validate_and_prepare(manifest: Dictionary, pack_root: String, prepar
 		errors.append("Pack 0.7 compatibility contract is unsupported.")
 	if manifest.get("profile") != "side-platformer" or manifest.get("completeness_policy") != POLICY:
 		errors.append("Pack 0.7 requires the complete side-platformer profile.")
-	if output_license.get("id") != "CC0-1.0" or output_license.get("permits_redistribution") != true or output_license.get("notice_path") != "license-assets.md":
-		errors.append("Pack 0.7 generated assets must use the canonical redistributable CC0 contract.")
+	var public_license: bool = output_license.get("id") == "CC0-1.0" and output_license.get("permits_redistribution") == true and output_license.get("notice_path") == "license-assets.md"
+	var review_license: bool = output_license.get("id") == "LicenseRef-UNRELEASED" and output_license.get("permits_redistribution") == false and output_license.get("notice_path") == "license-assets.md"
+	if not public_license and not review_license:
+		errors.append("Pack 0.7 assets must use the canonical public or internal-review license contract.")
 	var provenance := _dict(manifest.get("provenance"), "provenance", errors)
 	var provider := _dict(provenance.get("provider"), "provenance.provider", errors)
 	_require_keys(provenance, ["provider", "output_provenance", "contains_generative_ai", "model_provider", "model", "seed", "human_curated"], "provenance", errors)
 	_require_keys(provider, ["id", "version"], "provenance.provider", errors)
 	if not _asset_id(str(provider.get("id", ""))) or str(provider.get("version", "")).is_empty() or provenance.get("output_provenance") not in ["procedural", "generative-ai", "hybrid"] or typeof(provenance.get("contains_generative_ai")) != TYPE_BOOL or typeof(provenance.get("human_curated")) != TYPE_BOOL or typeof(provenance.get("seed")) != TYPE_STRING or str(provenance.get("seed")).is_empty():
 		errors.append("Pack 0.7 provenance contract is invalid.")
+	if review_license and (provenance.get("contains_generative_ai") != true or provenance.get("output_provenance") not in ["generative-ai", "hybrid"] or typeof(provenance.get("model_provider")) != TYPE_STRING or str(provenance.get("model_provider", "")).is_empty() or typeof(provenance.get("model")) != TYPE_STRING or str(provenance.get("model", "")).is_empty() or provenance.get("human_curated") != false):
+		errors.append("Pack 0.7 internal-review provenance contract is invalid.")
 	var files: Variant = manifest.get("files")
 	if typeof(files) == TYPE_ARRAY:
 		for record_value: Variant in files:
@@ -311,13 +323,21 @@ static func _build_tileset(texture: Texture2D) -> TileSet:
 static func build_scene(prepared: Dictionary) -> Dictionary:
 	var root := Node2D.new(); root.name = "MapsooWorld"; root.set_meta("mapsoo_pack_id", prepared.pack_id); root.set_meta("mapsoo_profile", "side-platformer"); root.set_meta("mapsoo_schema_version", SCHEMA_VERSION); root.set_meta("mapsoo_bounds", prepared.bounds)
 	var layer_nodes := {}; var layer_names := {"background-far": "BackgroundFar", "background-mid": "BackgroundMid", "background-near": "BackgroundNear", "world": "World", "foreground": "Foreground"}
+	var parallax_scales := {"background-far": Vector2(0.12, 0.08), "background-mid": Vector2(0.35, 0.2), "background-near": Vector2(0.62, 0.38), "foreground": Vector2(1.08, 1.0)}
 	for index: int in LAYERS.size():
-		var layer := Node2D.new(); layer.name = layer_names[LAYERS[index]]; layer.z_index = index; layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; root.add_child(layer); layer.owner = root; layer_nodes[LAYERS[index]] = layer
+		var layer_id: String = LAYERS[index]
+		var layer: Node2D
+		if parallax_scales.has(layer_id):
+			var parallax := Parallax2D.new(); parallax.scroll_scale = parallax_scales[layer_id]; parallax.repeat_size = Vector2(prepared.bounds.size); layer = parallax
+		else:
+			layer = Node2D.new()
+		layer.name = layer_names[layer_id]; layer.z_index = index; layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; root.add_child(layer); layer.owner = root; layer_nodes[layer_id] = layer
 	_add_full_layer(root, layer_nodes["background-far"], prepared, "background.sky", "Sky")
 	_add_full_layer(root, layer_nodes["background-far"], prepared, "background.far", "Far")
 	_add_full_layer(root, layer_nodes["background-mid"], prepared, "background.mid", "Mid")
 	_add_full_layer(root, layer_nodes["background-near"], prepared, "background.near", "Near")
 	_add_full_layer(root, layer_nodes["foreground"], prepared, "foreground.overlay", "Overlay")
+	_add_surface_visuals(root, layer_nodes["world"], prepared)
 	for item_value: Variant in prepared.placements:
 		var item: Dictionary = item_value; var sprite := _placement_sprite(prepared, item); layer_nodes[item.layer].add_child(sprite); sprite.owner = root
 	_add_collision_tree(root, prepared)
@@ -346,6 +366,15 @@ static func _placement_sprite(prepared: Dictionary, item: Dictionary) -> Sprite2
 	sprite.set_meta("mapsoo_id", item.id); sprite.set_meta("mapsoo_role", role); sprite.set_meta("mapsoo_layer", item.layer); return sprite
 
 
+static func _add_surface_visuals(root: Node2D, parent: Node2D, prepared: Dictionary) -> void:
+	var container := Node2D.new(); container.name = "TerrainVisuals"; container.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; parent.add_child(container); container.owner = root
+	for item: Dictionary in prepared.surfaces:
+		var role := "terrain.one-way" if item.kind == "one-way" else "terrain.solid"
+		var region := _role_region(role); var atlas := AtlasTexture.new(); atlas.atlas = prepared.textures[prepared.role_paths[role]]; atlas.region = region; atlas.filter_clip = true
+		var sprite := Sprite2D.new(); sprite.name = _node_name(item.id); sprite.texture = atlas; sprite.position = Vector2(item.rect.position) + Vector2(item.rect.size) * 0.5; sprite.scale = Vector2(float(item.rect.size.x) / region.size.x, float(item.rect.size.y) / region.size.y); sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		sprite.set_meta("mapsoo_id", item.id); sprite.set_meta("mapsoo_role", role); sprite.set_meta("mapsoo_rect", item.rect); container.add_child(sprite); sprite.owner = root
+
+
 static func _role_region(role: String) -> Rect2:
 	if role.begins_with("terrain."): return Rect2(ROLES.slice(0, 6).find(role) * 32, 0, 32, 32)
 	if role.begins_with("hazard."): return Rect2(ROLES.slice(6, 9).find(role) * 32, 0, 32, 32)
@@ -358,11 +387,11 @@ static func _role_region(role: String) -> Rect2:
 static func _add_collision_tree(root: Node2D, prepared: Dictionary) -> void:
 	var collision_root := Node2D.new(); collision_root.name = "WorldCollision"; root.add_child(collision_root); collision_root.owner = root
 	for item: Dictionary in prepared.surfaces:
-		var body := StaticBody2D.new(); body.name = _node_name(item.id); body.position = Vector2(item.rect.position) + Vector2(item.rect.size) * 0.5; body.set_meta("mapsoo_id", item.id); body.set_meta("mapsoo_kind", item.kind); collision_root.add_child(body); body.owner = root
+		var body := StaticBody2D.new(); body.name = _node_name(item.id); body.position = Vector2(item.rect.position) + Vector2(item.rect.size) * 0.5; body.collision_layer = 1; body.collision_mask = 1; body.set_meta("mapsoo_id", item.id); body.set_meta("mapsoo_kind", item.kind); collision_root.add_child(body); body.owner = root
 		var shape_node := CollisionShape2D.new(); shape_node.name = "CollisionShape2D"; var shape := RectangleShape2D.new(); shape.size = Vector2(item.rect.size); shape_node.shape = shape; shape_node.one_way_collision = item.kind == "one-way"; body.add_child(shape_node); shape_node.owner = root
 	var hazards_root := Node2D.new(); hazards_root.name = "Hazards"; root.add_child(hazards_root); hazards_root.owner = root
 	for item: Dictionary in prepared.hazards:
-		var area := Area2D.new(); area.name = _node_name(item.id); area.position = Vector2(item.rect.position) + Vector2(item.rect.size) * 0.5; area.set_meta("mapsoo_id", item.id); area.set_meta("mapsoo_kind", item.kind); hazards_root.add_child(area); area.owner = root
+		var area := Area2D.new(); area.name = _node_name(item.id); area.position = Vector2(item.rect.position) + Vector2(item.rect.size) * 0.5; area.collision_layer = 2; area.collision_mask = 1; area.monitoring = true; area.monitorable = true; area.set_meta("mapsoo_id", item.id); area.set_meta("mapsoo_kind", item.kind); hazards_root.add_child(area); area.owner = root
 		var shape_node := CollisionShape2D.new(); shape_node.name = "CollisionShape2D"; var shape := RectangleShape2D.new(); shape.size = Vector2(item.rect.size); shape_node.shape = shape; area.add_child(shape_node); shape_node.owner = root
 
 
@@ -374,27 +403,66 @@ static func _add_traversal_tree(root: Node2D, prepared: Dictionary) -> void:
 
 static func _add_player(root: Node2D, prepared: Dictionary) -> void:
 	var spawn := Marker2D.new(); spawn.name = "PlayerSpawn"; spawn.position = Vector2(prepared.spawn); root.add_child(spawn); spawn.owner = root
-	var player := CharacterBody2D.new(); player.name = "Player"; player.position = spawn.position; root.add_child(player); player.owner = root
+	var player := CharacterBody2D.new(); player.name = "Player"; player.position = spawn.position; player.collision_layer = 1; player.collision_mask = 1; root.add_child(player); player.owner = root
+	player.set_script(PlayerController); player.set("mapsoo_profile", "side-platformer"); player.set("world_bounds", Rect2(prepared.bounds)); player.set("spawn_position", spawn.position)
+	var interaction := Node.new(); interaction.name = "NpcInteraction"; interaction.set_script(NpcInteractionController); player.add_child(interaction); interaction.owner = root
 	var frames := SpriteFrames.new(); frames.remove_animation("default"); var texture: Texture2D = prepared.textures[prepared.character.atlas]
 	for clip: Dictionary in prepared.character.clips:
 		var animation_name := str(clip.id).replace(".", "_"); frames.add_animation(animation_name); frames.set_animation_speed(animation_name, float(clip.fps)); frames.set_animation_loop(animation_name, true)
 		for frame: Dictionary in clip.frames:
 			var atlas := AtlasTexture.new(); atlas.atlas = texture; atlas.region = Rect2(frame.x, frame.y, 32, 64); atlas.filter_clip = true; frames.add_frame(animation_name, atlas)
-	var visual := AnimatedSprite2D.new(); visual.name = "Visual"; visual.sprite_frames = frames; visual.animation = "idle_right"; visual.offset = Vector2(0, -28); visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; player.add_child(visual); visual.owner = root
+	var visual := AnimatedSprite2D.new(); visual.name = "Visual"; visual.sprite_frames = frames; visual.animation = "idle_right"; visual.offset = Vector2(0, -28); visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST; visual.set_meta("mapsoo_runtime_slot_id", "player"); player.add_child(visual); visual.owner = root
 	var collision := CollisionShape2D.new(); collision.name = "CollisionShape2D"; collision.position = Vector2(0, -20); var capsule := CapsuleShape2D.new(); capsule.radius = 8; capsule.height = 40; collision.shape = capsule; player.add_child(collision); collision.owner = root
+	var camera := Camera2D.new(); camera.name = "Camera2D"; camera.position_smoothing_enabled = false; player.add_child(camera); camera.owner = root
 
 
 static func validate_staged_scene(world: Node, expected_placements: int) -> Dictionary:
 	var valid: bool = world.name == "MapsooWorld" and world.get_meta("mapsoo_profile", "") == "side-platformer"
-	for name: String in ["BackgroundFar", "BackgroundMid", "BackgroundNear", "World", "Foreground"]: valid = valid and world.get_node_or_null(name) is Node2D
-	var world_layer := world.get_node_or_null("World") as Node2D; valid = valid and world_layer != null and world_layer.get_child_count() == expected_placements
+	for name: String in ["BackgroundFar", "BackgroundMid", "BackgroundNear", "Foreground"]: valid = valid and world.get_node_or_null(name) is Parallax2D
+	valid = valid and world.get_node_or_null("World") is Node2D
+	var expected_scales := {"BackgroundFar": Vector2(0.12, 0.08), "BackgroundMid": Vector2(0.35, 0.2), "BackgroundNear": Vector2(0.62, 0.38), "Foreground": Vector2(1.08, 1.0)}
+	for name: String in expected_scales: valid = valid and (world.get_node_or_null(name) as Parallax2D).scroll_scale == expected_scales[name]
+	var placement_count := 0
+	for layer_name: String in ["BackgroundFar", "BackgroundMid", "BackgroundNear", "World", "Foreground"]:
+		var placement_layer := world.get_node_or_null(layer_name)
+		if placement_layer == null: continue
+		for child: Node in placement_layer.get_children():
+			if child.has_meta("mapsoo_id") and child.has_meta("mapsoo_role"): placement_count += 1
+	valid = valid and placement_count == expected_placements
 	var collision := world.get_node_or_null("WorldCollision") as Node2D; var hazards := world.get_node_or_null("Hazards") as Node2D; var graph := world.get_node_or_null("WorldTraversal") as Node2D
 	valid = valid and collision != null and collision.get_child_count() > 0 and hazards != null and graph != null and graph.get_child_count() > 1 and graph.has_meta("mapsoo_edges") and graph.has_meta("mapsoo_exit_node_id")
-	var spawn := world.get_node_or_null("PlayerSpawn") as Marker2D; var player := world.get_node_or_null("Player") as CharacterBody2D; var visual := world.get_node_or_null("Player/Visual") as AnimatedSprite2D; var shape := world.get_node_or_null("Player/CollisionShape2D") as CollisionShape2D
-	valid = valid and spawn != null and player != null and player.position == spawn.position and visual != null and visual.sprite_frames != null and shape != null and shape.shape is CapsuleShape2D
+	var terrain_visuals := world.get_node_or_null("World/TerrainVisuals") as Node2D
+	valid = valid and terrain_visuals != null and terrain_visuals.get_child_count() == collision.get_child_count()
+	var spawn := world.get_node_or_null("PlayerSpawn") as Marker2D; var player := world.get_node_or_null("Player") as CharacterBody2D; var visual := world.get_node_or_null("Player/Visual") as AnimatedSprite2D; var shape := world.get_node_or_null("Player/CollisionShape2D") as CollisionShape2D; var camera := world.get_node_or_null("Player/Camera2D") as Camera2D
+	valid = valid and spawn != null and player != null and player.position == spawn.position and player.get_script() == PlayerController and player.get("mapsoo_profile") == "side-platformer" and player.get_node_or_null("NpcInteraction") != null and player.get_node("NpcInteraction").get_script() == NpcInteractionController and visual != null and visual.sprite_frames != null and str(visual.get_meta("mapsoo_runtime_slot_id", "")) == "player" and shape != null and shape.shape is CapsuleShape2D and camera != null
+	valid = valid and _sprite_textures_have_persisted_pixels(world)
 	if visual != null and visual.sprite_frames != null:
-		for clip: String in CLIPS: valid = valid and visual.sprite_frames.has_animation(clip.replace(".", "_")) and visual.sprite_frames.get_frame_count(clip.replace(".", "_")) > 0
+		for clip: String in CLIPS:
+			var animation_name := clip.replace(".", "_")
+			valid = valid and visual.sprite_frames.has_animation(animation_name) and visual.sprite_frames.get_frame_count(animation_name) > 0
+			if visual.sprite_frames.has_animation(animation_name):
+				for frame_index: int in visual.sprite_frames.get_frame_count(animation_name):
+					valid = valid and _texture_has_persisted_pixels(visual.sprite_frames.get_frame_texture(animation_name, frame_index))
 	return {"ok": valid, "error": "" if valid else "Staged Pack 0.7 scene is incomplete."}
+
+
+static func _sprite_textures_have_persisted_pixels(node: Node) -> bool:
+	if node is Sprite2D and not _texture_has_persisted_pixels((node as Sprite2D).texture):
+		return false
+	for child: Node in node.get_children():
+		if not _sprite_textures_have_persisted_pixels(child):
+			return false
+	return true
+
+
+static func _texture_has_persisted_pixels(value: Texture2D) -> bool:
+	var texture := value
+	if texture is AtlasTexture:
+		texture = (texture as AtlasTexture).atlas
+	if texture == null:
+		return false
+	var image := texture.get_image()
+	return image != null and not image.is_empty() and not image.get_data().is_empty()
 
 
 static func _validate_exact_inventory(pack_root: String, file_index: Dictionary, errors: Array[String]) -> void:
@@ -415,7 +483,14 @@ static func _load_png(path: String) -> Dictionary:
 
 
 static func _texture(image: Image) -> PortableCompressedTexture2D:
-	var texture := PortableCompressedTexture2D.new(); texture.create_from_image(image, PortableCompressedTexture2D.COMPRESSION_MODE_LOSSLESS); return texture
+	var texture := PortableCompressedTexture2D.new()
+	# PortableCompressedTexture2D discards its compressed source buffer by
+	# default. ResourceSaver can then persist only size_override, which reloads
+	# as a blank texture. This flag must be set before create_from_image() in
+	# both Godot 4.3 and 4.7; setting it afterwards cannot recover the buffer.
+	texture.keep_compressed_buffer = true
+	texture.create_from_image(image, PortableCompressedTexture2D.COMPRESSION_MODE_LOSSLESS)
+	return texture
 
 
 static func _read_json(path: String) -> Dictionary:

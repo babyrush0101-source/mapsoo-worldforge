@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-layout-constraints-1.0.schema.json",
+  "title": "Mapsoo WorldLayoutConstraints 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "origin",
+    "profile",
+    "source",
+    "route_shape",
+    "scale",
+    "verticality",
+    "water",
+    "settlement_density",
+    "hazard_level",
+    "landmark_labels"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "world-layout-constraints" },
+    "origin": { "enum": ["confirmed-intent", "compatibility-derived"] },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intake_id",
+        "session_revision",
+        "map_layout_checkpoint_sha256",
+        "layout_facts_sha256"
+      ],
+      "properties": {
+        "intake_id": { "$ref": "#/$defs/id" },
+        "session_revision": { "type": "integer", "minimum": 4 },
+        "map_layout_checkpoint_sha256": { "$ref": "#/$defs/sha256" },
+        "layout_facts_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "route_shape": { "enum": ["direct", "fork-rejoin", "loop"] },
+    "scale": { "enum": ["compact", "standard", "extended"] },
+    "verticality": { "enum": ["low", "medium", "high"] },
+    "water": { "enum": ["none", "crossing", "basin"] },
+    "settlement_density": { "enum": ["sparse", "settled", "dense"] },
+    "hazard_level": { "enum": ["calm", "guarded", "dangerous"] },
+    "landmark_labels": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/text120" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "text120": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+    }
+  }
+}

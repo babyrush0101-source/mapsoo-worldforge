@@ -1,6 +1,6 @@
 # Alpha10: complete side-platformer world assets
 
-Status: contract implementation in progress. Nothing in this document is a published Alpha10, external-adoption, External Host-production, itch.io, model-understanding, or gameplay claim.
+Status: contract implementation in progress. The controller and physics tests described below are local Alpha10 candidates, not a published Alpha10, external-adoption, External-Host-production, itch.io, model-understanding, combat, or complete-game claim.
 
 ## Outcome
 
@@ -94,11 +94,13 @@ The exact candidate ZIP must pass Linux and Windows with Godot 4.3 and 4.7:
 1. first import reports `created`;
 2. the clean repeat reports `unchanged` without rewriting managed bytes;
 3. the generated scene and resources load;
-4. profile/schema metadata, layer order, atlas regions, twelve clips, pivot, spawn, parallax and traversal graph match portable data;
-5. real physics checks prove solid landing, one-way landing from above and pass-through from below, plus hazard entry;
+4. profile/schema metadata, layer order, atlas regions, twelve clips, pivot, spawn, `Parallax2D` scroll scales and traversal graph match portable data;
+5. real input and physics frames prove horizontal movement, jump, solid landing, one-way landing from above, one-way pass-through from below, hazard respawn, exit reporting and camera bounds;
 6. modified managed output returns `conflict` and is preserved;
 7. invalid geometry, digests, roles, frames, spawn, reachability or cross-profile data fail before commit;
 8. all historical Alpha1–Alpha9 exact-pack imports remain green.
+
+The importer must set `PortableCompressedTexture2D.keep_compressed_buffer` before calling `create_from_image()`. Godot 4.3 and 4.7 otherwise save only `size_override`, producing a structurally valid but visually blank reloaded scene. The texture persistence probe and reloaded-scene assertions are release blockers.
 
 ## Stop conditions
 
@@ -109,7 +111,23 @@ Alpha10 cannot be released if it:
 - claims slopes, one-way collision, hazards or parallax without real portable data and Godot checks;
 - changes Alpha9 schemas, attachments or pinned hashes;
 - embeds reference bytes, private paths, raw digests, free-text descriptions or private External Host content in the public pack;
-- claims a player controller, combat, platform physics tuning, complete game, external adoption, or External Host production integration.
+- claims combat, final platform physics tuning, a complete game, an end-user launch shell, external adoption, or External Host production integration.
+
+## Current playable candidate
+
+The trusted importer now attaches its own reusable `CharacterBody2D` controller. Portable packs still contain no scripts. The controller uses Godot's built-in `ui_left`, `ui_right`, `ui_up`, `ui_down`, and `ui_accept` actions and does not mutate the host project's InputMap.
+
+The Pack 0.7 scene currently proves:
+
+- horizontal movement and facing animation;
+- jump, gravity, solid landing, and one-way collision from both directions;
+- generated hazard entry followed by spawn reset;
+- generated exit-marker reporting;
+- camera limits derived from runtime bounds;
+- four configured `Parallax2D` containers with transparent generated planes.
+- persisted raster pixels after scene save/reload, plus a real rendered-frame visual QA gate.
+
+This makes the imported scene mechanically explorable. The reusable runtime shell can select and launch an exact imported scene path; the web workflow still needs to bind that launch to an approved, frozen world revision before exposing an “Enter world” action.
 
 ## Implementation order
 

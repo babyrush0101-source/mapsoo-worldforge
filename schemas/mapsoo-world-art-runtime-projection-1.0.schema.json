@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-art-runtime-projection-1.0.schema.json",
+  "title": "Mapsoo WorldArtRuntimeProjection 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "projection_id",
+    "profile",
+    "source",
+    "rights",
+    "images",
+    "assets",
+    "bindings",
+    "hazards"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "world-art-runtime-projection" },
+    "projection_id": {
+      "type": "string",
+      "pattern": "^world-art-runtime-projection-[a-f0-9]{16}$"
+    },
+    "profile": { "$ref": "#/$defs/profile" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variant_map_id",
+        "variant_map_sha256",
+        "layout_plan_sha256",
+        "production_art_plan_id",
+        "production_art_plan_sha256",
+        "requirements_sha256",
+        "run_set_sha256",
+        "reviewed_slot_inventory_sha256",
+        "review_record_sha256"
+      ],
+      "properties": {
+        "variant_map_id": { "$ref": "#/$defs/safeId100" },
+        "variant_map_sha256": { "$ref": "#/$defs/sha256" },
+        "layout_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "production_art_plan_id": { "$ref": "#/$defs/safeId100" },
+        "production_art_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "requirements_sha256": { "$ref": "#/$defs/sha256" },
+        "run_set_sha256": { "$ref": "#/$defs/sha256" },
+        "reviewed_slot_inventory_sha256": { "$ref": "#/$defs/sha256" },
+        "review_record_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "rights": { "$ref": "#/$defs/rights" },
+    "images": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/image" }
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": { "$ref": "#/$defs/asset" }
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": { "$ref": "#/$defs/binding" }
+    },
+    "hazards": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/hazard" }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "safeId100": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "safeId160": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 160
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 100
+    },
+    "pngPath": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*\\.png$"
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution", "license"],
+      "properties": {
+        "distribution": { "enum": ["private", "internal-review", "public"] },
+        "license": {
+          "enum": [
+            "CC0-1.0",
+            "CC-BY-4.0",
+            "CC-BY-SA-4.0",
+            "LicenseRef-Proprietary"
+          ]
+        },
+        "attribution": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "size": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 1, "maximum": 8192 },
+        { "type": "integer", "minimum": 1, "maximum": 8192 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "point": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 0, "maximum": 8192 },
+        { "type": "integer", "minimum": 0, "maximum": 8192 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0, "maximum": 131071 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 131071 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 8192 }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "path",
+        "media_type",
+        "bytes",
+        "sha256",
+        "output_sha256",
+        "width",
+        "height",
+        "cell_size",
+        "pivot",
+        "alpha_policy"
+      ],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/safeId160" },
+        "path": { "$ref": "#/$defs/pngPath" },
+        "media_type": { "const": "image/png" },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "output_sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "cell_size": { "$ref": "#/$defs/size" },
+        "pivot": { "$ref": "#/$defs/point" },
+        "alpha_policy": { "enum": ["opaque", "straight-alpha"] }
+      }
+    },
+    "pose": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "direction", "frame_index", "duration_ms", "region"],
+      "properties": {
+        "action": { "$ref": "#/$defs/safeId160" },
+        "direction": { "$ref": "#/$defs/safeId160" },
+        "frame_index": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "duration_ms": { "type": "integer", "minimum": 16, "maximum": 10000 },
+        "region": { "$ref": "#/$defs/region" }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "slot_id",
+        "requirement_id",
+        "role",
+        "variant_id",
+        "image_path",
+        "region",
+        "cell_sha256",
+        "poses"
+      ],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/safeId160" },
+        "slot_id": { "$ref": "#/$defs/safeId160" },
+        "requirement_id": { "$ref": "#/$defs/safeId160" },
+        "role": { "$ref": "#/$defs/role" },
+        "variant_id": { "$ref": "#/$defs/safeId160" },
+        "image_path": { "$ref": "#/$defs/pngPath" },
+        "region": { "$ref": "#/$defs/region" },
+        "cell_sha256": { "$ref": "#/$defs/sha256" },
+        "poses": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/pose" }
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "usage_kind",
+        "usage_id",
+        "task_id",
+        "slot_id",
+        "role",
+        "variant_id",
+        "image_path",
+        "region",
+        "cell_sha256",
+        "poses"
+      ],
+      "properties": {
+        "usage_kind": {
+          "enum": ["terrain-material", "landmark", "hazard", "character"]
+        },
+        "usage_id": { "$ref": "#/$defs/safeId160" },
+        "task_id": { "$ref": "#/$defs/safeId160" },
+        "slot_id": { "$ref": "#/$defs/safeId160" },
+        "role": { "$ref": "#/$defs/role" },
+        "variant_id": { "$ref": "#/$defs/safeId160" },
+        "image_path": { "$ref": "#/$defs/pngPath" },
+        "region": { "$ref": "#/$defs/region" },
+        "cell_sha256": { "$ref": "#/$defs/sha256" },
+        "poses": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/pose" }
+        }
+      }
+    },
+    "hazard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hazard_id",
+        "binding_usage_id",
+        "kind",
+        "behavior",
+        "logical_rect"
+      ],
+      "properties": {
+        "hazard_id": { "$ref": "#/$defs/safeId160" },
+        "binding_usage_id": { "$ref": "#/$defs/safeId160" },
+        "kind": { "enum": ["spikes", "pit", "contact"] },
+        "behavior": { "const": "respawn" },
+        "logical_rect": { "$ref": "#/$defs/region" },
+        "telegraph_usage_id": { "$ref": "#/$defs/safeId160" }
+      }
+    }
+  }
+}

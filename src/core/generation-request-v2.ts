@@ -6,6 +6,8 @@ import {
   type RuntimeReferenceImage,
 } from './reference-image';
 import { WORLD_ASSET_PROFILES, type WorldAssetProfile } from './asset-profile';
+import type { CharacterIdentitySignature } from './character-identity-signature';
+import type { EnvironmentArtSignature } from './environment-art-signature';
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const CONTROL_CHARACTER = /[\u0000-\u001f\u007f-\u009f]/;
@@ -24,6 +26,10 @@ export interface GenerationRequestV2 {
 export interface GenerationRequestJobV2 {
   readonly request: GenerationRequestV2;
   readonly references: readonly [RuntimeReferenceImage, RuntimeReferenceImage];
+  /** Runtime-only decoded visual identity. Never serialized into the public request. */
+  readonly characterIdentity?: CharacterIdentitySignature;
+  /** Runtime-only decoded environment grammar. Never serialized into the public request. */
+  readonly environmentArt?: EnvironmentArtSignature;
 }
 
 export type GenerationRequestV2ErrorCode =

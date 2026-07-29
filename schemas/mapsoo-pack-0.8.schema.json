@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://babyrush0101-source.github.io/mapsoo-kids/schemas/mapsoo-pack-0.8.schema.json",
+  "title": "Mapsoo Complete Isometric Action Pack Manifest 0.8",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "pack", "profile", "completeness_policy", "compatibility", "layers", "atlases", "roles", "characters", "runtime", "files", "license", "provenance"],
+  "properties": {
+    "schema_version": { "const": "0.8.0" },
+    "pack": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "title", "version", "generator", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "title": { "$ref": "#/$defs/text" },
+        "version": { "const": "0.1.0-alpha.11" },
+        "generator": { "const": { "name": "Mapsoo Worldsmith", "version": "0.1.0-alpha.11" } },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "profile": { "const": "isometric-action" },
+    "completeness_policy": { "const": "isometric-action-complete-v1" },
+    "compatibility": { "const": { "godot_min": "4.3", "grid": "diamond-64x32", "art_style": "pixel_art", "importer": { "id": "mapsoo_importer", "min_version": "0.1.0-alpha.11" } } },
+    "layers": { "type": "array", "minItems": 7, "maxItems": 7, "items": { "$ref": "#/$defs/layer" } },
+    "atlases": { "type": "array", "minItems": 10, "maxItems": 10, "items": { "$ref": "#/$defs/atlas" } },
+    "roles": { "type": "array", "minItems": 36, "maxItems": 36, "items": { "$ref": "#/$defs/role" } },
+    "characters": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "$ref": "#/$defs/character" } },
+    "runtime": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scene", "collision", "navigation", "spawn"],
+      "properties": {
+        "scene": { "$ref": "#/$defs/pathObject" }, "collision": { "$ref": "#/$defs/pathObject" },
+        "navigation": { "$ref": "#/$defs/pathObject" }, "spawn": { "$ref": "#/$defs/point" }
+      }
+    },
+    "layout": { "$ref": "#/$defs/layoutBinding" },
+    "material_palette": { "$ref": "#/$defs/materialPaletteBinding" },
+    "terrain_autotiles": { "$ref": "#/$defs/terrainAutotileBinding" },
+    "files": { "type": "array", "minItems": 1, "maxItems": 512, "items": { "$ref": "#/$defs/file" } },
+    "license": {
+      "type": "object", "additionalProperties": false, "required": ["output"],
+      "properties": { "output": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "notice_path", "permits_redistribution"],
+        "properties": { "id": { "$ref": "#/$defs/text" }, "notice_path": { "$ref": "#/$defs/path" }, "permits_redistribution": { "const": true } }
+      } }
+    },
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "output_provenance", "contains_generative_ai", "model_provider", "model", "seed", "human_curated"],
+      "properties": {
+        "provider": { "type": "object", "additionalProperties": false, "required": ["id", "version"], "properties": { "id": { "$ref": "#/$defs/id" }, "version": { "$ref": "#/$defs/text" } } },
+        "output_provenance": { "enum": ["procedural", "generative-ai", "hybrid"] },
+        "contains_generative_ai": { "type": "boolean" }, "model_provider": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] }, "seed": { "$ref": "#/$defs/text" }, "human_curated": { "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*$" },
+    "text": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "path": { "type": "string", "minLength": 1, "maxLength": 240, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*(?:/[A-Za-z0-9][A-Za-z0-9._+!#$&^~-]*)*$" },
+    "point": { "type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": { "x": { "type": "integer", "minimum": 0, "maximum": 8191 }, "y": { "type": "integer", "minimum": 0, "maximum": 8191 } } },
+    "pathObject": { "type": "object", "additionalProperties": false, "required": ["path"], "properties": { "path": { "$ref": "#/$defs/path" } } },
+    "layoutBinding": { "type": "object", "additionalProperties": false, "required": ["schema_version", "document_type", "plan_id", "path", "sha256"], "properties": { "schema_version": { "const": "1.0.0" }, "document_type": { "const": "world-layout-plan" }, "plan_id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }, "path": { "const": "world-layout-plan.json" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "materialPaletteBinding": { "type": "object", "additionalProperties": false, "required": ["schema_version", "document_type", "palette_id", "layout_plan_sha256", "path", "sha256"], "properties": { "schema_version": { "const": "1.0.0" }, "document_type": { "const": "world-material-palette" }, "palette_id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }, "layout_plan_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "path": { "const": "world-material-palette.json" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "terrainAutotileBinding": { "type": "object", "additionalProperties": false, "required": ["schema_version", "document_type", "set_id", "layout_plan_sha256", "material_palette_sha256", "path", "sha256"], "properties": { "schema_version": { "const": "1.0.0" }, "document_type": { "const": "world-terrain-autotile-set" }, "set_id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }, "layout_plan_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "material_palette_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "path": { "const": "world-terrain-autotiles.json" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "layer": { "type": "object", "additionalProperties": false, "required": ["id", "order"], "properties": { "id": { "enum": ["void", "floor", "elevation", "walls", "props", "actors", "effects"] }, "order": { "type": "integer", "minimum": 0, "maximum": 6 } } },
+    "atlas": { "type": "object", "additionalProperties": false, "required": ["id", "path"], "properties": { "id": { "enum": ["terrain", "hazards", "props", "structures", "collectibles", "effects", "shadows", "player", "enemy-melee", "enemy-ranged"] }, "path": { "$ref": "#/$defs/path" } } },
+    "role": { "type": "object", "additionalProperties": false, "required": ["role", "path"], "properties": { "role": { "type": "string", "minLength": 1, "maxLength": 80 }, "path": { "$ref": "#/$defs/path" } } },
+    "frame": { "$ref": "#/$defs/point" },
+    "clip": {
+      "type": "object", "additionalProperties": false, "required": ["id", "action", "direction", "fps", "frames"],
+      "properties": {
+        "id": { "type": "string" }, "action": { "enum": ["idle", "move", "attack-primary", "dash", "hurt", "defeat"] },
+        "direction": { "enum": ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"] },
+        "fps": { "type": "number", "exclusiveMinimum": 0, "maximum": 60 },
+        "frames": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/frame" } }
+      }
+    },
+    "character": {
+      "type": "object", "additionalProperties": false, "required": ["id", "atlas", "frame_size", "pivot", "clips"],
+      "properties": {
+        "id": { "enum": ["player", "enemy-melee", "enemy-ranged"] }, "atlas": { "$ref": "#/$defs/path" },
+        "frame_size": { "const": [48, 64] }, "pivot": { "const": [24, 58] },
+        "clips": { "type": "array", "minItems": 40, "maxItems": 48, "items": { "$ref": "#/$defs/clip" } }
+      }
+    },
+    "file": {
+      "type": "object", "additionalProperties": false, "required": ["path", "media_type", "bytes", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" }, "media_type": { "enum": ["image/png", "application/json", "application/schema+json", "text/markdown"] },
+        "bytes": { "type": "integer", "minimum": 1 }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

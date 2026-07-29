@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-production-art-progress-1.0.schema.json",
+  "title": "Mapsoo production art progress 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "workflow_id",
+    "plan_id",
+    "profile",
+    "state_revision",
+    "phase",
+    "next_action",
+    "attention_task_ids",
+    "direction",
+    "requests",
+    "coverage",
+    "tasks",
+    "run_set_ready",
+    "production_review_required",
+    "runtime_verified",
+    "runner_delivery_ready"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "production-art-progress" },
+    "workflow_id": { "$ref": "#/$defs/id" },
+    "plan_id": { "$ref": "#/$defs/id" },
+    "profile": { "$ref": "#/$defs/profile" },
+    "state_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "phase": {
+      "enum": [
+        "ready",
+        "awaiting-scene-direction",
+        "awaiting-direction-approval",
+        "running",
+        "review-required",
+        "budget-exhausted",
+        "complete"
+      ]
+    },
+    "next_action": {
+      "enum": [
+        "generate-scene-direction",
+        "wait-for-running-task",
+        "retry-or-reconcile-scene-direction",
+        "approve-scene-direction",
+        "generate-next-asset-task",
+        "retry-or-reconcile-asset-task",
+        "start-new-budgeted-workflow",
+        "assemble-production-review-pack"
+      ]
+    },
+    "next_task_id": { "$ref": "#/$defs/id" },
+    "active_task_id": { "$ref": "#/$defs/id" },
+    "attention_task_ids": {
+      "type": "array",
+      "maxItems": 24,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generated", "approved"],
+      "properties": {
+        "generated": { "type": "boolean" },
+        "approved": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "approved": { "const": true } },
+            "required": ["approved"]
+          },
+          "then": {
+            "properties": { "generated": { "const": true } }
+          }
+        }
+      ]
+    },
+    "requests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["budget", "started", "remaining"],
+      "properties": {
+        "budget": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "started": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "remaining": { "type": "integer", "minimum": 0, "maximum": 64 }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_tasks",
+        "succeeded_tasks",
+        "total_roles",
+        "succeeded_roles",
+        "missing_roles"
+      ],
+      "properties": {
+        "total_tasks": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "succeeded_tasks": { "type": "integer", "minimum": 0, "maximum": 24 },
+        "total_roles": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "succeeded_roles": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "missing_roles": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/role" }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 24,
+      "items": { "$ref": "#/$defs/task" }
+    },
+    "run_set_ready": { "type": "boolean" },
+    "production_review_required": { "const": true },
+    "runtime_verified": { "const": false },
+    "runner_delivery_ready": { "const": false }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "role": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "kind", "status", "attempts", "roles"],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/id" },
+        "kind": {
+          "enum": [
+            "scene-direction",
+            "opaque-tile-sheet",
+            "transparent-prop-sheet",
+            "character-animation-sheet",
+            "background-layer",
+            "effect-sheet"
+          ]
+        },
+        "status": {
+          "enum": ["pending", "running", "succeeded", "rejected", "uncertain"]
+        },
+        "attempts": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/role" }
+        }
+      }
+    }
+  }
+}

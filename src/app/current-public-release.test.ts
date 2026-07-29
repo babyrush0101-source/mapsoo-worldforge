@@ -35,7 +35,7 @@ describe('current public release links', () => {
       const parsed = new URL(url);
       expect(parsed.protocol).toBe('https:');
       expect(parsed.hostname).toBe('github.com');
-      expect(parsed.pathname).toContain('/babyrush0101-source/mapsoo-kids/');
+      expect(parsed.pathname).toContain('/babyrush0101-source/mapsoo-worldforge/');
     }
   });
 
@@ -43,7 +43,7 @@ describe('current public release links', () => {
     expect(CURRENT_PUBLIC_RELEASE.assetPack).toEqual({
       id: 'sunny-meadow',
       filename: 'mapsoo-sunny-meadow-v0.1.0-alpha.7.zip',
-      url: 'https://github.com/babyrush0101-source/mapsoo-kids/releases/download/v0.1.0-alpha.9/mapsoo-sunny-meadow-v0.1.0-alpha.7.zip',
+      url: 'https://github.com/babyrush0101-source/mapsoo-worldforge/releases/download/v0.1.0-alpha.9/mapsoo-sunny-meadow-v0.1.0-alpha.7.zip',
       sha256: '6113b30fec3615b72730d8d775919aa3c5552285c614b6916a109b887ab8012c',
     });
     expect(CURRENT_PUBLIC_RELEASE.assetPacks.map(({ id, sha256 }) => [id, sha256])).toEqual([
@@ -53,12 +53,12 @@ describe('current public release links', () => {
     ]);
     expect(CURRENT_PUBLIC_RELEASE.godotImporter).toEqual({
       filename: 'mapsoo-godot-importer-v0.1.0-alpha.9.zip',
-      url: 'https://github.com/babyrush0101-source/mapsoo-kids/releases/download/v0.1.0-alpha.9/mapsoo-godot-importer-v0.1.0-alpha.9.zip',
+      url: 'https://github.com/babyrush0101-source/mapsoo-worldforge/releases/download/v0.1.0-alpha.9/mapsoo-godot-importer-v0.1.0-alpha.9.zip',
       sha256: 'bfb736d044818b01955feb35d84b438fe6c139e77764907847a1f4d89ea7b526',
     });
     expect(CURRENT_PUBLIC_RELEASE.completeFarmPack).toEqual({
       filename: 'mapsoo-alpha9-godot-smoke-v0.1.0-alpha.9.zip',
-      url: 'https://github.com/babyrush0101-source/mapsoo-kids/releases/download/v0.1.0-alpha.9/mapsoo-alpha9-godot-smoke-v0.1.0-alpha.9.zip',
+      url: 'https://github.com/babyrush0101-source/mapsoo-worldforge/releases/download/v0.1.0-alpha.9/mapsoo-alpha9-godot-smoke-v0.1.0-alpha.9.zip',
       sha256: '10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c',
     });
   });

@@ -1,0 +1,13 @@
+; Canonical LF text is required because the Pi inventory hashes exact bytes.
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/mapsoo_importer/runtime/mapsoo_layered_depth_production_candidate.gd" id="1_runtime"]
+
+[node name="MapsooWorld" type="Node2D"]
+script = ExtResource("1_runtime")
+metadata/mapsoo_pack_id = "layered-depth-2d-production-v1"
+metadata/mapsoo_profile = "layered-depth-2d"
+metadata/mapsoo_distribution = "internal-review"
+metadata/mapsoo_output_license = "UNRELEASED"
+metadata/mapsoo_standard_pack = false
+metadata/mapsoo_runtime_candidate = true

@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.worldforge/schemas/mapsoo-private-production-handoff-1.0.schema.json",
+  "title": "Mapsoo private production handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "intake_id",
+    "intake_sha256",
+    "profile",
+    "target",
+    "intake",
+    "references",
+    "instructions",
+    "privacy",
+    "remote_request_count"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "private-production-handoff" },
+    "intake_id": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "intake_sha256": { "$ref": "#/$defs/sha256" },
+    "profile": {
+      "enum": [
+        "topdown-farm",
+        "side-platformer",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "target": {
+      "enum": ["desktop", "raspberry-pi-4b", "web"]
+    },
+    "intake": {
+      "allOf": [
+        { "$ref": "#/$defs/file" },
+        {
+          "type": "object",
+          "properties": {
+            "path": { "const": "confirmed-intake.json" }
+          }
+        }
+      ]
+    },
+    "references": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/reference" }
+    },
+    "instructions": {
+      "allOf": [
+        { "$ref": "#/$defs/file" },
+        {
+          "type": "object",
+          "properties": {
+            "path": { "const": "README.md" }
+          }
+        }
+      ]
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contains_original_references",
+        "public_distribution_allowed"
+      ],
+      "properties": {
+        "contains_original_references": { "const": true },
+        "public_distribution_allowed": { "const": false }
+      }
+    },
+    "remote_request_count": { "const": 0 }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "portablePath": {
+      "type": "string",
+      "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/portablePath" },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 33554432
+        },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "path",
+        "media_type",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "role": { "enum": ["environment-style", "character"] },
+        "path": {
+          "type": "string",
+          "maxLength": 240,
+          "pattern": "^references/[A-Za-z0-9][A-Za-z0-9._/-]*$"
+        },
+        "media_type": { "enum": ["image/png", "image/jpeg"] },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 33554432
+        },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

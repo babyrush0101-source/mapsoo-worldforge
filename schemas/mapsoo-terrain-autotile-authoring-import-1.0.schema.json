@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://babyrush0101-source.github.io/mapsoo-worldforge/schemas/mapsoo-terrain-autotile-authoring-import-1.0.schema.json",
+  "title": "Mapsoo terrain autotile authoring import report 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "adapter",
+    "source",
+    "output",
+    "mapping",
+    "human_review",
+    "public_release"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "terrain-autotile-authoring-import" },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "const": "spritecook-topdown17-local-export" },
+        "version": { "const": "1.0.0" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "convention",
+        "sha256",
+        "width",
+        "height",
+        "tile_size",
+        "grid"
+      ],
+      "properties": {
+        "convention": { "const": "spritecook-topdown-17-edge-mask-guide" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "type": "integer", "minimum": 80, "maximum": 326 },
+        "height": { "type": "integer", "minimum": 80, "maximum": 326 },
+        "tile_size": { "enum": [16, 32, 64] },
+        "grid": { "enum": ["none", "one-pixel"] }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "convention",
+        "bit_order",
+        "sha256",
+        "width",
+        "height",
+        "cell_width",
+        "cell_height"
+      ],
+      "properties": {
+        "convention": { "const": "worldforge-edge-mask-16" },
+        "bit_order": {
+          "type": "array",
+          "prefixItems": [
+            { "const": "north" },
+            { "const": "east" },
+            { "const": "south" },
+            { "const": "west" }
+          ],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "enum": [64, 128, 256] },
+        "height": { "enum": [64, 128, 256] },
+        "cell_width": { "enum": [16, 32, 64] },
+        "cell_height": { "enum": [16, 32, 64] }
+      }
+    },
+    "mapping": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mask",
+          "source_column",
+          "source_row",
+          "target_column",
+          "target_row"
+        ],
+        "properties": {
+          "mask": { "type": "integer", "minimum": 0, "maximum": 15 },
+          "source_column": { "type": "integer", "minimum": 0, "maximum": 3 },
+          "source_row": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "target_column": { "type": "integer", "minimum": 0, "maximum": 3 },
+          "target_row": { "type": "integer", "minimum": 0, "maximum": 3 }
+        }
+      }
+    },
+    "human_review": { "const": "required" },
+    "public_release": { "const": "not-authorized" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

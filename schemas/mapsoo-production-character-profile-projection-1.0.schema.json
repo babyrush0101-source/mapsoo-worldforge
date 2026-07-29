@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-production-character-profile-projection-1.0.schema.json",
+  "title": "Mapsoo Production Character Profile Projection 1.0",
+  "description": "Source-minimized evidence for projecting one normalized production player sheet into a portable CharacterProfileRevision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "profile",
+    "plan_id",
+    "task_id",
+    "role",
+    "character_id",
+    "profile_revision_id",
+    "profile_revision_sha256",
+    "source",
+    "atlas",
+    "checks",
+    "human_review"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "production-character-profile-projection" },
+    "profile": { "$ref": "#/$defs/profile" },
+    "plan_id": { "$ref": "#/$defs/id" },
+    "task_id": { "$ref": "#/$defs/id" },
+    "role": { "const": "character.player.atlas" },
+    "character_id": { "$ref": "#/$defs/id" },
+    "profile_revision_id": { "$ref": "#/$defs/id" },
+    "profile_revision_sha256": { "$ref": "#/$defs/sha256" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "normalized_sha256",
+        "width",
+        "height",
+        "cell_size",
+        "pivot",
+        "identity_digest_sha256",
+        "character_reference_ids"
+      ],
+      "properties": {
+        "normalized_sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "$ref": "#/$defs/dimension" },
+        "height": { "$ref": "#/$defs/dimension" },
+        "cell_size": { "$ref": "#/$defs/pair" },
+        "pivot": { "$ref": "#/$defs/nonNegativePair" },
+        "identity_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "character_reference_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        }
+      }
+    },
+    "atlas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256",
+        "width",
+        "height",
+        "frame_size",
+        "columns",
+        "rows",
+        "normalized_bytes_preserved"
+      ],
+      "properties": {
+        "path": { "const": "character-profile-atlas.png" },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 536870912
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "$ref": "#/$defs/dimension" },
+        "height": { "$ref": "#/$defs/dimension" },
+        "frame_size": { "$ref": "#/$defs/pair" },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "normalized_bytes_preserved": { "const": true }
+      }
+    },
+    "runtime_direction_transform": {
+      "$ref": "#/$defs/runtimeDirectionTransform"
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pose_count",
+        "distinct_pose_count",
+        "transparent_padding_checked",
+        "unused_cells_transparent_checked",
+        "foot_anchor_range_y",
+        "exact_duplicates_rejected",
+        "mirrored_duplicates_rejected"
+      ],
+      "properties": {
+        "pose_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "distinct_pose_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "transparent_padding_checked": { "const": true },
+        "unused_cells_transparent_checked": { "const": true },
+        "foot_anchor_range_y": { "$ref": "#/$defs/nonNegativePair" },
+        "exact_duplicates_rejected": { "const": true },
+        "mirrored_duplicates_rejected": { "const": true }
+      }
+    },
+    "human_review": { "const": "required" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "dimension": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8192
+    },
+    "pair": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 1, "maximum": 8192 },
+        { "type": "integer", "minimum": 1, "maximum": 8192 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "nonNegativePair": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 0, "maximum": 8191 },
+        { "type": "integer", "minimum": 0, "maximum": 8191 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "runtimeDirectionTransform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "directions", "provenance"],
+      "properties": {
+        "strategy": { "const": "horizontal-flip" },
+        "directions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["left", "right"] }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["basis", "source_reference_ids"],
+          "properties": {
+            "basis": { "const": "operator-declared-direction-equivalence" },
+            "source_reference_ids": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/id" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

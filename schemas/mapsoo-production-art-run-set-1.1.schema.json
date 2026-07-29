@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-production-art-run-set-1.1.schema.json",
+  "title": "Mapsoo ProductionArtRunSet 1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "source",
+    "plan_id",
+    "profile",
+    "rights",
+    "runs"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.1.0" },
+    "document_type": { "const": "production-art-run-set" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan_sha256", "requirements_sha256"],
+      "properties": {
+        "plan_sha256": { "$ref": "#/$defs/sha256" },
+        "requirements_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "plan_id": { "$ref": "#/$defs/safeId" },
+    "profile": { "$ref": "#/$defs/profile" },
+    "rights": { "$ref": "#/$defs/rights" },
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/run" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "safeId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 160
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "portablePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "maxLength": 100
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution", "license"],
+      "properties": {
+        "distribution": {
+          "enum": ["private", "internal-review", "public"]
+        },
+        "license": {
+          "enum": [
+            "CC0-1.0",
+            "CC-BY-4.0",
+            "CC-BY-SA-4.0",
+            "LicenseRef-Proprietary"
+          ]
+        },
+        "attribution": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "distribution": { "const": "public" }
+            },
+            "required": ["distribution"]
+          },
+          "then": {
+            "not": {
+              "properties": {
+                "license": { "const": "LicenseRef-Proprietary" }
+              },
+              "required": ["license"]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "license": {
+                "enum": ["CC-BY-4.0", "CC-BY-SA-4.0"]
+              }
+            },
+            "required": ["license"]
+          },
+          "then": {
+            "properties": {
+              "attribution": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+              }
+            },
+            "required": ["attribution"]
+          }
+        }
+      ]
+    },
+    "pivot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "unit"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0, "maximum": 8192 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 8192 },
+        "unit": { "const": "pixels" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "document_type",
+        "source",
+        "plan_id",
+        "profile",
+        "task_id",
+        "asset_id",
+        "path",
+        "media_type",
+        "bytes",
+        "sha256",
+        "width",
+        "height",
+        "alpha_policy",
+        "pivot",
+        "slot_ids",
+        "roles",
+        "variant_ids",
+        "source_reference_ids",
+        "rights"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.1.0" },
+        "document_type": { "const": "production-art-output" },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["plan_sha256", "requirements_sha256"],
+          "properties": {
+            "plan_sha256": { "$ref": "#/$defs/sha256" },
+            "requirements_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "plan_id": { "$ref": "#/$defs/safeId" },
+        "profile": { "$ref": "#/$defs/profile" },
+        "task_id": { "$ref": "#/$defs/safeId" },
+        "asset_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "maxLength": 100
+        },
+        "path": { "$ref": "#/$defs/portablePath" },
+        "media_type": { "const": "image/png" },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "alpha_policy": { "enum": ["opaque", "straight-alpha"] },
+        "pivot": { "$ref": "#/$defs/pivot" },
+        "slot_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/role" }
+        },
+        "variant_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "pattern": "^(?:canonical|landmark-[0-9]{3})$"
+          }
+        },
+        "source_reference_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "approved-scene-direction",
+              "environment-reference",
+              "character-reference"
+            ]
+          }
+        },
+        "rights": { "$ref": "#/$defs/rights" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_path", "bytes", "sha256", "output_sha256"],
+      "properties": {
+        "artifact_path": { "$ref": "#/$defs/portablePath" },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "output_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "run_directory", "output", "evidence"],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/safeId" },
+        "run_directory": { "$ref": "#/$defs/portablePath" },
+        "output": { "$ref": "#/$defs/output" },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    }
+  }
+}

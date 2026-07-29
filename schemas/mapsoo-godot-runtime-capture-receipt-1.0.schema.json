@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-godot-runtime-capture-receipt-1.0.schema.json",
+  "title": "Mapsoo Godot Runtime Capture Receipt 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "capture_id",
+    "profile",
+    "source",
+    "engine",
+    "evidence",
+    "runtime",
+    "claims"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "godot-runtime-capture-receipt" },
+    "capture_id": {
+      "type": "string",
+      "pattern": "^godot-runtime-capture-[a-f0-9]{16}$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "isometric-action",
+        "topdown-farm",
+        "layered-depth-2d"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "candidate_receipt_sha256",
+        "layout_plan_sha256",
+        "runtime_overlay_id",
+        "runtime_overlay_sha256",
+        "runtime_projection_id",
+        "runtime_projection_sha256"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "pattern": "^world-art-candidate-[a-f0-9]{16}$"
+        },
+        "candidate_receipt_sha256": { "$ref": "#/$defs/sha256" },
+        "layout_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "runtime_overlay_id": {
+          "type": "string",
+          "pattern": "^world-art-runtime-overlay-[a-f0-9]{16}$"
+        },
+        "runtime_overlay_sha256": { "$ref": "#/$defs/sha256" },
+        "runtime_projection_id": {
+          "type": "string",
+          "pattern": "^world-art-runtime-projection-[a-f0-9]{16}$"
+        },
+        "runtime_projection_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["godot_version", "executable_sha256"],
+      "properties": {
+        "godot_version": { "enum": ["4.3", "4.7"] },
+        "executable_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/pngEvidence",
+          "type": "object",
+          "properties": {
+            "kind": { "const": "rendered-world-capture" },
+            "path": {
+              "const": "review-evidence/rendered-world-capture.png"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/pngEvidence",
+          "type": "object",
+          "properties": {
+            "kind": { "const": "role-placement-overlay" },
+            "path": {
+              "const": "review-evidence/role-placement-overlay.png"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/pngEvidence",
+          "type": "object",
+          "properties": {
+            "kind": { "const": "art-collision-overlay" },
+            "path": {
+              "const": "review-evidence/art-collision-overlay.png"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/aviEvidence",
+          "type": "object",
+          "properties": {
+            "kind": { "const": "spawn-exit-traversal" },
+            "path": {
+              "const": "review-evidence/spawn-exit-traversal.avi"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/aviEvidence",
+          "type": "object",
+          "properties": {
+            "kind": { "const": "navigation-traversal" },
+            "path": {
+              "const": "review-evidence/navigation-traversal.avi"
+            }
+          }
+        }
+      ],
+      "items": false
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visible_terrain_materials",
+        "visible_landmarks",
+        "visible_hazards",
+        "visible_characters",
+        "route_reached",
+        "catalog_assets",
+        "runtime_bindings",
+        "catalog_only_assets",
+        "all_required_bindings_applied"
+      ],
+      "properties": {
+        "visible_terrain_materials": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "visible_landmarks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2048
+        },
+        "visible_hazards": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "visible_characters": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "route_reached": { "const": true },
+        "catalog_assets": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "runtime_bindings": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "catalog_only_assets": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "all_required_bindings_applied": { "const": true }
+      }
+    },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime",
+        "raspberry_pi",
+        "production_ready",
+        "remote_request_count"
+      ],
+      "properties": {
+        "runtime": { "const": "technical-pass" },
+        "raspberry_pi": { "const": "pending" },
+        "production_ready": { "const": false },
+        "remote_request_count": { "const": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "evidenceBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "media_type", "bytes", "sha256"],
+      "properties": {
+        "kind": { "type": "string" },
+        "path": { "type": "string" },
+        "media_type": { "type": "string" },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 134217728
+        },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "pngEvidence": {
+      "$ref": "#/$defs/evidenceBase",
+      "type": "object",
+      "properties": {
+        "media_type": { "const": "image/png" }
+      }
+    },
+    "aviEvidence": {
+      "$ref": "#/$defs/evidenceBase",
+      "type": "object",
+      "properties": {
+        "media_type": { "const": "video/x-msvideo" }
+      }
+    }
+  }
+}

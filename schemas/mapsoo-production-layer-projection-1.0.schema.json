@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-production-layer-projection-1.0.schema.json",
+  "title": "Mapsoo layered-depth production layer projection 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "profile",
+    "plan_id",
+    "approved_direction",
+    "runtime_size",
+    "planes",
+    "checks",
+    "seam_review",
+    "human_review"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "production-layer-pack10-projection" },
+    "profile": { "const": "layered-depth-2d" },
+    "plan_id": { "$ref": "#/$defs/safeId" },
+    "approved_direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "normalized_sha256"],
+      "properties": {
+        "task_id": { "const": "scene-direction" },
+        "normalized_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "runtime_size": {
+      "type": "array",
+      "prefixItems": [
+        { "const": 640 },
+        { "const": 360 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "planes": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "role",
+          "source_task_id",
+          "source_normalized_sha256",
+          "path",
+          "bytes",
+          "sha256",
+          "alpha_policy"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "sky",
+              "far",
+              "mid",
+              "depth-fog",
+              "near",
+              "ambient-light",
+              "local-light",
+              "foreground"
+            ]
+          },
+          "role": {
+            "enum": [
+              "background.sky",
+              "background.far",
+              "background.mid",
+              "background.depth-fog",
+              "near.overlay",
+              "lighting.ambient",
+              "lighting.local",
+              "foreground.overlay"
+            ]
+          },
+          "source_task_id": { "$ref": "#/$defs/safeId" },
+          "source_normalized_sha256": { "$ref": "#/$defs/sha256" },
+          "path": {
+            "enum": [
+              "layers/background-sky.png",
+              "layers/background-far.png",
+              "layers/background-mid.png",
+              "layers/background-depth-fog.png",
+              "layers/near-overlay.png",
+              "layers/lighting-ambient.png",
+              "layers/lighting-local.png",
+              "layers/foreground-overlay.png"
+            ]
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 67108864
+          },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "alpha_policy": {
+            "enum": ["opaque", "straight-alpha"]
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact_canonical_planes",
+        "approved_direction_bound",
+        "normalized_evidence_bound",
+        "transparent_rgb_zeroed",
+        "output_alpha_checked"
+      ],
+      "properties": {
+        "exact_canonical_planes": { "const": true },
+        "approved_direction_bound": { "const": true },
+        "normalized_evidence_bound": { "const": true },
+        "transparent_rgb_zeroed": { "const": true },
+        "output_alpha_checked": { "const": true }
+      }
+    },
+    "seam_review": { "const": "required" },
+    "human_review": { "const": "required" }
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

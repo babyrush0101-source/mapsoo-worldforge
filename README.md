@@ -1,21 +1,323 @@
-# Mapsoo Worldsmith
+# Mapsoo WorldForge
 
 > Open-source world asset generator for Godot creators.
 
-[![CI](https://github.com/babyrush0101-source/mapsoo-kids/actions/workflows/ci.yml/badge.svg)](https://github.com/babyrush0101-source/mapsoo-kids/actions/workflows/ci.yml)
-[![GitHub Pages](https://github.com/babyrush0101-source/mapsoo-kids/actions/workflows/pages.yml/badge.svg)](https://github.com/babyrush0101-source/mapsoo-kids/actions/workflows/pages.yml)
+[![CI](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/workflows/ci.yml/badge.svg)](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/workflows/ci.yml)
+[![GitHub Pages](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/workflows/pages.yml/badge.svg)](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/workflows/pages.yml)
 
-[Live demo](https://babyrush0101-source.github.io/mapsoo-kids/) · [v0.1.0-alpha.9 public release](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.9) · [Alpha.9 release notes](docs/releases/v0.1.0-alpha.9.md) · [First-import feedback](https://github.com/babyrush0101-source/mapsoo-kids/issues/12)
+[Live demo](https://babyrush0101-source.github.io/mapsoo-worldforge/) · [v0.1.0-alpha.9 public release](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/tag/v0.1.0-alpha.9) · [Alpha.9 release notes](docs/releases/v0.1.0-alpha.9.md) · [First-import feedback](https://github.com/babyrush0101-source/mapsoo-worldforge/issues/12)
 
-Mapsoo Worldsmith is evolving from the original `mapsoo-kids` website into a local-first tool that turns a compact world specification into previewable, versioned game-art asset packs for Godot. itch.io distribution is intentionally postponed; GitHub Releases is the audited public channel for this alpha.
+Mapsoo WorldForge is evolving from the original `mapsoo-kids` website into a local-first tool that turns a compact world specification into previewable, versioned game-art asset packs for Godot. itch.io distribution is intentionally postponed; GitHub Releases is the audited public channel for this alpha.
 
-The **v0.1.0-alpha.9 prerelease** publishes the first complete reference-to-world vertical slice. Its one-click local workflow accepts one environment image, one character image, and a short description, then uses the offline procedural provider to build a complete `topdown-farm` Pack Schema 0.6.0 ZIP. That pack includes terrain, water, paths/fences, crops, structures, props, layered scene/collision/navigation data, a four-direction `idle`/`walk` character, and a preview. The separately installed importer supports Godot 4.3+, and the exact published pack passed Linux/Windows with Godot 4.3/4.7. The release has 24 immutable attachments; its Pack 0.6 ZIP SHA-256 is `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`. `side-platformer`, `isometric-action`, and `layered-depth-2d` remain planned and are not supported by Alpha.9.
+The current product name and public repository slug are **Mapsoo WorldForge**
+and **`mapsoo-worldforge`**. `Mapsoo Worldsmith` remains the legacy Pack generator/protocol identity because it is embedded in
+immutable release manifests, schemas, receipts, and verified archive hashes.
+Renaming that identity in place would break existing pack verification. New
+product-facing surfaces use WorldForge; the legacy identity changes only
+through a future schema version with an explicit compatibility path.
 
-Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The current provider is procedural and truthfully records `contains_generative_ai: false`; that statement does not apply to future model providers. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.
+## Generated world showcase
+
+These are **real Godot 4.3 runtime captures assembled from the generated
+atlases and layers**, not flattened concept images or procedural placeholder
+previews. The same bound candidates rendered byte-identically in Godot 4.7.
+The maintainer has approved these exact captures for public documentation
+display. The downloadable production-art pack remains `internal-review`;
+asset-pack redistribution approval and physical Raspberry Pi 4B acceptance
+are still separate pending gates.
+
+| Side platformer | Top-down farm |
+| --- | --- |
+| ![Generated side-platformer assets rendered in Godot](docs/visual-qa/production-art/side-platformer-production-godot-4.3-v1.png) | ![Generated top-down farm assets rendered in Godot](docs/visual-qa/production-art/topdown-farm-production-godot-4.3-v1.png) |
+| Isometric action | Layered-depth 2D |
+| ![Generated isometric-action assets rendered in Godot](docs/visual-qa/production-art/isometric-action-production-godot-4.3-v1.png) | ![Generated layered-depth assets rendered in Godot](docs/visual-qa/production-art/layered-depth-2d-production-godot-4.3-v1.png) |
+
+The exact image hashes, cross-version render results, limitations, and required
+revisions are recorded in the
+[AI-assisted art pre-review](docs/visual-qa/production-art/ai-assisted-art-review-v1.md).
+
+The **published v0.1.0-alpha.9 prerelease** is the immutable compatibility baseline. It accepts one environment image, one character image, and a short description, then builds a complete `topdown-farm` Pack Schema 0.6.0 ZIP. The exact published pack passed Linux/Windows with Godot 4.3/4.7 and remains pinned at SHA-256 `10d89c7888b70215a14af2b6552fc5237d799df9cd3092aee99541961d9e480c`.
+
+The current **unpublished Alpha12 development candidate** expands that workflow into a guided four-round conversation and four complete original world grammars:
+
+| Profile | Complete pack | Godot scene | Playable runtime checks |
+| --- | --- | --- | --- |
+| `topdown-farm` | Pack 0.6 | TileMap, character, collision, navigation | four-direction movement and blocking |
+| `side-platformer` | Pack 0.7 | parallax, platforms, hazards, exit | movement, jump, one-way platform, respawn |
+| `isometric-action` | Pack 0.8 | original isometric arena and entities | eight-direction movement, dash, hazard, exit |
+| `layered-depth-2d` | Pack 0.9 | seven depth planes and shallow corridor | movement, NPC interaction, hazard, exit |
+
+The intended user path is: **world brief → art direction → map layout → style sample → complete assets → Godot map → enter the world**. The first four stages run in the browser; complete packs, trusted Godot importers, controllers, and headless playability tests exist for all four profiles. The candidate is not yet a public release and physical Raspberry Pi 4B performance validation remains pending.
+
+The browser conversation now records ten explicit facts instead of treating
+four free-text paragraphs as a map: premise, worldview, terrain, geography,
+culture, ecology, mood, art direction, traversal, and landmarks. The selected
+profile and target device are locked after the fourth round. Once the user
+adds the environment and character references and confirms their rights, the
+application creates the same canonical `ConfirmedWorldCreationIntake` and
+provider-neutral `WorldLayoutConstraints` used by the CLI. The four-profile
+solver turns confirmed route shape, scale, verticality, water, settlement,
+hazard, and landmark constraints into the `WorldLayoutPlan` embedded in the
+Godot pack. Direct, fork/rejoin, and loop descriptions now produce different
+graph structure instead of sharing one fixed map with different metadata.
+Explicit Agent-confirmed intent is kept distinct from the limited legacy
+text-derived compatibility path.
+The map-layout round now exposes those structural choices directly, previews
+the exact landmark-node list, binds the visible values into its checkpoint,
+and shows the frozen intent again before reference-based generation. Returning
+to an earlier round invalidates the old browser handoff.
+
+The verified constraints and layout can now also compile to
+`AssetRequirements 1.0`: one provider-neutral, privacy-minimized inventory
+that reuses the existing four-profile role catalogs instead of defining new
+SpriteCook-specific roles. All seven structural axes change concrete
+requirements; unsupported combinations remain explicitly unresolved rather
+than borrowing an unrelated tile. A separate
+`ProductionArtRequirementsBinding 1.0` now maps every resolved requirement to
+the exact canonical production task and binds the complete requirements and
+plan bytes by SHA-256. The private workspace writes both artifacts and includes
+their canonical bytes in the resumable workflow input binding, so two worlds
+with the same profile cannot silently share workflow state. Unresolved
+layout-critical requirements remain inspectable, but paid execution fails
+before credentials or provider calls. This is traceability and scheduling
+evidence, not a claim that final artwork has already been generated.
+
+The parallel `AssetRequirements 1.1` and `ProductionArtPlan 1.1` contracts
+express real per-world visual variants without changing any 1.0 bytes.
+Structural choices such as `loop`, `extended`, or `dense` remain typed values;
+they are not misread as image counts. Two to four confirmed landmarks become
+two to four label-free variant slots, each bound to one deterministic atlas
+cell. The plan carries the complete requirements SHA-256, requirement
+assignments, slot IDs, row-major placement, composite preview sheets, and
+character pose-grid bindings. The provider port, normalizer, run set, reviewed
+variant map, runtime overlay, and shared Godot appliers accept the 1.1 chain.
+The same private resumable batch runner now accepts either the stable 1.0
+compatibility inventory or the complete 1.1 task inventory. A generated 1.1
+job remains dry-run-only until an operator supplies an approved direction
+image and explicitly authorizes remote upload and execution.
+See
+[AssetRequirements and ProductionArtPlan 1.1](docs/60_ASSET_REQUIREMENTS_PRODUCTION_ART_1_1.md).
+
+The fourth-round image is explicitly an **intent preview**, not final artwork.
+After references and complete assets are generated, the browser instead shows
+the exact `scene.previewAssetId` PNG included in the downloadable pack. An
+`ExportedWorldReviewEvidence` SHA-256 chain binds that PNG to the confirmed
+intent, dialogue, generation request, scene/collision/navigation data, and the
+complete visual-asset set before the asset revision can be frozen.
+
+The public [character-reference conformance
+fixture](docs/48_CHARACTER_REFERENCE_CONFORMANCE.md) now decodes one synthetic
+`64 × 96` reference, carries the same deterministic identity signature and
+representative projection cues through all four complete ZIP routes, and
+verifies each emitted player atlas against its manifest. It intentionally
+exposes the remaining boundary: deterministic silhouette/palette projection
+works today, while production-quality arbitrary-reference adaptation still
+needs model-backed pose generation connected to the complete pack builder,
+confirmed style samples, continuity checks, and human approval.
+
+The first optional **server-only image-model source adapter** is now implemented
+behind that boundary. It converts one explicitly authorized production task into
+a hash-bound internal-review PNG candidate and deterministic normalized output;
+it is dry-run by default and never stores the API key. A resumable operator
+workflow now schedules those single-task calls under an immutable private-input
+binding, append-only state journal, exact scene-direction approval, total
+request budget and per-invocation cap. Interrupted work never retries
+automatically; frozen run files can be reconciled without another request, and
+any retry requires explicit duplicate-cost acknowledgement. Private input
+paths, contents and individual reference digests are excluded from workflow
+state and the completed source-free run set. A shared zero-request verifier now
+materializes those run sets for all four profiles, re-decodes and re-hashes
+every frozen PNG/evidence pair, and rejects incomplete, aliased or substituted
+task inventories before a profile-specific pack builder can mutate a ZIP.
+Each workflow response also includes a schema-bound, privacy-minimized progress
+document with exact missing asset roles and the next allowed action. It keeps
+`runtime_verified` and `runner_delivery_ready` false even when all image tasks
+are complete, so a direction candidate or PNG folder cannot be presented as an
+enterable world. Rejected or uncertain tasks stop later paid generation until
+the same task is explicitly resolved.
+Player tasks for all four profiles now additionally project into portable, complete
+`CharacterProfileRevision` artifacts while preserving normalized atlas bytes.
+The reusable Godot runtime shell can now load any of the four generated world
+profiles and bind a matching revision plus atlas afterward, including through
+fixed `res://mapsoo_characters/<revision-id>/` launch arguments. Switching
+worlds clears the active character binding; the world pack remains immutable
+and internal-review/private character rights stay separate.
+The consumer-neutral `world-delivery:workspace` CLI now turns a confirmed
+ten-fact intake into an atomic private production workspace for all four
+profiles. The same zero-request preparation now also creates a complete
+Godot-import-ready procedural baseline pack from the confirmed layout, so a
+playable placeholder world exists before paid final-art tasks begin. It also
+writes the complete 1.1 requirements and Plan under `complete-art/`, with
+their hashes, counts, and a 1.1 workflow job bound in the workspace manifest.
+The job uses the existing provider-neutral runner and initializes to
+`awaiting-direction-approval` with zero remote requests; it is not a claim that
+its complete task inventory has already run. References, briefs, workflow state, baseline and generated
+candidates are forced outside the public repository. After review and a trusted
+Godot build, the same CLI finalizes an exact-byte delivery by binding the world
+pack, runtime artifact, portable contract, created-character revision, and
+headless-smoke report. No private product record or launch protocol enters this
+repository; see the
+[private-consumer bridge](docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md).
+The confirmed browser flow now removes the former manual file-copy gap: after
+preview approval it can download one deterministic
+[private production handoff](docs/63_PRIVATE_PRODUCTION_HANDOFF.md) containing
+the exact intake and both original references. The CLI accepts that archive
+directly with `--handoff`; it verifies every byte in memory and still makes
+zero remote requests. Because the archive contains original user images, it is
+explicitly non-public and is never a repository or release artifact.
+The projector rejects occupied undeclared cells, empty, duplicate, mirrored,
+border-touching and mis-anchored frames. Layered-depth player and NPC tasks also
+project into exact Pack 1.0 `48 × 72` Godot atlases with complete two-frame clip
+records. Two passing layered-depth runs can be assembled into a deterministic,
+non-redistributable Pack 1.0 review ZIP over a complete base world, with every
+human, rights, runtime and Raspberry Pi gate reset to pending. This is still an
+internal-review candidate rather than a complete production pack. Character
+plans bind every required source cell to an explicit action, direction, frame
+index and duration, while semantic identity and animation quality still require
+human review. The eight layered-depth
+background, overlay and lighting tasks can now also be projected from
+direction-bound `1920 × 1080` working images into hash-bound `640 × 360`
+Pack 1.0 runtime planes. The three direction-bound terrain, prop and effect
+working sheets can now also be projected into five canonical gameplay atlases
+for all 22 environment roles. The projector preserves source pixel density,
+bakes each declared source pivot to the centered Godot `Sprite2D` anchor, and
+rejects occupied undeclared cells, invalid transparent padding, duplicate role
+pixels and evidence mismatches. Seam, composition and semantic art review
+remain pending. A source-free local assembler now combines all 14 frozen task
+runs into one deterministic Pack 1.0 ZIP that replaces all eight planes, all
+five gameplay atlases and both character atlases while keeping every release
+gate pending and the license `LicenseRef-UNRELEASED`. See
+[Model-backed production art](docs/49_MODEL_BACKED_PRODUCTION_ART.md).
+Every reviewed Pack profile can now re-enter the existing trusted
+`WorldAssetProvider` runner through one public `replayReviewedWorldAsset()`
+entry. Pack 0.6/0.7/0.8/1.0 retain small profile projectors but share one exact
+archive loader, one versioned source-receipt contract, one request-fingerprint
+replay provider and one runner. The replay excludes review/license documents
+from runtime payloads and never promotes an internal-review candidate into an
+approved release. See
+[Four-profile reviewed Pack replay](docs/57_FOUR_PROFILE_REVIEWED_PACK_REPLAY.md).
+The provider-neutral
+[live-model four-profile direction review](docs/52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md)
+catches world-landmark and character-identity drift before one profile is
+selected and later asset tasks are unlocked.
+The strict
+[four-profile world-family continuity contract](docs/56_WORLD_FAMILY_CONTINUITY.md)
+then binds four confirmed intakes and four complete character revisions to one
+world identity and one character identity. It allows profile-specific camera,
+traversal and animation geometry, but fails closed on missing profiles, world
+drift, character drift or changed source fingerprints. Its
+`continuity-confirmed` status deliberately does not replace human art, rights,
+runtime or physical Raspberry Pi gates.
+The private, human-confirmed
+[character semantic continuity contract](docs/58_CHARACTER_SEMANTIC_CONTINUITY.md)
+adds the identity layer that pixel hashes cannot express: silhouette, body
+proportions, hair, face, clothing, equipment, distinguishing features and
+palette anchors. Character-bearing remote tasks must compile those exact cues
+into profile-specific prompts. The raw cue sheet stays in the private
+workspace; public Packs and receipts retain no character description.
+The separate
+[human art and delivery release gate](docs/61_HUMAN_ART_RELEASE_GATE.md)
+now binds a person's review to the exact world preview, Godot capture, runtime
+projection, runtime overlay and one-way character identity digest. It checks
+art direction, terrain, sprite edges, character continuity, animation,
+collision, originality and rights independently. Private approval cannot grant
+redistribution, public approval requires an allowlisted license, and a generic
+or AI-authored JSON record cannot promote an internal-review candidate.
+An approved result can now enter one thin
+[itch.io-style world-art delivery adapter](docs/62_APPROVED_WORLD_ART_DELIVERY_KIT.md).
+It preserves the exact RuntimeOverlay ZIP and adds only a single-root envelope
+with Quick Start, license, changelog, preview, review evidence and explicit AI
+disclosure. It never logs in or uploads to itch.io, and private approval cannot
+be repackaged as a public download.
+The optional terrain-transition layer now also has a zero-network local
+SpriteCook 17-piece importer. It strips the optional guide grid and reorders
+the documented N/E/S/W cells into the same neutral 4 by 4 mask contract used
+by Godot. SpriteCook's incompatible 15-piece corner-mask and 1024-upscale
+exports are rejected rather than guessed; imported sheets remain
+non-publishable until human art and rights review. A complete normalized
+top-down material set can now enter the existing production-review pack
+builder without introducing any SpriteCook field into the manifest or Godot
+runtime.
+SpriteCook's separate 2:1 mode is handled through a second zero-network
+compatibility adapter because its diamond grid has no autotile-mask semantics.
+The adapter verifies the native 32/64-pixel geometry, copies no source pixels,
+and independently renders a CC0 `768 × 384` guide matching the existing
+isometric terrain production task. That guide enters the normal
+provider-neutral environment-reference path alongside an approved style
+direction; it is never presented as runtime art or a finished tileset.
+The integration boundary also adopts the useful workflow ideas documented by
+SpriteCook—stable asset references, reusable style references, budget checks,
+tight transparent crops and explicit Godot export manifests—without making a
+SpriteCook account, MCP session or response format part of the WorldForge
+core. Other model providers and local tools remain interchangeable.
+The optional server-only
+[SpriteCook production adapter](docs/59_SPRITECOOK_PROVIDER_ADAPTER.md) now
+implements that same neutral port for all four profiles. Its default is a
+zero-request dry-run; an execution imports at most two authorized references,
+submits one synchronous generation, downloads one allowlisted PNG, and then
+hands the candidate to the existing provider-independent normalization and
+review path. Complete private workflows reuse imported IDs through an
+account-scoped HMAC cache outside the repository, reducing later tasks from
+four HTTP calls to two without persisting keys, paths, prompts, reference
+names, or raw digests. Concurrent imports use per-reference locks and atomic
+publication; invalid or stale cache data fails without a silent paid retry.
+No live SpriteCook request or account connection is claimed.
+
+The repository now treats this as a permanent
+[build-versus-reuse rule](docs/64_BUILD_VS_REUSE_POLICY.md): WorldForge owns
+confirmed world intent, deterministic layout, complete asset requirements,
+character identity, review, reproducible Packs, and runtime delivery. Image
+generation, animation, background removal, tileset authoring, hosted asset
+libraries, and editor UI stay in replaceable tools such as SpriteCook. An
+automated architecture check prevents new vendor dependencies or reversed
+layer imports from entering the core.
+
+Reviewed 1.1 outputs can now be compiled into a complete, provider-free
+`WorldArtRuntimeProjection`, packaged as a deterministic
+`WorldArtRuntimeOverlay`, and loaded by one shared trusted Godot module. The
+loader rechecks the exact JSON/PNG inventory, bytes, hashes, decoded geometry,
+reviewed cell pixels, rights, profile and layout binding before attaching
+lossless textures to a scene. Godot 4.3 and 4.7 save/reload tests cover all
+four profiles. A separate shared applier now replaces the existing logical
+TileMap sources with the selected reviewed terrain cells while preserving
+their exact material source IDs, and attaches reviewed landmark sprites to the
+existing layout markers. Godot 4.3 and 4.7 save/reload tests cover this visible
+terrain and landmark path for all four profiles. A second shared gameplay
+applier derives reviewed hazard art and `Area2D` collision from deterministic
+logical rectangles in the projection; all four trusted controllers prefer
+these confirmed-layout hazards and retain legacy fallback. A thin character
+applier then delegates the selected reviewed pose regions to the existing
+character-profile runtime, preserving one animation system for all four
+profiles.
+
+A separately labelled **synthetic technical fixture** now exercises that full
+path without a model call. Its deterministic candidate passed real headless
+imports on local Godot 4.3 and 4.7 with 8 planes, 7 atlases, 36 roles, 2
+characters, pivot-baked structures, and byte-stable re-import. This proves the
+technical Pack/Godot boundary only: it is not real model output, human art
+approval, or physical Raspberry Pi evidence.
+
+The same fixture can be prepared with pinned Godot 4.3 into the exact
+importer-managed scene, TileSet and integrity state used by a reproducible
+Linux ARM64 review bundle. An extracted bundle passes an independent Godot 4.3
+load without the source Pack or build workspace. Physical Raspberry Pi 4B
+performance remains an explicit pending gate.
+
+The dynamic World Runner PCK path now optionally embeds the reviewed
+profile-matched character revision and atlas, proves that exact character is
+bound during a real `--main-pack` smoke, and separately proves that the same
+PCK remains alive after an interactive readiness marker. The build receipt
+still explicitly says that this desktop evidence is not a physical Pi test.
+A separate fail-closed Pi 4B acceptance command verifies physical device
+model, ARM64, exact PCK and character binding, then records bounded startup,
+FPS, P95 frame time, memory and temperature evidence without device identity
+or network details.
+
+Reference bytes stay local and are not embedded in the ZIP; local paths, filenames, raw reference digests, and the free-text description are excluded from the public receipt. The World ID and seed are intentionally public and appear in pack metadata, so users must choose public-safe values. The current browser path accepts only user-owned references with explicit generative-adaptation, output-redistribution, and **CC0 dedication** permission. Licensed references are rejected rather than silently relicensed. Generated PNG/runtime JSON output is CC0-1.0, repository code and documentation are MIT, and the original references retain their own rights. Current checks validate file bytes, media signatures, dimensions, budgets, and declared rights; they do not perform face recognition, OCR, trademark detection, or content-level sanitization. The published Alpha.9 browser provider is procedural and truthfully records `contains_generative_ai: false`; the development production-art candidates above use AI-assisted source assets and carry separate internal-review evidence. No external adoption, External Host production use, Godot Asset Library listing, or itch.io publication is claimed.
 
 ## Project status
 
-The **v0.1.0-alpha.9 prerelease** is the current immutable public release. Alpha.8 and its three asset-pack compatibility fixtures remain an immutable, byte-identical compatibility baseline, preserving the account-free, backend-free, API-key-free loop:
+The **v0.1.0-alpha.9 prerelease** is the current immutable public release. Alpha12 is the current local candidate and must not be described as published until its reviewed release exists. Alpha.8 and its three asset-pack compatibility fixtures remain an immutable, byte-identical compatibility baseline, preserving the account-free, backend-free, API-key-free loop:
 
 1. Edit a compact World Spec for meadow, desert, or snowfield worlds.
 2. Generate the same 3 ground variants, 16 water masks, 16 road masks, 6 prop sprites, and map again from the same seed.
@@ -33,13 +335,13 @@ The current public starter input is [`examples/sunny-meadow-v0.3.world.json`](ex
 
 Local World Spec and External Host Asset Request imports share the same 128 KiB cap, strict UTF-8 decoding, duplicate-key detection, bounded JSON depth/complexity, safe-number checks, forbidden prototype-key checks, and strict schema/runtime validation. An External Host request is first projected to a World Spec with a canonical SHA-256 binding; initial generation, editor generation, and both import paths then run through the same validated provider runner. A newer user action aborts and supersedes older work, so a failed or stale request never replaces the last successful world.
 
-![Actual Sunny Meadow alpha.7 preview](examples/packs/sunny-meadow-v0.1.0-alpha.7/previews/map-preview.png)
-
+The historical published compatibility preview remains available as
+[Sunny Meadow Alpha.7](examples/packs/sunny-meadow-v0.1.0-alpha.7/previews/map-preview.png).
 The committed Alpha.7 fixtures for [Sunny Meadow](examples/packs/sunny-meadow-v0.1.0-alpha.7/), [Dustwind Outpost](examples/packs/dustwind-outpost-v0.1.0-alpha.7/), and [Frostwatch Vale](examples/packs/frostwatch-vale-v0.1.0-alpha.7/) were captured from one real browser export run. Each has 18 files and 17 manifest payload records.
 
 The older published Alpha.1–Alpha.5 fixtures and hashes remain immutable. A pinned pure-JavaScript PNG encoder removes browser-native PNG compression drift, and CI runs the real browser exporter before passing the byte-identical canonical ZIP to the Godot matrix.
 
-The published [v0.1.0-alpha.7 release](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.7) is tagged at commit `c2e2ed5`. Its successful [release workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29688782893) rebuilt all three fixed packs, passed the exact 17-attachment audit, and imported every pack in the Linux/Windows × Godot 4.3/4.7 release matrix.
+The published [v0.1.0-alpha.7 release](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/tag/v0.1.0-alpha.7) is tagged at commit `c2e2ed5`. Its successful [release workflow](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/runs/29688782893) rebuilt all three fixed packs, passed the exact 17-attachment audit, and imported every pack in the Linux/Windows × Godot 4.3/4.7 release matrix.
 
 ## Reproducible External Host export CLI
 
@@ -54,7 +356,7 @@ pnpm external-host:export -- \
 
 Node.js 20+, pnpm 11+, and Chrome/Chromium are required. The explicit timestamp is part of reproducibility. Existing output is accepted only when both files are byte-identical; otherwise the command fails closed and never overwrites it. This executable bridge is not a claim that External Host has a production consumer yet; see the [Alpha.8 scope and verification contract](docs/18_ALPHA8_EXTERNAL_HOST_EXPORT_CLI.md).
 
-The [public Alpha.8 workflow](https://github.com/babyrush0101-source/mapsoo-kids/actions/runs/29691179168) rebuilt all 20 release attachments and imported the three compatibility packs plus the reproducible External Host bridge pack on Linux/Windows with Godot 4.3/4.7. Historical public attachment digests remain pinned, while the privacy-neutral current source tree has its own deterministic rebuild hashes.
+The [public Alpha.8 workflow](https://github.com/babyrush0101-source/mapsoo-worldforge/actions/runs/29691179168) rebuilt all 20 release attachments and imported the three compatibility packs plus the reproducible External Host bridge pack on Linux/Windows with Godot 4.3/4.7. Historical public attachment digests remain pinned, while the privacy-neutral current source tree has its own deterministic rebuild hashes.
 
 The ZIP uses engine-neutral PNG and JSON as its source of truth and intentionally contains no executable addon code. Install the MIT-licensed importer only from this official repository (or the Godot Asset Library once published), then select the extracted pack's `mapsoo.manifest.json`; schema 0.2 derives Ground, Water, and Roads `TileMapLayer` nodes, Props, two TerrainSets, and basic Water collision under `res://mapsoo_imports/`. Managed-resource ownership remains in `mapsoo.import-state.json`: identical clean input is `unchanged`, a clean source update is `updated`, and manual edits or legacy output without state fail closed as `conflict`. This is a terrain asset and import contract, not a complete game, navigation system, or production-readiness claim. SHA-256 records verify pack consistency, not publisher identity, so never enable scripts copied from a third-party asset pack.
 
@@ -62,12 +364,12 @@ The ZIP uses engine-neutral PNG and JSON as its source of truth and intentionall
 
 The public first-user path is intentionally short and version-bound:
 
-1. Choose an audited Alpha.7 world pack from the [release page](https://github.com/babyrush0101-source/mapsoo-kids/releases/tag/v0.1.0-alpha.7): Sunny Meadow (`6113b30…8012c`), Dustwind Outpost (`d6dd38a4…a502`), or Frostwatch Vale (`35a49edd…e12`).
-2. Download the separate [Godot importer ZIP](https://github.com/babyrush0101-source/mapsoo-kids/releases/download/v0.1.0-alpha.7/mapsoo-godot-importer-v0.1.0-alpha.7.zip) (`674ce0a057c1808b8d2b04e706a26031aa7ca321304ce34c0e6a2f3553bd6a26`) from the same release.
-3. Follow the version-bound steps and hashes in the [Alpha.7 release notes](docs/releases/v0.1.0-alpha.7.md).
-4. Submit either success or failure through the [structured feedback form](https://github.com/babyrush0101-source/mapsoo-kids/issues/new?template=first-import-feedback.yml).
+1. Download the audited complete farm Pack 0.6 from the [Alpha9 release](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/tag/v0.1.0-alpha.9) (`10d89c…480c`).
+2. Download the separate [Alpha9 Godot importer ZIP](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/download/v0.1.0-alpha.9/mapsoo-godot-importer-v0.1.0-alpha.9.zip) (`bfb736d0…b526`) from the same release.
+3. Follow the exact filenames, hashes, and steps in the [10-minute Alpha9 guide](docs/10_FIRST_GODOT_IMPORT.md).
+4. Submit either success or failure through the [structured feedback form](https://github.com/babyrush0101-source/mapsoo-worldforge/issues/new?template=first-import-feedback.yml).
 
-The expected generated scene is `res://mapsoo_imports/sunny-meadow/sunny-meadow.world.tscn`. The guide pins both download hashes and explains the current derived-output/re-import boundary.
+The expected generated directory is `res://mapsoo_imports/alpha9-godot-smoke-pack/`. The guide pins both download hashes and explains the current derived-output/re-import boundary.
 
 ## Why this order
 
@@ -91,7 +393,27 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 - [GitHub, itch.io, and Codex for OSS release kit](docs/08_RELEASE_ITCH_AND_OSS_KIT.md)
 - [Alpha9 community test campaign](docs/20_COMMUNITY_ALPHA9_OUTREACH.md)
 - [Alpha10 complete side-platformer contract](docs/21_ALPHA10_SIDE_PLATFORMER.md)
+- [Four-profile visual acceptance](docs/22_FOUR_PROFILE_VISUAL_ACCEPTANCE.md)
+- [Dialogue to a playable world](docs/23_DIALOGUE_TO_PLAYABLE_WORLD.md)
+- [Runtime consumer boundary](docs/24_RUNTIME_CONSUMER_BOUNDARY.md)
+- [Character identity projection](docs/25_CHARACTER_IDENTITY_PROJECTION.md)
+- [Alpha11 original isometric-action candidate](docs/26_ALPHA11_ISOMETRIC_ACTION.md)
+- [Alpha12 original layered-depth 2D candidate](docs/27_ALPHA12_LAYERED_DEPTH_2D.md)
+- [Raspberry Pi 4B ARM64 runtime bundle](docs/28_RASPBERRY_PI4_ARM64_RUNTIME.md)
+- [Codex for OSS application evidence and truthful draft](docs/29_CODEX_OSS_APPLICATION.md)
+- [Alpha12 engineering-art review and production replacement gate](docs/30_ALPHA12_ART_REVIEW.md)
+- [Production-art replacement pipeline and first side-platformer direction sample](docs/31_PRODUCTION_ART_PIPELINE.md)
+- [Production-art task/output contract for all four profiles](docs/32_PRODUCTION_ART_CONTRACT.md)
+- [Independent character profile revisions and neutral runtime binding](docs/33_CHARACTER_PROFILE_REVISION.md)
+- [Godot runtime binding for portable character profiles](docs/50_CHARACTER_PROFILE_RUNTIME_BINDING.md)
+- [Private-consumer world creation and World Runner bridge](docs/51_PRIVATE_CONSUMER_WORLD_CREATION_BRIDGE.md)
+- [Browser-to-production private handoff](docs/63_PRIVATE_PRODUCTION_HANDOFF.md)
 - [Generation Provider SDK](docs/09_PROVIDER_SDK.md)
+- [Model-backed production art and safe single-task CLI](docs/49_MODEL_BACKED_PRODUCTION_ART.md)
+- [Live-model four-profile direction review](docs/52_LIVE_MODEL_FOUR_PROFILE_DIRECTION_REVIEW.md)
+- [Operator-model complete internal candidate and golden-sample gaps](docs/53_OPERATOR_MODEL_GOLDEN_SAMPLE.md)
+- [Confirmed world layout plan and production material binding](docs/54_WORLD_LAYOUT_PLAN.md)
+- [Provider-neutral 16-variant world terrain autotiles](docs/55_WORLD_TERRAIN_AUTOTILES.md)
 - [10-minute first Godot import](docs/10_FIRST_GODOT_IMPORT.md)
 - [Safe Godot re-import contract](docs/11_SAFE_GODOT_REIMPORT.md)
 - [Alpha.9 reference-to-farm scope and acceptance](docs/19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)
@@ -120,9 +442,9 @@ Release tooling now resolves `package.json` through a fail-closed, immutable ver
 
 ## Community and contributing
 
-Bug reports, feature proposals, and reproducible Godot import feedback are welcome through the repository [issue templates](https://github.com/babyrush0101-source/mapsoo-kids/issues/new/choose). Before opening a pull request, read [CONTRIBUTING.md](CONTRIBUTING.md); project decision and response boundaries are documented in [GOVERNANCE.md](GOVERNANCE.md), sensitive reports belong in the private path described by [SECURITY.md](SECURITY.md), and independent use is recorded only when it satisfies the public [community evidence ledger](docs/14_COMMUNITY_EVIDENCE.md). This is a volunteer-maintained project and does not offer an SLA.
+Bug reports, feature proposals, and reproducible Godot import feedback are welcome through the repository [issue templates](https://github.com/babyrush0101-source/mapsoo-worldforge/issues/new/choose). Before opening a pull request, read [CONTRIBUTING.md](CONTRIBUTING.md); project decision and response boundaries are documented in [GOVERNANCE.md](GOVERNANCE.md), sensitive reports belong in the private path described by [SECURITY.md](SECURITY.md), and independent use is recorded only when it satisfies the public [community evidence ledger](docs/14_COMMUNITY_EVIDENCE.md). This is a volunteer-maintained project and does not offer an SLA.
 
-The reviewed [silent bilingual 75-second MP4](docs/media/v0.1.0-alpha.1/video/mapsoo-worldsmith-v0.1.0-alpha.1-75s.mp4) remains an immutable alpha.1 [GitHub release asset](https://github.com/babyrush0101-source/mapsoo-kids/releases/download/v0.1.0-alpha.1/mapsoo-worldsmith-v0.1.0-alpha.1-75s.mp4). Alpha.2 does not rename or reuse it as evidence.
+The reviewed [silent bilingual 75-second MP4](docs/media/v0.1.0-alpha.1/video/mapsoo-worldsmith-v0.1.0-alpha.1-75s.mp4) remains an immutable alpha.1 [GitHub release asset](https://github.com/babyrush0101-source/mapsoo-worldforge/releases/download/v0.1.0-alpha.1/mapsoo-worldsmith-v0.1.0-alpha.1-75s.mp4). Alpha.2 does not rename or reuse it as evidence.
 
 ## Local development
 
@@ -162,7 +484,7 @@ Candidate GitHub files are written to `release/v<version>/`; the separate itch.i
 
 No environment variables are required for the portable alpha. See [`.env.example`](.env.example) for the key-handling policy before adding a future provider.
 
-The old marketing website is not part of the new product. Its history remains available in Git, while the active source tree is being rebuilt as the Worldsmith workbench.
+The old marketing website is not part of the new product. Its history remains available in Git, while the active source tree is being rebuilt as the WorldForge workbench.
 
 ## License
 

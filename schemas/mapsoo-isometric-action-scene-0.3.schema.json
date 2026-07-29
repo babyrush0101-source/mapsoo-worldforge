@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://babyrush0101-source.github.io/mapsoo-kids/schemas/mapsoo-isometric-action-scene-0.3.schema.json",
+  "title": "Mapsoo Isometric Action Scene 0.3",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "profile", "completeness_policy", "bounds", "grid", "spawn", "layers", "floor_cells", "placements"],
+  "properties": {
+    "schema_version": { "const": "0.3.0" }, "profile": { "const": "isometric-action" },
+    "completeness_policy": { "const": "isometric-action-complete-v1" },
+    "bounds": { "$ref": "#/$defs/rect" }, "spawn": { "$ref": "#/$defs/point" },
+    "grid": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tile_width", "tile_height", "elevation_height", "columns", "rows"],
+      "properties": {
+        "tile_width": { "const": 64 }, "tile_height": { "const": 32 }, "elevation_height": { "const": 16 },
+        "columns": { "type": "integer", "minimum": 4, "maximum": 128 }, "rows": { "type": "integer", "minimum": 4, "maximum": 128 }
+      }
+    },
+    "layers": { "const": ["void", "floor", "elevation", "walls", "props", "actors", "effects"] },
+    "floor_cells": { "type": "array", "minItems": 16, "maxItems": 16384, "items": { "$ref": "#/$defs/cell" } },
+    "placements": { "type": "array", "minItems": 4, "maxItems": 512, "items": { "$ref": "#/$defs/placement" } }
+  },
+  "$defs": {
+    "point": { "type": "object", "additionalProperties": false, "required": ["x", "y"], "properties": { "x": { "type": "integer", "minimum": 0, "maximum": 8191 }, "y": { "type": "integer", "minimum": 0, "maximum": 8191 } } },
+    "rect": { "type": "object", "additionalProperties": false, "required": ["x", "y", "width", "height"], "properties": { "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 }, "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 } } },
+    "cell": { "type": "object", "additionalProperties": false, "required": ["column", "row", "elevation"], "properties": { "column": { "type": "integer", "minimum": 0 }, "row": { "type": "integer", "minimum": 0 }, "elevation": { "type": "integer", "minimum": 0, "maximum": 8 } } },
+    "placement": { "type": "object", "additionalProperties": false, "required": ["id", "role", "layer", "column", "row", "elevation", "x", "y"], "properties": { "id": { "type": "string" }, "role": { "type": "string" }, "layer": { "type": "string" }, "column": { "type": "integer" }, "row": { "type": "integer" }, "elevation": { "type": "integer" }, "x": { "type": "integer" }, "y": { "type": "integer" } } }
+  }
+}

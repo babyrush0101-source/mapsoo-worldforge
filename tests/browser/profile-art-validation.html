@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-state="loading">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mapsoo four-profile art validation</title>
+    <style>
+      :root {
+        color: #eef4ec;
+        background: #0b100f;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 960px; background: radial-gradient(circle at 50% 0, #24352d 0, #0b100f 38%); }
+      main { width: 960px; margin: 0 auto; padding: 42px 30px 54px; }
+      header { display: grid; grid-template-columns: 1fr 300px; gap: 42px; align-items: end; margin-bottom: 28px; }
+      h1 { margin: 7px 0 10px; font: 700 38px/1.05 Georgia, serif; letter-spacing: -.025em; }
+      .kicker { margin: 0; color: #a9d76f; font-size: 11px; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; }
+      header p, .legend { margin: 0; color: #aab8af; font-size: 12px; line-height: 1.65; }
+      .legend { border-left: 1px solid #405249; padding-left: 18px; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+      article { overflow: hidden; border: 1px solid #33453c; border-radius: 12px; background: rgba(17, 25, 22, .94); box-shadow: 0 18px 42px rgba(0,0,0,.2); }
+      .visual { padding: 11px; border-bottom: 1px solid #33453c; background: #070a09; }
+      img { display: block; width: 100%; aspect-ratio: 16 / 9; image-rendering: pixelated; border-radius: 5px; background: #060908; }
+      .copy { padding: 15px 16px 17px; }
+      .title-row { display: flex; justify-content: space-between; gap: 14px; align-items: start; }
+      h2 { margin: 0; font: 700 19px/1.2 Georgia, serif; }
+      .status { flex: none; padding: 4px 7px; border: 1px solid #5b735f; border-radius: 999px; color: #cde7bc; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      .status.prototype { border-color: #826e4c; color: #f1d294; }
+      .camera { min-height: 38px; margin: 7px 0 10px; color: #aab8af; font-size: 10px; line-height: 1.55; }
+      dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0; }
+      dl div { padding: 7px; border-radius: 5px; background: #1b2722; }
+      dt { color: #7f9388; font-size: 8px; text-transform: uppercase; }
+      dd { margin: 3px 0 0; color: #e7eee9; font: 700 12px/1 monospace; }
+      .layers { margin: 10px 0 0; color: #8fa297; font-size: 9px; line-height: 1.5; }
+      #result, #error { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="kicker">Mapsoo art gate · deterministic baseline</p>
+          <h1>Four ways to enter a generated world.</h1>
+          <p>These images validate camera grammar, depth separation, interaction readability, and a shared character focal point before a complete asset pack is allowed to build a map.</p>
+        </div>
+        <p class="legend"><strong>Pipeline ready · baseline art</strong> means the complete pack and Godot route exist, while the visible art is still replaceable engineering artwork. It does not claim finished itch.io-quality assets.</p>
+      </header>
+      <section class="grid" id="profile-grid" aria-label="Four profile visual baselines"></section>
+      <pre id="result"></pre>
+      <pre id="error"></pre>
+    </main>
+    <script>
+      window.addEventListener('error', (event) => {
+        document.querySelector('#error').textContent = event.error?.stack || event.message;
+        document.documentElement.dataset.state = 'failed';
+      });
+      window.addEventListener('unhandledrejection', (event) => {
+        document.querySelector('#error').textContent = event.reason?.stack || String(event.reason);
+        document.documentElement.dataset.state = 'failed';
+      });
+    </script>
+    <script type="module" src="./profile-art-validation.ts"></script>
+  </body>
+</html>

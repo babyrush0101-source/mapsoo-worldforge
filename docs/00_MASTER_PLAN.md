@@ -1,4 +1,4 @@
-# Mapsoo Worldsmith 总控计划
+# Mapsoo WorldForge 总控计划
 
 状态：执行中
 
@@ -110,7 +110,7 @@
 
 | 编号 | 决策 | 原因 | 状态 |
 | --- | --- | --- | --- |
-| D-001 | 产品名暂用 Mapsoo Worldsmith | 保留 Mapsoo 品牌，同时明确“世界锻造/生成”用途 | 已采纳，可在发布前调整 |
+| D-001 | 当前产品名使用 Mapsoo WorldForge；已发布 Pack 的 `Mapsoo Worldsmith` 仅作为 legacy generator/protocol identity 保留 | 对外名称与仓库一致，同时不破坏不可变 release、schema、receipt 和 Godot 校验 | 已采纳；由 product identity gate 约束 |
 | D-002 | v0.1 先做程序化本地生成 | 可测试、可重复、零成本，先验证资产工程闭环 | 已采纳 |
 | D-003 | 保留 React + Vite 工具链，但应用代码直接重建 | 工具链足够，旧网站业务没有迁移价值 | 已采纳 |
 | D-004 | World Spec 是 External Host 与 Mapsoo 的共享边界 | 同一世界描述可驱动游戏素材、故事场景和后续内容 | 已采纳 |

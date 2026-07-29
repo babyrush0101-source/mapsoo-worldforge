@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-production-art-requirements-binding-1.0.schema.json",
+  "title": "Mapsoo ProductionArtRequirementsBinding 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "binding_id",
+    "profile",
+    "status",
+    "source",
+    "mappings",
+    "blockers"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "production-art-requirements-binding" },
+    "binding_id": {
+      "type": "string",
+      "pattern": "^requirements-binding-[a-f0-9]{16}$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "status": { "enum": ["ready", "blocked"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_requirements_sha256", "production_art_plan_sha256"],
+      "properties": {
+        "asset_requirements_sha256": { "$ref": "#/$defs/sha256" },
+        "production_art_plan_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "mappings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement_id", "role", "task_id", "variant_count"],
+        "properties": {
+          "requirement_id": { "$ref": "#/$defs/requirementId" },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+          },
+          "task_id": { "$ref": "#/$defs/id" },
+          "variant_count": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["blocker_id", "requirement_id", "code"],
+        "properties": {
+          "blocker_id": {
+            "type": "string",
+            "pattern": "^blocker-[0-9]{3}$"
+          },
+          "requirement_id": { "$ref": "#/$defs/requirementId" },
+          "code": { "const": "unresolved-layout-critical" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "requirementId": {
+      "type": "string",
+      "pattern": "^requirement-[0-9]{3}$"
+    }
+  }
+}

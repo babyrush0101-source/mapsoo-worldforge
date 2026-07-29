@@ -2,13 +2,25 @@
 
 [ext_resource type="Script" path="res://example/main.gd" id="1_main"]
 
-[node name="MapsooImporterExample" type="Node2D"]
+[node name="MapsooRuntimeShell" type="Node"]
 script = ExtResource("1_main")
 
-[node name="Instructions" type="Label" parent="."]
+[node name="Interface" type="CanvasLayer" parent="."]
+layer = 100
+
+[node name="Backdrop" type="ColorRect" parent="Interface"]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 440.0
+offset_bottom = 68.0
+color = Color(0.035, 0.055, 0.047, 0.82)
+mouse_filter = 2
+
+[node name="Status" type="Label" parent="Interface"]
 offset_left = 24.0
-offset_top = 24.0
-offset_right = 616.0
-offset_bottom = 112.0
-theme_override_font_sizes/font_size = 20
-text = "Mapsoo Worldsmith — Godot importer example\nRun tests/run-smoke.ps1 to generate and import the deterministic fixture."
+offset_top = 20.0
+offset_right = 430.0
+offset_bottom = 62.0
+theme_override_colors/font_color = Color(0.88, 0.95, 0.86, 1)
+theme_override_font_sizes/font_size = 14
+text = "Mapsoo runtime\nWaiting for a generated world…"

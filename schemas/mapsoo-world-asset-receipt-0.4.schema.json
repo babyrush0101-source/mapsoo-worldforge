@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-asset-receipt-0.4.schema.json",
+  "title": "Mapsoo Layered Depth World Asset Receipt 0.4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "completed_at", "request", "provider", "output", "disclosures"],
+  "properties": {
+    "schema_version": { "const": "0.4.0" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "request": {
+      "type": "object",
+      "required": ["fingerprint_sha256", "profile", "seed", "reference_rights"],
+      "properties": {
+        "fingerprint_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "profile": { "const": "layered-depth-2d" },
+        "seed": { "type": "string" },
+        "reference_rights": { "type": "array", "minItems": 2, "maxItems": 2 },
+        "dialogue_binding": { "type": "object" }
+      }
+    },
+    "provider": { "type": "object" },
+    "output": {
+      "type": "object",
+      "required": ["bundle_schema_version", "completeness_policy", "license", "files"],
+      "properties": {
+        "bundle_schema_version": { "const": "0.4.0" },
+        "completeness_policy": { "const": "layered-depth-2d-complete-v1" },
+        "license": { "const": "CC0-1.0" },
+        "files": { "type": "array" }
+      }
+    },
+    "disclosures": { "type": "array", "items": { "type": "string" } }
+  }
+}

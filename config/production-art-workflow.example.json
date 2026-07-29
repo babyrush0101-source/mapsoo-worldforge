@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "document_type": "production-art-workflow-job",
+  "workflow_id": "original-mist-harbor-v1",
+  "profile": "layered-depth-2d",
+  "quality": "medium",
+  "request_budget": 14,
+  "world_brief_file": "private/world-brief.txt",
+  "style_bible_file": "private/style-bible.txt",
+  "environment_reference": "private/environment.png",
+  "character_reference": "private/character.png",
+  "character_id": "neutral-traveler",
+  "private_input_binding": {
+    "confirmed_intake_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "seed": "original-mist-harbor-seed",
+    "character_identity_digest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "environment_reference_id": "mist-harbor-environment",
+    "character_reference_id": "neutral-traveler-reference"
+  }
+}

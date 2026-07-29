@@ -27,7 +27,7 @@ The maintainer must not submit an issue on a tester's behalf. If a tester cannot
 ## Direct invitation / 一对一邀请
 
 ```text
-Hi — I maintain Mapsoo Worldsmith, an open-source 2D world-asset pack generator and Godot importer.
+Hi — I maintain Mapsoo WorldForge, an open-source 2D world-asset pack generator and Godot importer.
 
 Alpha9 now has one narrow, testable path: a complete top-down farm Pack 0.6 that imports into Godot 4.3+. Would you be willing to spend about 10 minutes trying one import and reporting either success or failure?
 
@@ -41,7 +41,7 @@ No star is required. Please star only if you genuinely want to follow the projec
 中文版本：
 
 ```text
-你好，我正在维护开源项目 Mapsoo Worldsmith：一个面向 Godot 的 2D 世界素材包生成器和导入器。
+你好，我正在维护开源项目 Mapsoo WorldForge：一个面向 Godot 的 2D 世界素材包生成器和导入器。
 
 Alpha9 目前只有一条明确可测的路径：把完整 top-down farm Pack 0.6 导入 Godot 4.3+。你愿意花约 10 分钟测试一次，并把成功或失败结果提交到 GitHub 吗？
 
@@ -59,7 +59,7 @@ Suggested category: **Resources → Assets**. Verify the forum's current rules b
 ```text
 Title: Open-source complete top-down farm asset pack + Godot 4.3 importer — Alpha testers wanted
 
-I have released Alpha9 of Mapsoo Worldsmith, a local-first open-source workflow for producing validated 2D world-asset packs for Godot.
+I have released Alpha9 of Mapsoo WorldForge, a local-first open-source workflow for producing validated 2D world-asset packs for Godot.
 
 The current release is intentionally narrow: it supports only one complete `topdown-farm` Pack 0.6 profile. The public pack contains terrain, water, paths/fences, soil/crops, structures, props, scene/collision/navigation/spawn data, and a four-direction idle/walk character preview. The asset pack itself contains no executable scripts; the MIT importer is installed separately.
 

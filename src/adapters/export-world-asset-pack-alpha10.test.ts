@@ -8,6 +8,7 @@ import receiptSchema from '../../schemas/mapsoo-world-asset-receipt-0.2.schema.j
 import { PROCEDURAL_SIDE_PLATFORMER_PROVIDER } from '../providers/procedural-side-platformer-provider';
 import { encodeRgbaPng } from './canvas/encode-png';
 import { bindGenerationRequestV2 } from '../core/generation-request-v2';
+import { createConfirmedGenerationBinding } from '../core/confirmed-generation-binding';
 import { runWorldAssetProvider } from '../core/world-asset-provider';
 import { buildAlpha10WorldAssetPack } from './export-world-asset-pack-alpha10';
 
@@ -92,5 +93,36 @@ describe('Alpha10 side-platformer Pack 0.7 exporter', () => {
     const bound = await job('licensed');
     const run = await runWorldAssetProvider(PROCEDURAL_SIDE_PLATFORMER_PROVIDER, bound);
     await expect(buildAlpha10WorldAssetPack(run, bound.request, '2026-07-20T12:00:00.000Z')).rejects.toThrow(/user-owned/);
+  });
+
+  it('embeds and schema-validates a confirmed dialogue binding, then rejects substitution', async () => {
+    const bound = await job();
+    const run = await runWorldAssetProvider(PROCEDURAL_SIDE_PLATFORMER_PROVIDER, bound);
+    const confirmation = await createConfirmedGenerationBinding(bound.request, {
+      sessionRevision: 4,
+      checkpoints: [
+        { stage: 'world-brief', snapshotSha256: 'a'.repeat(64) },
+        { stage: 'art-direction', snapshotSha256: 'b'.repeat(64) },
+        { stage: 'map-layout', snapshotSha256: 'c'.repeat(64) },
+        { stage: 'style-sample', snapshotSha256: 'd'.repeat(64) },
+      ],
+    });
+    const pack = await buildAlpha10WorldAssetPack(
+      run, bound.request, '2026-07-20T12:00:00.000Z', confirmation,
+    );
+    const entries = await archiveEntries(pack.bytes);
+    const root = 'mapsoo-alpha10-side-world-v0.1.0-alpha.10/';
+    const receipt = JSON.parse(new TextDecoder().decode(entries.get(`${root}generation-receipt.json`)));
+    const ajv = new Ajv2020({ strict: true, strictTypes: false, allErrors: true }); addFormats(ajv);
+    const validateReceipt = ajv.compile(receiptSchema);
+    expect(validateReceipt(receipt), JSON.stringify(validateReceipt.errors)).toBe(true);
+    expect(receipt.request.dialogue_binding).toEqual(confirmation);
+
+    await expect(buildAlpha10WorldAssetPack(
+      run,
+      { ...bound.request, seed: 'substituted-seed' },
+      '2026-07-20T12:00:00.000Z',
+      confirmation,
+    )).rejects.toThrow(/fingerprint/);
   });
 });

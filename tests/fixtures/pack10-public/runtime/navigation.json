@@ -1,0 +1,32 @@
+{
+  "schema_version": "mapsoo-public-fixture-navigation/1.0",
+  "fixture_id": "pack10-public-fixture",
+  "synthetic": true,
+  "nodes": [
+    {
+      "id": "spawn",
+      "x": 32,
+      "y": 132
+    },
+    {
+      "id": "checkpoint",
+      "x": 160,
+      "y": 116
+    },
+    {
+      "id": "exit",
+      "x": 288,
+      "y": 132
+    }
+  ],
+  "edges": [
+    {
+      "from": "spawn",
+      "to": "checkpoint"
+    },
+    {
+      "from": "checkpoint",
+      "to": "exit"
+    }
+  ]
+}

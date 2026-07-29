@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-portable-world-runtime-1.0.schema.json",
+  "title": "Mapsoo Portable World Runtime Contract and Bridge 1.0",
+  "oneOf": [
+    { "$ref": "#/$defs/runtimeContract" },
+    { "$ref": "#/$defs/bridgeMessage" }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "safePath": {
+      "type": "string",
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "runtimeContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "contract_id", "world", "spawn_points", "entity_slots", "event_hooks"],
+      "properties": {
+        "schema_version": { "const": "1.0.0" },
+        "contract_id": { "$ref": "#/$defs/id" },
+        "world": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["world_id", "pack_id", "pack_version", "pack_sha256", "profile", "entry_scene", "viewport"],
+          "properties": {
+            "world_id": { "$ref": "#/$defs/id" },
+            "pack_id": { "$ref": "#/$defs/id" },
+            "pack_version": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$"
+            },
+            "pack_sha256": { "$ref": "#/$defs/sha256" },
+            "profile": {
+              "enum": ["side-platformer", "isometric-action", "topdown-farm", "layered-depth-2d"]
+            },
+            "entry_scene": { "$ref": "#/$defs/safePath" },
+            "viewport": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["width", "height"],
+              "properties": {
+                "width": { "type": "integer", "minimum": 160, "maximum": 8192 },
+                "height": { "type": "integer", "minimum": 90, "maximum": 8192 }
+              }
+            }
+          }
+        },
+        "spawn_points": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["spawn_id", "x", "y"],
+            "properties": {
+              "spawn_id": { "$ref": "#/$defs/id" },
+              "x": { "type": "number", "minimum": -1000000, "maximum": 1000000 },
+              "y": { "type": "number", "minimum": -1000000, "maximum": 1000000 }
+            }
+          }
+        },
+        "entity_slots": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slot_id", "kind", "required", "spawn_id", "accepted_asset_kinds"],
+            "properties": {
+              "slot_id": { "$ref": "#/$defs/id" },
+              "kind": { "enum": ["player", "npc", "companion", "interactive", "prop"] },
+              "required": { "type": "boolean" },
+              "spawn_id": { "$ref": "#/$defs/id" },
+              "accepted_asset_kinds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": ["character-atlas", "animation-set", "collision-profile", "interaction-profile"]
+                }
+              }
+            }
+          }
+        },
+        "event_hooks": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["hook_id", "event", "required"],
+            "properties": {
+              "hook_id": { "$ref": "#/$defs/id" },
+              "event": {
+                "enum": [
+                  "runtime.ready",
+                  "world.entered",
+                  "world.exited",
+                  "entity.bound",
+                  "interaction.requested",
+                  "checkpoint.reached",
+                  "objective.completed",
+                  "runtime.error"
+                ]
+              },
+              "required": { "type": "boolean" },
+              "source_slot_id": { "$ref": "#/$defs/id" }
+            }
+          }
+        }
+      }
+    },
+    "preparePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime_contract"],
+      "properties": {
+        "runtime_contract": { "$ref": "#/$defs/runtimeContract" }
+      }
+    },
+    "bindPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "session_id", "bindings"],
+      "properties": {
+        "contract_id": { "$ref": "#/$defs/id" },
+        "session_id": { "$ref": "#/$defs/id" },
+        "bindings": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slot_id", "entity_id", "asset_path", "asset_sha256"],
+            "properties": {
+              "slot_id": { "$ref": "#/$defs/id" },
+              "entity_id": { "$ref": "#/$defs/id" },
+              "asset_path": { "$ref": "#/$defs/safePath" },
+              "asset_sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    },
+    "launchPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "session_id", "spawn_id"],
+      "properties": {
+        "contract_id": { "$ref": "#/$defs/id" },
+        "session_id": { "$ref": "#/$defs/id" },
+        "spawn_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "exitPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "session_id", "reason"],
+      "properties": {
+        "contract_id": { "$ref": "#/$defs/id" },
+        "session_id": { "$ref": "#/$defs/id" },
+        "reason": { "enum": ["user-request", "world-complete", "runtime-error", "host-shutdown"] }
+      }
+    },
+    "statusPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "session_id", "state", "sequence"],
+      "properties": {
+        "contract_id": { "$ref": "#/$defs/id" },
+        "session_id": { "$ref": "#/$defs/id" },
+        "state": { "enum": ["preparing", "ready", "running", "exiting", "exited", "error"] },
+        "sequence": { "type": "integer", "minimum": 0 },
+        "detail_code": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+        }
+      }
+    },
+    "bridgeMessage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "message_type", "idempotency_key", "payload_sha256", "payload"],
+          "properties": {
+            "schema_version": { "const": "1.0.0" },
+            "message_type": { "const": "runtime.prepare" },
+            "idempotency_key": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+            "payload_sha256": { "$ref": "#/$defs/sha256" },
+            "payload": { "$ref": "#/$defs/preparePayload" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "message_type", "idempotency_key", "payload_sha256", "payload"],
+          "properties": {
+            "schema_version": { "const": "1.0.0" },
+            "message_type": { "const": "runtime.bind" },
+            "idempotency_key": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+            "payload_sha256": { "$ref": "#/$defs/sha256" },
+            "payload": { "$ref": "#/$defs/bindPayload" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "message_type", "idempotency_key", "payload_sha256", "payload"],
+          "properties": {
+            "schema_version": { "const": "1.0.0" },
+            "message_type": { "const": "runtime.launch" },
+            "idempotency_key": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+            "payload_sha256": { "$ref": "#/$defs/sha256" },
+            "payload": { "$ref": "#/$defs/launchPayload" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "message_type", "idempotency_key", "payload_sha256", "payload"],
+          "properties": {
+            "schema_version": { "const": "1.0.0" },
+            "message_type": { "const": "runtime.exit" },
+            "idempotency_key": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+            "payload_sha256": { "$ref": "#/$defs/sha256" },
+            "payload": { "$ref": "#/$defs/exitPayload" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "message_type", "idempotency_key", "payload_sha256", "payload"],
+          "properties": {
+            "schema_version": { "const": "1.0.0" },
+            "message_type": { "const": "runtime.status" },
+            "idempotency_key": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+            "payload_sha256": { "$ref": "#/$defs/sha256" },
+            "payload": { "$ref": "#/$defs/statusPayload" }
+          }
+        }
+      ]
+    }
+  }
+}

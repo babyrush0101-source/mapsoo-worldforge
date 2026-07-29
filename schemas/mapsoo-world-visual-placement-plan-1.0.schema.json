@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-visual-placement-plan-1.0.schema.json",
+  "title": "Mapsoo WorldVisualPlacementPlan 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "status",
+    "plan_id",
+    "profile",
+    "source",
+    "bounds",
+    "placements"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "world-visual-placement-plan" },
+    "status": { "const": "planned" },
+    "plan_id": {
+      "type": "string",
+      "pattern": "^world-visual-placement-plan-[a-f0-9]{16}$"
+    },
+    "profile": { "$ref": "#/$defs/profile" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layout_plan_id", "layout_plan_path", "layout_plan_sha256"],
+      "properties": {
+        "layout_plan_id": { "$ref": "#/$defs/id" },
+        "layout_plan_path": { "const": "world-layout-plan.json" },
+        "layout_plan_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "bounds": { "$ref": "#/$defs/bounds" },
+    "placements": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "items": { "$ref": "#/$defs/placement" }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "type": "string",
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "role": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120,
+      "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "unit"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 16, "maximum": 512 },
+        "height": { "type": "integer", "minimum": 12, "maximum": 512 },
+        "unit": { "const": "logical-tile" }
+      }
+    },
+    "layer": {
+      "type": "string",
+      "enum": ["background", "world", "actors", "effects", "foreground", "lighting"]
+    },
+    "logicalPointAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "x", "y"],
+      "properties": {
+        "kind": { "const": "logical-point" },
+        "x": { "type": "integer", "minimum": 0, "maximum": 511 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 511 }
+      }
+    },
+    "logicalRectAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "x", "y", "width", "height"],
+      "properties": {
+        "kind": { "const": "logical-rect" },
+        "x": { "type": "integer", "minimum": 0, "maximum": 511 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 511 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 512 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 512 }
+      }
+    },
+    "landmarkAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref_id"],
+      "properties": {
+        "kind": { "const": "landmark" },
+        "ref_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "traversalAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref_id"],
+      "properties": {
+        "kind": { "const": "traversal" },
+        "ref_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "spawnAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "const": "spawn" }
+      }
+    },
+    "exitAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "const": "exit" }
+      }
+    },
+    "regionAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref_id"],
+      "properties": {
+        "kind": { "const": "region" },
+        "ref_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "anchor": {
+      "oneOf": [
+        { "$ref": "#/$defs/logicalPointAnchor" },
+        { "$ref": "#/$defs/logicalRectAnchor" },
+        { "$ref": "#/$defs/landmarkAnchor" },
+        { "$ref": "#/$defs/traversalAnchor" },
+        { "$ref": "#/$defs/spawnAnchor" },
+        { "$ref": "#/$defs/exitAnchor" },
+        { "$ref": "#/$defs/regionAnchor" }
+      ]
+    },
+    "ySortedRender": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "order", "y_sort"],
+      "properties": {
+        "layer": { "$ref": "#/$defs/layer" },
+        "order": { "type": "integer", "minimum": -4096, "maximum": 4096 },
+        "y_sort": { "type": "boolean" }
+      }
+    },
+    "depthPlaneRender": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "order", "parallax", "repeat"],
+      "properties": {
+        "layer": { "$ref": "#/$defs/layer" },
+        "order": { "type": "integer", "minimum": -4096, "maximum": 4096 },
+        "parallax": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "number", "minimum": 0, "maximum": 4 },
+            "y": { "type": "number", "minimum": 0, "maximum": 4 }
+          }
+        },
+        "repeat": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "boolean" },
+            "y": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "spritePlacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["placement_id", "kind", "role", "anchor", "render"],
+      "properties": {
+        "placement_id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "sprite" },
+        "role": { "$ref": "#/$defs/role" },
+        "variant_id": { "$ref": "#/$defs/id" },
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "render": { "$ref": "#/$defs/ySortedRender" }
+      }
+    },
+    "depthPlanePlacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["placement_id", "kind", "role", "anchor", "render"],
+      "properties": {
+        "placement_id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "depth-plane" },
+        "role": { "$ref": "#/$defs/role" },
+        "variant_id": { "$ref": "#/$defs/id" },
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "render": { "$ref": "#/$defs/depthPlaneRender" }
+      }
+    },
+    "effectPlacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["placement_id", "kind", "role", "anchor", "render", "trigger"],
+      "properties": {
+        "placement_id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "effect" },
+        "role": { "$ref": "#/$defs/role" },
+        "variant_id": { "$ref": "#/$defs/id" },
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "render": { "$ref": "#/$defs/ySortedRender" },
+        "trigger": {
+          "type": "string",
+          "enum": [
+            "always",
+            "on-spawn",
+            "on-interact",
+            "on-enter",
+            "on-exit",
+            "on-attack",
+            "on-impact",
+            "on-defeat"
+          ]
+        }
+      }
+    },
+    "actorPlacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["placement_id", "kind", "role", "anchor", "render", "controller"],
+      "properties": {
+        "placement_id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "actor" },
+        "role": { "$ref": "#/$defs/role" },
+        "variant_id": { "$ref": "#/$defs/id" },
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "render": { "$ref": "#/$defs/ySortedRender" },
+        "controller": {
+          "type": "string",
+          "enum": ["player", "npc", "enemy", "moving-platform", "ambient"]
+        }
+      }
+    },
+    "placement": {
+      "oneOf": [
+        { "$ref": "#/$defs/spritePlacement" },
+        { "$ref": "#/$defs/depthPlanePlacement" },
+        { "$ref": "#/$defs/effectPlacement" },
+        { "$ref": "#/$defs/actorPlacement" }
+      ]
+    }
+  }
+}

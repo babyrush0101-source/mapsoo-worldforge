@@ -53,11 +53,12 @@
 - [x] provider SDK、capabilities、注册表与执行前后验证边界；
 - [x] 把 `procedural-pixel-v1` 包装为零凭据、离线 Provider，同时保持 v0.1 输出不变；
 - [x] Workbench 首次生成、编辑器生成和 JSON 导入统一接入 Provider runner，并处理取消、过期结果和安全错误状态；
-- [ ] 至少一个可选 provider；
-- [ ] prompt 模板与风格约束；
-- [ ] 去背景、切图、nearest 缩放与调色；
+- [x] 至少一个可选的 server-only 图像 provider，并保持离线 provider 为默认基线；
+- [x] 生产美术 prompt 模板、原创风格边界与命名商业作品模仿拒绝；
+- [x] 生产源图的确定性去背景、网格检查、nearest 缩放与透明像素清理；
 - [ ] 单个 Tile/prop 局部重生成；
 - [ ] 成本/错误/重试 UI；
+- [x] 可恢复的本地生产任务账本、总请求预算、方向图确认闸门、中断对账与显式重试风险确认；
 - [x] 下一版本的 `0.2.0` provider receipt 类型、JSON Schema、runtime validator 与 legacy release 语义校验；
 - [x] runner-owned 原子 evidence envelope、Provider claims 校验、深冻结 world/spec snapshot 与 legacy exporter 信任边界；
 - [x] 可信版本 registry、按版本选择的 release/itch 输入、receipt verifier 分派、已发布 pack 重建门禁与完整 GitHub 附件 digest 固定；

@@ -1,0 +1,383 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-character-profile-revision-1.0.schema.json",
+  "title": "Mapsoo CharacterProfileRevision 1.0",
+  "description": "Provider-neutral character atlas revision and idempotent neutral runtime binding contract.",
+  "oneOf": [
+    { "$ref": "#/$defs/revision" },
+    { "$ref": "#/$defs/bindMessage" }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution", "license"],
+      "properties": {
+        "distribution": { "enum": ["private", "internal-review", "public"] },
+        "license": {
+          "enum": [
+            "CC0-1.0",
+            "CC-BY-4.0",
+            "CC-BY-SA-4.0",
+            "LicenseRef-Proprietary"
+          ]
+        },
+        "attribution": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "distribution": { "const": "public" } },
+            "required": ["distribution"]
+          },
+          "then": {
+            "not": {
+              "properties": { "license": { "const": "LicenseRef-Proprietary" } },
+              "required": ["license"]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "license": { "enum": ["CC-BY-4.0", "CC-BY-SA-4.0"] }
+            },
+            "required": ["license"]
+          },
+          "then": {
+            "properties": {
+              "attribution": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500,
+                "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+              }
+            },
+            "required": ["attribution"]
+          }
+        }
+      ]
+    },
+    "atlas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "media_type", "bytes", "sha256", "width", "height"],
+      "properties": {
+        "path": { "$ref": "#/$defs/safePath" },
+        "media_type": { "const": "image/png" },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 536870912
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        }
+      }
+    },
+    "frameGeometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frame_width", "frame_height", "columns", "rows"],
+      "properties": {
+        "frame_width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2048
+        },
+        "frame_height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2048
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        }
+      }
+    },
+    "pivot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "unit"],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2047
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2047
+        },
+        "unit": { "const": "pixels" }
+      }
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["column", "row"],
+      "properties": {
+        "column": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "row": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      }
+    },
+    "clip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clip_id", "action", "direction", "fps", "loop", "frames"],
+      "properties": {
+        "clip_id": {
+          "type": "string",
+          "maxLength": 100,
+          "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+        },
+        "action": {
+          "enum": [
+            "idle",
+            "walk",
+            "move",
+            "run",
+            "jump",
+            "fall",
+            "land",
+            "hurt",
+            "attack",
+            "attack-primary",
+            "dash",
+            "defeat",
+            "interact",
+            "talk"
+          ]
+        },
+        "direction": {
+          "enum": [
+            "north",
+            "north-east",
+            "east",
+            "south-east",
+            "south",
+            "south-west",
+            "west",
+            "north-west",
+            "left",
+            "right",
+            "near",
+            "far"
+          ]
+        },
+        "fps": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 60
+        },
+        "loop": { "type": "boolean" },
+        "frames": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/frame" }
+        }
+      }
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_digest_sha256", "source_reference_ids"],
+      "properties": {
+        "identity_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "source_reference_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        }
+      }
+    },
+    "runtimeDirectionTransform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "directions", "provenance"],
+      "properties": {
+        "strategy": { "const": "horizontal-flip" },
+        "directions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["left", "right"] }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["basis", "source_reference_ids"],
+          "properties": {
+            "basis": { "const": "operator-declared-direction-equivalence" },
+            "source_reference_ids": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/id" }
+            }
+          }
+        }
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "document_type",
+        "profile_revision_id",
+        "character_id",
+        "profile",
+        "atlas",
+        "frame_geometry",
+        "pivot",
+        "clips",
+        "source_identity",
+        "rights"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.0.0" },
+        "document_type": { "const": "character-profile-revision" },
+        "profile_revision_id": { "$ref": "#/$defs/id" },
+        "character_id": { "$ref": "#/$defs/id" },
+        "profile": { "$ref": "#/$defs/profile" },
+        "atlas": { "$ref": "#/$defs/atlas" },
+        "frame_geometry": { "$ref": "#/$defs/frameGeometry" },
+        "pivot": { "$ref": "#/$defs/pivot" },
+        "clips": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 48,
+          "items": { "$ref": "#/$defs/clip" }
+        },
+        "source_identity": { "$ref": "#/$defs/sourceIdentity" },
+        "runtime_direction_transform": {
+          "$ref": "#/$defs/runtimeDirectionTransform"
+        },
+        "rights": { "$ref": "#/$defs/rights" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "runtime_direction_transform": {} },
+            "required": ["runtime_direction_transform"]
+          },
+          "then": {
+            "properties": {
+              "profile": {
+                "enum": ["side-platformer", "layered-depth-2d"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "bindPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_id",
+        "session_id",
+        "slot_id",
+        "entity_id",
+        "profile_revision_id",
+        "profile_revision_sha256",
+        "character_id",
+        "world_profile",
+        "atlas_path",
+        "atlas_sha256"
+      ],
+      "properties": {
+        "contract_id": { "$ref": "#/$defs/id" },
+        "session_id": { "$ref": "#/$defs/id" },
+        "slot_id": { "$ref": "#/$defs/id" },
+        "entity_id": { "$ref": "#/$defs/id" },
+        "profile_revision_id": { "$ref": "#/$defs/id" },
+        "profile_revision_sha256": { "$ref": "#/$defs/sha256" },
+        "character_id": { "$ref": "#/$defs/id" },
+        "world_profile": { "$ref": "#/$defs/profile" },
+        "atlas_path": { "$ref": "#/$defs/safePath" },
+        "atlas_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "bindMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "message_type",
+        "idempotency_key",
+        "payload_sha256",
+        "payload"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.0.0" },
+        "message_type": { "const": "character-profile.bind" },
+        "idempotency_key": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$"
+        },
+        "payload_sha256": { "$ref": "#/$defs/sha256" },
+        "payload": { "$ref": "#/$defs/bindPayload" }
+      }
+    }
+  }
+}

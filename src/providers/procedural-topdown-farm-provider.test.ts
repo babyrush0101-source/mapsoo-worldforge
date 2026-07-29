@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { encodeRgbaPng } from '../adapters/canvas/encode-png';
 import { TOPDOWN_FARM_REQUIRED_ROLES } from '../core/generated-asset-bundle';
 import { bindGenerationRequestV2 } from '../core/generation-request-v2';
+import { extractCharacterIdentitySignature } from '../core/character-identity-signature';
 import { runWorldAssetProvider } from '../core/world-asset-provider';
 import { PROCEDURAL_TOPDOWN_FARM_PROVIDER } from './procedural-topdown-farm-provider';
 
@@ -16,10 +17,11 @@ async function createJob(description = 'A bright riverside farm.', characterMark
     20, 140, 70, 255, 60, 170, 90, 255,
     40, 100, 180, 255, 200, 160, 90, 255,
   ]));
-  const character = encodeRgbaPng(2, 2, Uint8Array.from([
+  const characterRgba = Uint8Array.from([
     characterMarker, 40, 110, 255, 230, 180, 140, 255,
     70, 80, 160, 255, 30, 30, 40, 255,
-  ]));
+  ]);
+  const character = encodeRgbaPng(2, 2, characterRgba);
   const descriptor = async (role: 'environment-style' | 'character', bytes: Uint8Array) => ({
     id: role === 'environment-style' ? 'environment-reference' : 'character-reference',
     role,
@@ -37,13 +39,17 @@ async function createJob(description = 'A bright riverside farm.', characterMark
       allowOutputCc0Dedication: true as const,
     },
   });
-  return bindGenerationRequestV2({
+  const bound = await bindGenerationRequestV2({
     schemaVersion: '1.0.0', id: 'complete-farm-job', profile: 'topdown-farm', description, seed: 'farm-seed-009',
     references: [await descriptor('environment-style', environment), await descriptor('character', character)],
   }, [
     { path: 'references/environment-style.png', bytes: environment },
     { path: 'references/character.png', bytes: character },
   ]);
+  return Object.freeze({
+    ...bound,
+    characterIdentity: await extractCharacterIdentitySignature({ width: 2, height: 2, rgba: characterRgba }),
+  });
 }
 
 function payload(result: Awaited<ReturnType<typeof runWorldAssetProvider>>, id: string): Uint8Array {
@@ -85,8 +91,14 @@ describe('procedural top-down farm provider', () => {
   it('uses both description and character reference when styling output', async () => {
     const baseline = await runWorldAssetProvider(PROCEDURAL_TOPDOWN_FARM_PROVIDER, await createJob());
     const newDescription = await runWorldAssetProvider(PROCEDURAL_TOPDOWN_FARM_PROVIDER, await createJob('A moonlit autumn farm.'));
-    const newCharacter = await runWorldAssetProvider(PROCEDURAL_TOPDOWN_FARM_PROVIDER, await createJob('A bright riverside farm.', 181));
+    const newCharacter = await runWorldAssetProvider(PROCEDURAL_TOPDOWN_FARM_PROVIDER, await createJob('A bright riverside farm.', 210));
     expect(payload(baseline, 'terrain-atlas')).not.toEqual(payload(newDescription, 'terrain-atlas'));
     expect(payload(baseline, 'character-atlas')).not.toEqual(payload(newCharacter, 'character-atlas'));
+    expect(payload(baseline, 'character-atlas')).toEqual(payload(newDescription, 'character-atlas'));
+    expect(resultCharacterSources(baseline)).toEqual(['character-reference']);
   });
 });
+
+function resultCharacterSources(result: Awaited<ReturnType<typeof runWorldAssetProvider>>): readonly string[] | undefined {
+  return result.bundle.assets.find(({ id }) => id === 'character-atlas')?.sourceReferenceIds;
+}

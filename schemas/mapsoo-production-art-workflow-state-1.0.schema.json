@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.example/schemas/mapsoo-production-art-workflow-state-1.0.schema.json",
+  "title": "Mapsoo production-art workflow state 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "state_revision",
+    "workflow_id",
+    "plan_id",
+    "profile",
+    "provider",
+    "input_binding_sha256",
+    "private_input_binding",
+    "request_budget",
+    "requests_started",
+    "tasks"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "production-art-workflow-state" },
+    "state_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "workflow_id": { "$ref": "#/$defs/safeId80" },
+    "plan_id": { "$ref": "#/$defs/safeId100" },
+    "profile": { "$ref": "#/$defs/profile" },
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "model", "quality"],
+      "properties": {
+        "id": { "$ref": "#/$defs/safeId80" },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "quality": { "enum": ["low", "medium", "high"] }
+      }
+    },
+    "input_binding_sha256": { "$ref": "#/$defs/sha256" },
+    "private_input_binding": { "$ref": "#/$defs/privateInputBinding" },
+    "approved_direction_sha256": { "$ref": "#/$defs/sha256" },
+    "request_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "requests_started": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 64
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "safeId80": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "safeId100": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "privateInputBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confirmed_intake_sha256",
+        "seed",
+        "character_identity_digest_sha256",
+        "environment_reference_id",
+        "character_reference_id"
+      ],
+      "properties": {
+        "confirmed_intake_sha256": { "$ref": "#/$defs/sha256" },
+        "seed": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+        },
+        "character_identity_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "environment_reference_id": { "$ref": "#/$defs/safeId80" },
+        "character_reference_id": { "$ref": "#/$defs/safeId80" }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_directory",
+        "source_sha256",
+        "normalized_sha256"
+      ],
+      "properties": {
+        "run_directory": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600,
+          "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+        },
+        "source_sha256": { "$ref": "#/$defs/sha256" },
+        "normalized_sha256": { "$ref": "#/$defs/sha256" },
+        "character_profile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "profile_revision_id",
+            "profile_revision_sha256",
+            "atlas_sha256"
+          ],
+          "properties": {
+            "profile_revision_id": { "$ref": "#/$defs/safeId100" },
+            "profile_revision_sha256": { "$ref": "#/$defs/sha256" },
+            "atlas_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "attemptRunning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "request_ordinal", "status"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "request_ordinal": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "status": { "const": "running" }
+      }
+    },
+    "attemptSucceeded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "request_ordinal", "status", "artifact"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "request_ordinal": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "status": { "const": "succeeded" },
+        "artifact": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "attemptRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempt",
+        "request_ordinal",
+        "status",
+        "artifact",
+        "error_code"
+      ],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "request_ordinal": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "status": { "const": "rejected" },
+        "artifact": { "$ref": "#/$defs/artifact" },
+        "error_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+        }
+      }
+    },
+    "attemptUncertain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "request_ordinal", "status", "error_code"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "request_ordinal": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "status": { "const": "uncertain" },
+        "error_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+        }
+      }
+    },
+    "attempt": {
+      "oneOf": [
+        { "$ref": "#/$defs/attemptRunning" },
+        { "$ref": "#/$defs/attemptSucceeded" },
+        { "$ref": "#/$defs/attemptRejected" },
+        { "$ref": "#/$defs/attemptUncertain" }
+      ]
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "status", "attempts"],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/safeId100" },
+        "status": {
+          "enum": ["pending", "running", "succeeded", "rejected", "uncertain"]
+        },
+        "attempts": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/attempt" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "pending" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": { "attempts": { "type": "array", "maxItems": 0 } }
+          },
+          "else": {
+            "properties": { "attempts": { "type": "array", "minItems": 1 } }
+          }
+        }
+      ]
+    }
+  }
+}

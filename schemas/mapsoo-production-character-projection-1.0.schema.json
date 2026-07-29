@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-production-character-projection-1.0.schema.json",
+  "title": "Mapsoo production character atlas projection 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "profile",
+    "plan_id",
+    "task_id",
+    "role",
+    "source",
+    "atlas",
+    "checks",
+    "human_review"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "production-character-atlas-projection" },
+    "profile": { "const": "layered-depth-2d" },
+    "plan_id": { "$ref": "#/$defs/safeId" },
+    "task_id": { "$ref": "#/$defs/safeId" },
+    "role": {
+      "enum": [
+        "character.player.atlas",
+        "character.npc.atlas"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "normalized_sha256",
+        "width",
+        "height",
+        "cell_size",
+        "pivot"
+      ],
+      "properties": {
+        "normalized_sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "const": 1024 },
+        "height": { "const": 1152 },
+        "cell_size": {
+          "type": "array",
+          "prefixItems": [
+            { "const": 128 },
+            { "const": 192 }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "pivot": {
+          "type": "array",
+          "prefixItems": [
+            { "const": 64 },
+            { "const": 180 }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "atlas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256",
+        "width",
+        "height",
+        "frame_size",
+        "pivot"
+      ],
+      "properties": {
+        "path": {
+          "enum": [
+            "atlases/player.png",
+            "atlases/npc.png"
+          ]
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "width": { "const": 384 },
+        "height": {
+          "enum": [144, 288]
+        },
+        "frame_size": {
+          "type": "array",
+          "prefixItems": [
+            { "const": 48 },
+            { "const": 72 }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "pivot": {
+          "type": "array",
+          "prefixItems": [
+            { "const": 24 },
+            { "const": 67 }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pose_count",
+        "distinct_pose_count",
+        "transparent_padding_checked",
+        "foot_anchor_range_y",
+        "exact_duplicates_rejected",
+        "mirrored_duplicates_rejected"
+      ],
+      "properties": {
+        "pose_count": {
+          "enum": [16, 32]
+        },
+        "distinct_pose_count": {
+          "enum": [16, 32]
+        },
+        "transparent_padding_checked": { "const": true },
+        "foot_anchor_range_y": {
+          "type": "array",
+          "prefixItems": [
+            { "const": 62 },
+            { "const": 68 }
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "exact_duplicates_rejected": { "const": true },
+        "mirrored_duplicates_rejected": { "const": true }
+      }
+    },
+    "human_review": { "const": "required" }
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

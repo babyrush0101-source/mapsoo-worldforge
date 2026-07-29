@@ -2,7 +2,7 @@
 
 ## 1. 现状与目标
 
-现有仓库曾是 React 18 + Vite 6 的网站前端。v0.1 只保留 React/Vite 工具链和 Git 历史，应用源代码直接重建为 Worldsmith 工作台；营销页、博客、社区、Supabase 登录和本地管理员不迁移。
+现有仓库曾是 React 18 + Vite 6 的网站前端。v0.1 只保留 React/Vite 工具链和 Git 历史，应用源代码直接重建为 WorldForge 工作台；营销页、博客、社区、Supabase 登录和本地管理员不迁移。
 
 目标架构把领域逻辑与 UI 分开，确保生成、校验和导出可以在浏览器 UI、测试、CLI 或未来 Godot 插件中复用。
 
@@ -37,50 +37,36 @@ Adapters
   └─ Godot exporter/importer
 ```
 
-## 3. 建议目录
+## 3. 当前目录与依赖方向
 
 ```text
 src/
-  app/
-    App.tsx
-    routes.ts
-  features/
-    world-editor/
-    world-preview/
-    asset-inspector/
-    export-pack/
-  core/
-    schema/
-      world-spec.ts
-      manifest.ts
-      migrations.ts
-    generation/
-      provider.ts
-      procedural-provider.ts
-      seeded-random.ts
-    validation/
-      rules.ts
-      validate-pack.ts
-    export/
-      common-pack.ts
-      godot-pack.ts
-      itch-pack.ts
-  adapters/
-    canvas/
-    storage/
-    zip/
-  examples/
-    meadow.world.json
-tests/
-godot/
-  addons/mapsoo_importer/
-  example/
-schemas/
+  core/          # 纯契约、校验、指纹、版本化 manifest；不认识 UI 或供应商
+  providers/     # 内置程序化实现和可替换 provider 实现
+  adapters/      # PNG/ZIP、文件、Godot、SpriteCook 等格式与运行时边界
+  app/           # 跨 core/provider/adapter 的用例编排与应用状态
+  features/      # 浏览器组件；只调用 app 用例或稳定 core 契约
+  integrations/  # 可选 server-only 外部服务入口
+scripts/         # 薄 CLI；解析参数后调用 app/adapters
+godot/           # importer、示例工程与 headless 验证
+schemas/         # 对外 JSON Schema
 ```
 
 旧网站已经存在于 Git 历史，不需要在新工作树中额外保存 `legacy` 副本。
 
-当前代码仍采用较浅目录：Provider 契约位于 `src/core/generation-provider.ts`，身份规则位于 `src/core/generator-identity.ts`，内置 Provider 与注册表位于 `src/providers/`。只有模块继续增长时才做机械目录迁移，避免为了理想树形打乱已发布路径。
+新增模块的依赖方向保持单向：`providers` 和 `adapters` 依赖 `core`；
+`app` 负责编排它们；`features` 与 `scripts` 只作为入口。早期公开 facade
+`core/generation-provider.ts` 和已发布导出策略
+`core/playable-terrain-export-policy.ts` 仍反向绑定内置 provider，作为版本
+兼容例外保留；新代码不得复制这种方向，未来只在版本化迁移时移除。
+供应商 SDK、账号状态、计费和专有响应只允许停留在 `integrations` 或
+专用 adapter。已被内部测试或外部调用使用的旧路径可以保留一行
+re-export 兼容层，但不再放实现。只有职责真的增长时才拆模块，避免为了
+理想目录提前搭框架。
+
+这条依赖方向由 `pnpm architecture:verify` 自动检查；新增反向依赖或
+供应商名称进入生产 `core` 会直接导致 CI 失败。功能自研/复用的完整
+判断表见 [`64_BUILD_VS_REUSE_POLICY.md`](64_BUILD_VS_REUSE_POLICY.md)。
 
 ## 4. World Spec
 
@@ -244,3 +230,90 @@ profile + seed + rights ─> provider candidate sets ─> normalize/atlas/map �
 完整性验证器读取 manifest 绑定的 profile matrix，逐类复核必需资产、atlas region、alpha/pivot、动画方向/帧、地图图层、可行走数据、跨 sidecar 引用、文件大小与 SHA-256。Provider 只能返回分类候选，不能自己声明 pack 完整；exporter 只接受 runner-owned、深冻结且完整性无 error 的单一结果。非确定模型输出按冻结候选审计，seed 只承诺受信后处理、地图解析、packing 和序列化可复现，不能伪称模型像素可重复。
 
 原始参考图、其原始公开 digest、EXIF/OCR、文件名、本地路径和自由文本 Provider 错误默认不进入公共 artifact。公开 receipt 只记录安全投影、Provider/工作流、确定性边界、权利类别、人工选择和输出许可；需要对私有原图做精确审计时使用不随 pack 发布的本地记录。详细合同、Godot matrix 与停止条件见 [`19_ALPHA9_REFERENCE_TO_FARM_WORLD.md`](19_ALPHA9_REFERENCE_TO_FARM_WORLD.md)。
+
+## 14. 自研与复用边界
+
+WorldForge 只自研决定项目差异化和可验证交付的核心：
+
+- 多轮对话确认后的世界定义与版本化 checkpoint；
+- `WorldLayoutConstraints`、四类确定性布局求解、`WorldLayoutPlan`、角色身份绑定和完整性规则；
+- 人工确认的角色语义身份，以及四类镜头下只允许的适配边界；
+- provider-neutral 美术任务、候选归一化、来源/许可记录和人工审核状态；
+- 可复现世界包、Godot importer、World Runner 契约与树莓派交付证据。
+
+已经存在且不是项目差异化的能力优先复用，不在核心中重复实现：
+
+- 图像生成、参考图编辑和风格一致性；
+- Sprite sheet、方向与动画候选生成；
+- TileSet/auto-tile 制作、拼接预览和素材编辑器；
+- 抠图、放大、格式转换等通用图像工具。
+
+所有外部能力只能通过一个小型 adapter 接入：
+
+```text
+confirmed world
+  -> confirmed WorldLayoutConstraints
+  -> profile solver
+  -> WorldLayoutPlan
+  -> provider-neutral AssetRequirements
+  -> ProductionArtRequirementsBinding
+  -> ProductionArtPlan
+  -> ProductionArtProvider port
+       -> built-in offline adapter
+       -> optional server-only SpriteCook adapter (implemented)
+       -> optional model/artist adapter
+  -> untrusted candidates
+  -> normalize + validate + human review
+  -> reproducible pack
+  -> Godot importer / World Runner
+```
+
+核心、schema、manifest 和 Godot importer 不导入供应商 SDK，也不理解供应商响应格式。API key、OAuth session、计费、重试和供应商错误只存在于 adapter/runtime 边界；原始错误、私有 prompt、用户路径和凭据不得进入 pack。adapter 必须把结果降为标准候选文件和证据，不能自行宣布世界包完整、可发布或权利合格。
+
+角色参考图的像素签名只证明几何和颜色来源相同，不能证明发型、脸部、服装或装备仍然是同一角色。`CharacterIdentitySemantics 1.0` 因此作为私有、人工确认的输入存在：核心校验其角色身份、来源摘要和确认 checkpoint，按 profile 编译允许的镜头/方向适配规则；模型 adapter 只在该任务获得单次 prompt/reference 上传授权后使用原始语义。公开 Pack、workflow state 和 receipt 不包含这些描述。
+
+SpriteCook 作为已实现的可选 adapter，先复用其参考图驱动的通用 Sprite 生成和稳定 asset ID。私有工作流通过仓库外、账号隔离的 HMAC 缓存跨任务复用导入结果；缓存、锁和远程 ID 均不进入核心协议、公开状态或 Pack。其专用动画和 TileSet 工作流仍作为后续 adapter 能力，不并入核心。WorldForge 仍负责把候选组织成已确认世界的完整资产角色、地图计划和 Godot 可加载包。集成采用用户自带账号/授权，不复制其产品 UI，不把第三方 API 转售为 WorldForge 自有 API，并保留离线 provider 与其他 adapter 的同等入口。实现与未完成边界见 [`59_SPRITECOOK_PROVIDER_ADAPTER.md`](59_SPRITECOOK_PROVIDER_ADAPTER.md)。
+
+SpriteCook 只允许两种薄接入方式，不成为运行时依赖：
+
+1. 公开 API 通过现有 `ProductionArtProvider` port 返回 PNG 候选；凭据、资产 ID、轮询和计费信息停留在 server-only adapter。
+2. 用户主动导出的 Godot 资源作为 authoring input；adapter 只提取 atlas、动画帧和 terrain 信息，再转换为 WorldForge 的逻辑材质映射并重新校验。Top-down/platformer 可复用其 auto-tile terrain，isometric 只按 atlas 输入处理。
+
+可以直接吸收的工作流优点包括：批量生成前检查额度、把可复用资产 ID 保存到本地私有运行记录、用参考资产维持风格、默认紧裁切透明边界、按显式下载清单落盘，以及把动画帧和 Godot 资源分开物化。它们是 adapter 的操作策略，不是新的核心领域对象。WorldForge 不复制 SpriteCook 的账户、素材库、编辑器、计费或 MCP 会话管理。
+
+核心不调用 SpriteCook MCP、不加载其插件，也不把第三方 `.tres` 直接当作可信 pack 内容。四类 profile 共用同一套候选和逻辑材质端口，不为每个供应商或 profile 复制一套 importer。
+
+`AssetRequirements 1.0` 同样不建立第二套角色目录。它直接复用四类
+profile 已有的 canonical role inventory：先保留完整基线角色，再把路线、
+规模、垂直度、水域、聚落、危险度和地标数量编译为小型结构需求。当前
+profile 没有诚实可用的角色时，需求必须标记为 `unresolved`，不能借用
+无关贴图伪装覆盖。Provider 仍只负责候选生成，不能修改这些需求或决定
+世界完整性。
+
+已经审核并组装完成的 Pack 同样只走薄适配层，不再复制投影器：
+
+```text
+reviewed Pack 0.6 / 0.7 / 0.8 / 1.0
+  -> shared exact archive loader
+  -> small profile projector
+  -> one reviewed-world source receipt
+  -> fingerprint-bound recorded replay provider
+  -> core/runWorldAssetProvider
+  -> Godot importer / World Runner
+```
+
+`replayReviewedWorldAsset()` 是四类 profile 的唯一公开回放入口。Pack 1.0
+仍是 layered-depth 可见资产、角色动画和地图 sidecar 的唯一组装来源；
+Pack 0.6/0.7/0.8 review archive 分别保留现有 top-down、platformer 和
+isometric 投影规则。四个投影器只负责校验 schema/语义/哈希并映射到已经
+存在的角色契约；license、provenance 和审核状态统一保留在
+`reviewed-world-asset-source-receipt`，不作为运行时资产，也不会被 replay
+自动提升。这样 SpriteCook、模型、艺术家或离线工具只需产出同一标准候选/
+Pack，核心和 Godot 路径保持不变。
+
+新增依赖前使用四个判断：
+
+1. 是否属于上述 WorldForge 核心；若是，维护稳定的内部契约。
+2. 是否已有成熟、许可可接受的实现；若是，优先 adapter 或库。
+3. 移除该供应商后，核心测试、离线基线和 pack validator 是否仍能运行。
+4. 新抽象是否至少服务一个当前实现和一个可替代实现；否则保持简单函数，不提前搭框架。

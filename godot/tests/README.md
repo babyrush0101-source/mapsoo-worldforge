@@ -2,6 +2,28 @@
 
 `run-smoke.ps1` generates and tests schemas `0.1.0` through `0.5.0` in isolated Godot processes, covering historical import, playable terrain, semantic places, exterior structures, and the Alpha.7 multi-world release binding:
 
+`import_pack10_controlled_smoke.gd` independently exercises the Pack
+`1.0.0-draft.1` routed importer. It materializes neutral procedural public,
+internal-review, and private fixtures; proves explicit caller grants for both
+non-public modes; reloads the generated scene; and rejects scripts, shaders,
+URLs, absolute paths, and traversal paths. CI runs it with Godot 4.3 and 4.7
+on Linux and Windows.
+
+`world_material_palette_smoke.gd` exercises the shared provider-neutral
+logical-material binder for side-platformer, top-down, isometric, and
+layered-depth worlds. It proves complete role coverage, visible projected
+`TileMapLayer` output, deterministic `TileSet` sources, saved-scene texture
+persistence, and fail-closed tamper handling. The Pack 1.0 controlled smoke
+also sends a real palette attachment through the complete importer transaction.
+
+`world_terrain_autotile_smoke.gd` applies the optional provider-neutral 4 by 4
+terrain enhancement after the safe single-cell palette fallback. It proves
+explicit N/E/S/W masks, multiple selected variants, all four profiles,
+persisted atlas coordinates, and fail-closed coverage/hash/grid tamper handling
+with Godot 4.3 and 4.7. The Pack 1.0 controlled importer smoke additionally
+loads a real four-material JSON/PNG attachment, persists it transactionally,
+and rejects a chained-hash mismatch.
+
 1. generate a deterministic PNG/JSON/manifest fixture;
 2. let the editor import the new PNG resources;
 3. call `MapsooPackImporter.import_pack()` and validate the resulting resources.
@@ -36,6 +58,32 @@ The re-import transaction contract additionally proves:
 The exact-pack CLI imports a fixed candidate or published release pack twice and requires `created → unchanged`. For schemas `0.2.0` through `0.5.0`, it also requires Water/Roads layers, two TerrainSets, one physics layer, and the documented z-order. Schemas `0.3.0` through `0.5.0` check every stable marker against the validated places sidecar; schemas `0.4.0`/`0.5.0` additionally check every structure sprite, atlas region, metadata field, and place linkage. Trusted `--expected-*` arguments bind ID/schema/cell/prop/place/structure counts, and `--check-conflict=true` proves an edited managed scene is rejected without changing its bytes. PR and tag CI are configured to run the synthetic and exact-pack contracts on Linux and Windows with Godot 4.3 and 4.7. Windows archive SHA-512 values are pinned from the official Godot release checksum files.
 
 Alpha.7 CI can pass a trusted three-pack descriptor to `scripts/run-exact-pack-set.ps1`. The descriptor has `schemaVersion: 1` and exactly the IDs `sunny-meadow`, `dustwind-outpost`, and `frostwatch-vale`; each pack record supplies `archiveRoot`, `schemaVersion`, `cellCount`, `propCount`, `placeCount`, and `structureCount`. The runner locates each extracted manifest below the trusted root, invokes the exact CLI with all expectations, and requires `created → unchanged → conflict/preserved` for every pack while reusing one OS/Godot job.
+
+## Playable physics contracts
+
+Pack `0.6.0` and `0.7.0` jobs instantiate the imported world inside a real `SceneTree` and advance physics frames:
+
+- `import_alpha9_playable_smoke.gd` checks four-direction movement, blocked-cell collision, animation, bounds, and camera limits.
+- `import_alpha10_playable_smoke.gd` checks solid landing, movement, jump, one-way pass-through and landing, hazard respawn, exit reporting, and camera limits.
+
+These run on Linux and Windows with Godot 4.3 and 4.7. They complement structural importer checks; a node hierarchy by itself is not accepted as playability evidence.
+
+`runtime_shell_smoke.gd` then proves that the reusable main scene rejects unsafe paths, loads and replaces all four generated world profiles, binds portable character revisions, exposes the active scene/profile identity, and invokes the same neutral NPC interaction API in every profile.
+
+`npc_interaction_controller_smoke.gd` proves deterministic nearest-NPC selection, stable tie breaking, one event per held input edge, direct host invocation, and fail-closed range validation across all four world profiles.
+
+`character_profile_runtime_smoke.gd` binds canonical synthetic
+`CharacterProfileRevision` bytes and exact PNG atlas bytes to the neutral
+player visual in all four world profiles. It proves clip inventory, frame
+regions, pivot offset, nearest filtering, display scale, metadata and
+idempotent replay, then rejects digest changes, profile/clip mismatch, missing
+clips, unsafe paths, corrupted atlas bytes, missing slots and ambiguous slots.
+CI runs the contract with Godot 4.3 and 4.7 on Linux and Windows. Use
+`pnpm character:runtime:godot` for the local Windows compatibility matrix.
+The result is a technical runtime gate, not human-art approval or physical
+Raspberry Pi evidence.
+
+`texture_persistence_probe.gd` proves on Godot 4.3 and 4.7 that `keep_compressed_buffer` must be set before `PortableCompressedTexture2D.create_from_image()`. `capture_alpha10_runtime_visual.gd` renders the reloaded Pack 0.7 scene and rejects blank or collapsed frames using conservative color, dominant-color, luminance, edge-density, regional-color, and alpha thresholds.
 
 Run when `godot4` or `godot` is on `PATH` (or `GODOT_BIN` points to the console executable):
 

@@ -26,6 +26,10 @@ import { validateGeneratedWorld, validateWorldSpec } from '../core/validate-worl
 import { WorldPreview } from '../features/world-preview/WorldPreview';
 import { WorldGallery } from '../features/world-gallery/WorldGallery';
 import { ReferenceWorldGenerator } from '../features/reference-world-generator/ReferenceWorldGenerator';
+import {
+  WorldCreationDialogue,
+  type WorldCreationAssetHandoff,
+} from '../features/world-creation-dialogue/WorldCreationDialogue';
 import { DEFAULT_GENERATION_PROVIDER } from '../providers/provider-registry';
 import { CURRENT_PUBLIC_RELEASE } from './current-public-release';
 import { GenerationSession, type GenerationRequest } from './generation-session';
@@ -77,6 +81,7 @@ export function App() {
   const [importState, setImportState] = useState<'idle' | 'reading' | 'generating'>('idle');
   const [importKind, setImportKind] = useState<'world' | 'external-host' | null>(null);
   const [importNotice, setImportNotice] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
+  const [creationHandoff, setCreationHandoff] = useState<WorldCreationAssetHandoff | null>(null);
   const draftIssues = useMemo(() => validateWorldSpec(draft), [draft]);
   const activeExampleId = useMemo(() => findMatchingWorldExample(draft)?.id ?? '', [draft]);
   const selectedPublicPack = CURRENT_PUBLIC_RELEASE.assetPacks.find((pack) => pack.id === activeExampleId)
@@ -324,18 +329,18 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="Mapsoo Worldsmith home">
+        <a className="brand" href="#top" aria-label="Mapsoo WorldForge home">
           <span className="brand-mark" aria-hidden="true">
             M
           </span>
           <span>
             <strong>Mapsoo</strong>
-            <small>Worldsmith · v{CURRENT_PACK_VERSION}</small>
+            <small>WorldForge · v{CURRENT_PUBLIC_RELEASE.version}</small>
           </span>
         </a>
         <div className="topbar-meta">
           <span className="status-dot" /> Local-first
-          <a href="https://github.com/babyrush0101-source/mapsoo-kids">GitHub</a>
+          <a href="https://github.com/babyrush0101-source/mapsoo-worldforge">GitHub</a>
         </div>
       </header>
 
@@ -357,7 +362,21 @@ export function App() {
           onSelect={(id) => void loadWorldExample(id)}
         />
 
-        <ReferenceWorldGenerator />
+        <WorldCreationDialogue
+          onReadyForAssets={(handoff) => setCreationHandoff(handoff)}
+          onHandoffInvalidated={() => setCreationHandoff(null)}
+        />
+
+        <ReferenceWorldGenerator
+          key={creationHandoff?.checkpoints.map(({ snapshotSha256 }) => snapshotSha256).join(':') ?? 'standalone-reference-generator'}
+          initialProfile={creationHandoff?.profile}
+          initialDescription={creationHandoff?.description}
+          initialWorldFacts={creationHandoff?.facts}
+          initialLayoutIntent={creationHandoff?.layoutIntent}
+          initialTarget={creationHandoff?.target}
+          initialSessionRevision={creationHandoff?.sessionRevision}
+          initialApprovedIntentPreviewSha256={creationHandoff?.approvedIntentPreviewSha256}
+        />
 
         <section className="workbench" aria-label="World generator workbench">
           <aside className="panel controls-panel">
@@ -797,7 +816,7 @@ export function App() {
       </main>
 
       <footer>
-        <span>Mapsoo Worldsmith · MIT source</span>
+        <span>Mapsoo WorldForge · MIT source</span>
         <span>Don’t prompt for pictures. Build playable worlds.</span>
       </footer>
     </div>

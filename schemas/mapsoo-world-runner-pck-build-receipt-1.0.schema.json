@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mapsoo.dev/schemas/mapsoo-world-runner-pck-build-receipt-1.0.schema.json",
+  "title": "Mapsoo World Runner PCK build receipt 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "world_id",
+    "profile",
+    "pack_sha256",
+    "manifest_sha256",
+    "runtime_artifact",
+    "build_host",
+    "character_binding",
+    "physical_raspberry_pi_tested"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_type": { "const": "world-runner-pck-build-receipt" },
+    "world_id": { "$ref": "#/$defs/id" },
+    "profile": {
+      "enum": [
+        "side-platformer",
+        "topdown-farm",
+        "isometric-action",
+        "layered-depth-2d"
+      ]
+    },
+    "pack_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "runtime_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "target_runtime_architecture",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "kind": { "const": "godot-pck" },
+        "target_runtime_architecture": { "const": "arm64" },
+        "bytes": { "type": "integer", "minimum": 64, "maximum": 2147483647 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "build_host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["godot_version", "platform", "architecture"],
+      "properties": {
+        "godot_version": {
+          "type": "string",
+          "pattern": "^(?:4|[5-9]|[1-9][0-9]+)\\.(?:0|[1-9][0-9]*)(?:\\.(?:0|[1-9][0-9]*))?(?:[-+][0-9A-Za-z.-]+)?$"
+        },
+        "platform": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "architecture": { "type": "string", "minLength": 1, "maxLength": 32 }
+      }
+    },
+    "launch_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "spawn_id",
+        "player_slot_id"
+      ],
+      "properties": {
+        "status": { "const": "bound" },
+        "spawn_id": { "$ref": "#/$defs/id" },
+        "player_slot_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "character_binding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["embedded"],
+          "properties": {
+            "embedded": { "const": false }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "embedded",
+            "profile_revision_id",
+            "revision_bytes",
+            "revision_sha256",
+            "atlas_bytes",
+            "atlas_sha256"
+          ],
+          "properties": {
+            "embedded": { "const": true },
+            "profile_revision_id": { "$ref": "#/$defs/id" },
+            "revision_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1048576
+            },
+            "revision_sha256": { "$ref": "#/$defs/sha256" },
+            "atlas_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 536870912
+            },
+            "atlas_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "physical_raspberry_pi_tested": { "const": false }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

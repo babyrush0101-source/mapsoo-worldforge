@@ -37,7 +37,7 @@ jobs:
 
       - name: Check and build project site
         env:
-          VITE_BASE_PATH: /mapsoo-kids/
+          VITE_BASE_PATH: /mapsoo-worldforge/
         run: pnpm check
 
       - name: Configure GitHub Pages

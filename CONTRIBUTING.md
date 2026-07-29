@@ -1,4 +1,4 @@
-# Contributing to Mapsoo Worldsmith
+# Contributing to Mapsoo WorldForge
 
 Thanks for helping make world-asset creation more open and useful to Godot creators.
 

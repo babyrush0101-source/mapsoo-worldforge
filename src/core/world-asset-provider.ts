@@ -4,11 +4,15 @@ import {
   type GeneratedAssetBundle,
 } from './generated-asset-bundle';
 import { assertCompleteSidePlatformerAssetBundle } from './side-platformer-asset-bundle';
+import { assertCompleteIsometricActionAssetBundle } from './isometric-action-asset-bundle';
+import { assertCompleteLayeredDepthAssetBundle } from './layered-depth-asset-bundle';
 import {
   bindGenerationRequestV2,
   fingerprintGenerationRequestV2,
   type GenerationRequestJobV2,
 } from './generation-request-v2';
+import { materializeCharacterIdentitySignature } from './character-identity-signature';
+import { materializeEnvironmentArtSignature } from './environment-art-signature';
 
 const PROVIDER_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
@@ -266,6 +270,8 @@ async function validateAndSnapshotOutput(
   try {
     if (profile === 'topdown-farm') assertCompleteTopdownFarmAssetBundle(bundle);
     else if (profile === 'side-platformer') assertCompleteSidePlatformerAssetBundle(bundle);
+    else if (profile === 'isometric-action') assertCompleteIsometricActionAssetBundle(bundle);
+    else if (profile === 'layered-depth-2d') assertCompleteLayeredDepthAssetBundle(bundle);
     else fail('world-provider.unsupported-profile', `No complete asset contract is implemented for ${profile}.`);
   } catch (error) {
     if (error instanceof WorldAssetProviderError) throw error;
@@ -314,13 +320,24 @@ export async function runWorldAssetProvider(
 ): Promise<WorldAssetGenerationResult> {
   const contract = snapshotProvider(provider);
   abortIfNeeded(options.signal, contract.id);
-  const job = await bindGenerationRequestV2(
+  const reboundJob = await bindGenerationRequestV2(
     suppliedJob.request,
     suppliedJob.references.map((reference) => ({
       path: reference.descriptor.path,
       bytes: reference.readBytes(),
     })),
   );
+  const characterIdentity = suppliedJob.characterIdentity
+    ? await materializeCharacterIdentitySignature(suppliedJob.characterIdentity)
+    : undefined;
+  const environmentArt = suppliedJob.environmentArt
+    ? await materializeEnvironmentArtSignature(suppliedJob.environmentArt)
+    : undefined;
+  const job: GenerationRequestJobV2 = Object.freeze({
+    ...reboundJob,
+    ...(characterIdentity ? { characterIdentity } : {}),
+    ...(environmentArt ? { environmentArt } : {}),
+  });
   if (!contract.capabilities.supportedProfiles.includes(job.request.profile)) {
     fail('world-provider.unsupported-profile', `${contract.id} does not support ${job.request.profile}.`);
   }
@@ -389,6 +406,68 @@ export function createTopdownFarmReplayProvider(
         fail('world-provider.invalid-output', 'Replay fixture is bound to a different request id.');
       }
       return fixture;
+    },
+  });
+}
+
+/**
+ * Replays one previously materialized complete bundle only for the exact request
+ * that created it. This is the narrow bridge for reviewed/imported asset packs;
+ * it does not grant release approval or regenerate artwork.
+ */
+export function createFingerprintBoundWorldAssetReplayProvider(
+  id: string,
+  version: string,
+  profile: WorldAssetProfile,
+  fixture: WorldAssetProviderOutput,
+  expectedRequestFingerprintSha256: string,
+): WorldAssetProvider {
+  if (!WORLD_ASSET_PROFILES.includes(profile) || !/^[a-f0-9]{64}$/.test(expectedRequestFingerprintSha256)) {
+    fail('world-provider.invalid-metadata', 'Replay profile or request fingerprint is invalid.');
+  }
+  const bundle = deepFreezeData(cloneBundle(fixture.bundle));
+  const files = Object.freeze(fixture.files.map((file) => Object.freeze({
+    assetId: file.assetId,
+    path: file.path,
+    mediaType: file.mediaType,
+    bytes: file.bytes.slice(),
+  })));
+  return Object.freeze({
+    id,
+    version,
+    displayName: 'Fingerprint-bound World Asset Replay',
+    capabilities: Object.freeze({
+      execution: 'local' as const,
+      determinism: 'replay' as const,
+      outputProvenance: 'recorded-replay' as const,
+      requiresCredentials: false,
+      supportsAbort: true,
+      supportedProfiles: Object.freeze([profile]),
+      requiredReferenceRoles: Object.freeze(['environment-style', 'character'] as const),
+      maxReferenceBytes: 16 * 1024 * 1024,
+      maxOutputBytes: 128 * 1024 * 1024,
+      maxRasterDimension: 8192,
+    }),
+    async generate(job: GenerationRequestJobV2, options?: { readonly signal?: AbortSignal }) {
+      abortIfNeeded(options?.signal, id);
+      const actualFingerprint = await fingerprintGenerationRequestV2(job.request);
+      if (
+        job.request.profile !== profile
+        || bundle.profile !== profile
+        || bundle.jobId !== job.request.id
+        || actualFingerprint !== expectedRequestFingerprintSha256
+      ) {
+        fail('world-provider.invalid-output', 'Replay fixture is bound to a different complete generation request.');
+      }
+      return {
+        bundle,
+        files: files.map((file) => ({
+          assetId: file.assetId,
+          path: file.path,
+          mediaType: file.mediaType,
+          bytes: file.bytes.slice(),
+        })),
+      };
     },
   });
 }

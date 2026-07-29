@@ -1,0 +1,117 @@
+{
+  "schema_version": "mapsoo-pi4-world-set/1.0",
+  "id": "layered-depth-2d-production-v1",
+  "profile": "layered-depth-2d",
+  "scene_target": "layered-depth-2d-production-v1.world.tscn",
+  "distribution": "internal-review",
+  "output_license": "UNRELEASED",
+  "standard_pack": false,
+  "runtime_kind": "trusted-controlled-scene",
+  "source_evidence": {
+    "path": "docs/visual-qa/production-art/layered-depth-2d-production-candidate-godot-render-v1.json",
+    "status": "runtime-candidate"
+  },
+  "not_accepted_for": [
+    "public asset-pack release",
+    "standard Pack 0.9 distribution",
+    "physical Raspberry Pi 4B performance approval"
+  ],
+  "files": [
+    {
+      "source": "godot/runtime_candidates/layered-depth-2d-production-v1.world.tscn",
+      "target": "layered-depth-2d-production-v1.world.tscn",
+      "bytes": 597,
+      "sha256": "483c82e02b9ccff0a17b072b89996f955a9323278a63621713b0d877278af665"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-production-layers-v1.json",
+      "target": "manifests/layers.json",
+      "bytes": 28882,
+      "sha256": "cf4b3bf4d6c36b2491195233ffaf0bba9fb783c6dce6e99d00d5803f261e30ec"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-prop-atlas-v1.json",
+      "target": "manifests/props.json",
+      "bytes": 13871,
+      "sha256": "e6eec5789cb2bd202d5b5b43501c6516150e8915fa6078098db414c7d9d9d484"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-player-atlas-v1.json",
+      "target": "manifests/player.json",
+      "bytes": 68769,
+      "sha256": "159fd31e0b80c4ce9d9a54d22752f48857008c0d35d86d4b34cf6c6cbc487642"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-npc-atlas-v1.json",
+      "target": "manifests/npc.json",
+      "bytes": 37148,
+      "sha256": "9b8765170234ce32a803f25bcb235dea658cc2b68e98246fdbc2523003ed01a6"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-background-sky-runtime-v1.png",
+      "target": "assets/layer-background-sky.png",
+      "bytes": 1337784,
+      "sha256": "6ab7fa858f3939ee8caef282be92fd7029cc6b1e4276430bf41e89b43ed36b36"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-background-far-runtime-v1.png",
+      "target": "assets/layer-background-far.png",
+      "bytes": 571062,
+      "sha256": "129bb2ac90288010089bfb55784baaa975b202c009bb55ce43cdcdd3722010cf"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-background-mid-runtime-v1.png",
+      "target": "assets/layer-background-mid.png",
+      "bytes": 941231,
+      "sha256": "4b4e018d7974899b9d8c39d9af0ef4141d90dc640527308e1a8094cc340a91ee"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-background-depth-fog-runtime-v1.png",
+      "target": "assets/layer-background-depth-fog.png",
+      "bytes": 494136,
+      "sha256": "614f3f31f4bb097a9e0b78f738093637f71d0ed0b9ee0389f3913bad184fb3f0"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-near-overlay-runtime-v1.png",
+      "target": "assets/layer-near-overlay.png",
+      "bytes": 608126,
+      "sha256": "7dbb90b34d216dbeed88816fe57f6c6f3139d27800ebf23fa3c9344aed6f249e"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-foreground-overlay-runtime-v1.png",
+      "target": "assets/layer-foreground-overlay.png",
+      "bytes": 576187,
+      "sha256": "539e74dd261156621621bd70d1126d6ad95e58337acb0e10ba2bd6463c50f41a"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-lighting-ambient-runtime-v1.png",
+      "target": "assets/layer-lighting-ambient.png",
+      "bytes": 1117940,
+      "sha256": "21b9966c44422f7ba5a65f88b569f02dcc3d8d152b19b8cf33e2eefe0d42b2e5"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-lighting-local-runtime-v1.png",
+      "target": "assets/layer-lighting-local.png",
+      "bytes": 194817,
+      "sha256": "c878510df486c4c5ecd38d543be044b76fe1c7d170af9d0ee0d3993e2122efdf"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-prop-atlas-v1.png",
+      "target": "assets/props.png",
+      "bytes": 137136,
+      "sha256": "c0884097da2043880ead51ae43f7c0199ed3f528ea0077075ffe093e2900e896"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-player-atlas-v1.png",
+      "target": "assets/player.png",
+      "bytes": 147492,
+      "sha256": "ee7f20fa08e1c18beaa1cb1cd53c2a84e6bba24353f28821cb84bdd08fd3d659"
+    },
+    {
+      "source": "docs/visual-qa/production-art/layered-depth-2d-npc-atlas-v1.png",
+      "target": "assets/npc.png",
+      "bytes": 67188,
+      "sha256": "bca2ec61e9f98f3e17db9ea2582ed932453f0a87f7ef35120745cc874e90319a"
+    }
+  ]
+}

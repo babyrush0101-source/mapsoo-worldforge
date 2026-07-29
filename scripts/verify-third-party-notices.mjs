@@ -148,7 +148,7 @@ function readLicenses(packageRecord) {
 
 function buildNotice(dependencies) {
   const sections = [
-    'Mapsoo Worldsmith third-party notices',
+    'Mapsoo WorldForge third-party notices',
     '',
     'This file contains the license notices for every production dependency',
     'reported by the locked pnpm installation. Regenerate with:',

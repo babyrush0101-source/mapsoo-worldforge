@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     // Local development stays at `/`. Deployments can set VITE_BASE_PATH,
-    // for example `/mapsoo-kids/` for this repository's GitHub Pages site.
+    // for example `/mapsoo-worldforge/` for this repository's GitHub Pages site.
     base: normalizeBasePath(env.VITE_BASE_PATH),
     plugins: [react()],
     build: {
