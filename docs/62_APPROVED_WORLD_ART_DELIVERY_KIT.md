@@ -105,6 +105,40 @@ review the generated page, upload the exact verified ZIP, select `Graphical
 Assets`, enter the same AI disclosure, and confirm the license. Passing this
 builder never logs in to itch.io or grants upload permission.
 
+## Delivery CLI
+
+The final packaging adapter is exposed as a local maintainer command:
+
+```console
+pnpm production-art:delivery-kit:build -- \
+  --overlay <world-art-runtime-overlay-id.zip> \
+  --approval <approved-production-world-review.json> \
+  --receipt <canonical-human-art-review.json> \
+  --evidence-root <technical-review-workspace> \
+  --layout <world-layout-plan.json> \
+  --pack-id <kebab-case-pack-id> \
+  --title "<display title>" \
+  --version <semver> \
+  --contains-generative-ai true \
+  --out <delivery-output-directory>
+```
+
+`--layout` is required for Overlay 1.1 and forbidden for Overlay 1.0. The
+command re-reads the complete overlay, approved review, canonical human
+receipt, preview and every cited technical evidence file. It rejects unsafe
+relative paths, symlinks, junctions, hard-link aliases, changed files and a
+different existing output ZIP.
+
+The output filename is derived from the approved pack id and version. Repeating
+the command with exact inputs reports `delivery-kit-unchanged`; it never
+overwrites different bytes. The JSON summary always reports zero remote
+requests and `uploaded: false`, `published: false`.
+
+For a private consumer integration, keep the Overlay 1.1 layout in the
+consumer-owned workspace and run this CLI there. The delivery ZIP does not copy
+the layout, private reference images, prompts, world prose, account data or
+consumer identifiers.
+
 The semantic manifest lives in
 [`src/core/world-art-delivery-kit.ts`](../src/core/world-art-delivery-kit.ts),
 with the independent 1.1 extension in
@@ -115,3 +149,5 @@ and
 [`schemas/mapsoo-world-art-delivery-kit-1.1.schema.json`](../schemas/mapsoo-world-art-delivery-kit-1.1.schema.json),
 and the ZIP adapter in
 [`src/adapters/build-approved-world-art-delivery-kit.ts`](../src/adapters/build-approved-world-art-delivery-kit.ts).
+The filesystem-safe CLI is
+[`scripts/build-approved-world-art-delivery-kit.ts`](../scripts/build-approved-world-art-delivery-kit.ts).

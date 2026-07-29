@@ -138,6 +138,7 @@
     "production-art:world-session": "vite-node scripts/run-complete-world-execution-session.ts",
     "production-art:runtime-candidate": "vite-node scripts/run-world-art-runtime-candidate.ts",
     "production-art:runtime-candidate:technical-review": "vite-node --script scripts/run-runtime-candidate-technical-review.ts",
+    "production-art:delivery-kit:build": "vite-node --script scripts/build-approved-world-art-delivery-kit.ts",
     "production-art:workflow:verify": "node scripts/verify-production-art-workflow.mjs",
     "production-art:operator-import": "vite-node scripts/materialize-operator-production-art-candidate.ts",
     "production-art:operator-import:verify": "node scripts/verify-operator-production-art-candidate.mjs",
